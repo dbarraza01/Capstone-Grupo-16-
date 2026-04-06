@@ -47,10 +47,10 @@ Capstone-Grupo-16-/
 │   └── procedimiento_pacientes.csv          # Procedimientos crudos + fechas (ICD-10-PCS)
 │
 ├── data/processed/ (Datos Limpios)
-│   ├── dataset_maestro.csv                  # ⭐ Dataset principal limpio (11,932 pacientes)
-│   ├── caso_diagnostico.csv                 # 📋 Granular: 1 fila por diagnóstico (97,089 registros)
+│   ├── dataset_maestro.csv                  # ⭐ Dataset principal limpio (11,951 pacientes)
+│   ├── caso_diagnostico.csv                 # 📋 Granular: 1 fila por diagnóstico (97,337 registros)
 │   ├── caso_procedimiento.csv               # 📋 Granular: 1 fila por procedimiento (26,568 registros)
-│   └── pacientes_rechazados.csv             # ❌ Pacientes no válidos (19 pacientes)
+│   └── pacientes_rechazados.csv             # ❌ Pacientes no válidos (0 pacientes)
 │
 ├── data/reports/ (Reportes Estadísticos)
 │   ├── reporte_limpieza.csv                 # Resumen de limpieza (tasa aceptación, promedio LOS)
@@ -307,11 +307,11 @@ case_id;d_code;tipo_d;d_caract_1;d_caract_3
 ```
 
 **Estadísticas:**
-- **Registros totales:** 97,089 diagnósticos
-- **Pacientes únicos:** 11,932
+- **Registros totales:** 97,337 diagnósticos
+- **Pacientes únicos:** 11,951
 - **Códigos únicos:** 6,108
-- **Diagnósticos primarios:** 18,678 (19.2%)
-- **Diagnósticos secundarios:** 78,411 (80.8%)
+- **Diagnósticos primarios:** 18,718 (19.2%)
+- **Diagnósticos secundarios:** 78,619 (80.8%)
 - **Promedio por paciente:** 8.14 diagnósticos
 
 **Usos:**
@@ -392,17 +392,18 @@ case_id;p_code;p_caract_1;p_caract_3
 
 | Motivo | Descripción |
 |--------|-------------|
-| `contiene_codigo_diagnostico_invalido` | **NUEVO:** Paciente contiene códigos inválidos como AAAAAA |
 | `falta_en_diagnosticos` | Paciente existe en procedimientos pero NO en diagnósticos |
 | `falta_en_procedimientos` | Paciente existe en diagnósticos pero NO en procedimientos |
 | `fechas_invalidas` | Fechas de ingreso o egreso son inválidas (NaT) |
 | `los_negativo` | Fecha de egreso es anterior a fecha de ingreso (error en datos) |
 
 **Estadísticas actuales:**
-- **Pacientes rechazados:** 19 (0.16%)
-- **Todos rechazados por:** `contiene_codigo_diagnostico_invalido` (código AAAAAA)
+- **Pacientes rechazados:** 0 (0.00%)
+- **Registros diagnósticos filtrados (inválidos):** 23 registros con código AAAAAA
+- **Nota:** Los registros diagnósticos inválidos se **filtran** pero se **conservan los pacientes** con sus diagnósticos válidos
 
 **Motivos que NO causan rechazo:**
+- ✅ **Códigos diagnósticos inválidos (AAAAAA, etc.)** - se filtran solo los registros inválidos, se conserva el paciente
 - ✅ **LOS = 0** (son datos válidos)
 
 ---
@@ -434,11 +435,11 @@ case_id;p_code;p_caract_1;p_caract_3
 ```csv
 metrica;valor
 pacientes_totales;11951
-pacientes_maestro;11932
-pacientes_rechazados;19
-pacientes_rechazados_por_codigos_invalidos;19
-tasa_aceptacion_pct;99.84
-los_promedio_dias;6.44
+pacientes_maestro;11951
+pacientes_rechazados;0
+registros_diagnostico_filtrados_por_codigo_invalido;23
+tasa_aceptacion_pct;100.00
+los_promedio_dias;6.40
 ```
 
 ---
@@ -979,20 +980,21 @@ df_reporte.to_csv('reporte_limpieza.csv', index=False, sep=';')
 | Métrica | Valor |
 |---------|-------|
 | **Pacientes totales** | 11,951 |
-| **Pacientes en dataset maestro** | 11,932 (99.84%) ✅ |
-| **Pacientes rechazados** | 19 (0.16%) por código AAAAAA |
-| **Registros diagnóstico con AAAAAA** | 23 registros en 19 pacientes |
+| **Pacientes en dataset maestro** | 11,951 (100.0%) ✅ |
+| **Pacientes rechazados** | 0 (0.0%) |
+| **Registros diagnóstico con AAAAAA (filtrados)** | 23 registros en 19 pacientes |
+| **Diagnósticos válidos conservados** | 248 registros (de los 19 pacientes) |
 | **Códigos UUUUUU conservados** | 3,472 (urgencias) ✅ |
 | **Pacientes con urgencia (es_urgencia=1)** | 3,472 (29.1%) |
-| **Pacientes electivos (es_urgencia=0)** | 8,460 (70.9%) |
+| **Pacientes electivos (es_urgencia=0)** | 8,479 (70.9%) |
 | **Pacientes con LOS = 0** | 250 (conservados) |
-| **LOS promedio** | 6.44 días |
+| **LOS promedio** | 6.4 días |
 | **LOS promedio urgencias** | 11.44 días |
 | **LOS promedio electivos** | 4.39 días |
 | **LOS máximo** | 262 días |
-| **Procedimientos promedio** | 2.22 por paciente |
+| **Procedimientos promedio** | 2.2 por paciente |
 | **Diagnósticos promedio** | 8.14 por paciente |
-| **Diagnósticos granulares generados** | 97,089 registros |
+| **Diagnósticos granulares generados** | 97,337 registros |
 | **Procedimientos granulares generados** | 26,568 registros |
 | **Códigos diagnósticos únicos** | 6,108 |
 
@@ -1037,23 +1039,25 @@ df_reporte.to_csv('reporte_limpieza.csv', index=False, sep=';')
 
 ---
 
-### ✅ **Por qué NO se rechazaron pacientes por códigos ICD-10 inválidos**
+### ✅ **Por qué se filtran REGISTROS diagnósticos inválidos (no pacientes completos)**
 
-**Problema identificado:** Algunos códigos como `AAAAAA` son placeholders inválidos que deben filtrarse.
+**Problema identificado:** Algunos códigos como `AAAAAA` son placeholders inválidos que deben eliminarse.
 
-**Solución adoptada:** Se **filtran solo los códigos inválidos**, pero se **conserva el paciente** con sus códigos válidos.
+**Solución adoptada:** Se **filtran los registros diagnósticos inválidos**, pero se **conserva al paciente** con todos sus códigos diagnósticos válidos.
 
 **Nota especial sobre UUUUUU:** Este código **se conserva** porque indica admisión por urgencia (no electiva), lo cual es información clínica valiosa para el modelo predictivo.
 
 **Ejemplos:**
 ```
 Paciente 12345:
-- Diagnósticos originales: E6601 (válido), AAAAAA (placeholder), I119 (válido)
-- Resultado: Conserva paciente con [E6601, I119] ✅
+- Diagnósticos originales: E6601 (válido), AAAAAA (inválido), I119 (válido)
+- Resultado: Se FILTRA solo AAAAAA, se conserva paciente con [E6601, I119] ✅
 
 Paciente 67890:
 - Diagnósticos originales: UUUUUU (urgencia), E6601 (válido)
-- Resultado: Conserva paciente con [UUUUUU, E6601] ✅ (ambos códigos válidos)
+- Resultado: Se conservan ambos diagnósticos [UUUUUU, E6601] ✅
+
+Impact: 23 registros diagnósticos filtrados en 19 pacientes, pero 248 diagnósticos válidos conservados
 ```
 
 ---
@@ -1188,7 +1192,8 @@ Este proyecto es parte de un trabajo académico del curso Capstone.
 - ✅ **NUEVO:** Bandera `es_urgencia` para diferenciar urgencias de electivos
 - ✅ **NUEVO:** Archivos granulares `caso_diagnostico.csv` y `caso_procedimiento.csv`
 - ✅ **NUEVO:** Script `analisis.py` con reportes estadísticos detallados
-- ✅ Rechazo completo de pacientes con código AAAAAA (19 pacientes)
+- ✅ **Filtrado de registros diagnósticos** con código AAAAAA (23 registros, 19 pacientes)
+- ✅ Conserva al paciente con diagnósticos válidos restantes (248 diagnósticos conservados)
 - ✅ Conserva código UUUUUU (urgencia) - 3,472 pacientes
-- ✅ 99.84% tasa de aceptación de pacientes
+- ✅ 100.0% tasa de aceptación de pacientes
 - ✅ LOS=0 conservados como datos válidos
