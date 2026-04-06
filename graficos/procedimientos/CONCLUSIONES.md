@@ -6,12 +6,12 @@
 ## 📊 Resumen Ejecutivo
 
 ### Estadísticas Generales
-- **Total de pacientes analizados:** 11,932
-- **Total de registros código-paciente:** 26,111
-- **LOS promedio:** 11.04 días
+- **Total de pacientes analizados:** 11,951
+- **Total de registros código-paciente:** 26,155
+- **LOS promedio:** 11.06 días
 - **LOS mediana:** 3.0 días
 - **Umbral outlier (Q3 + 1.5*IQR):** 23.5 días
-- **Registros outlier:** 3,441 (13.2%)
+- **Registros outlier:** 3,465 (13.2%)
 
 ---
 
@@ -25,7 +25,7 @@
 | **F07Z9FZ** | 78.6% | 14 | 36.1 días | 131 días |
 | **F07Z9ZZ** | 71.6% | 81 | 50.0 días | 262 días |
 | **05HN33Z** | 70.6% | 34 | 45.6 días | 183 días |
-| **5A09557** | 66.7% | 39 | 48.3 días | 141 días |
+| **5A1955Z** | 66.7% | 102 | 45.0 días | 262 días |
 
 ### Interpretación de Outliers
 Los códigos listados arriba tienen una **alta probabilidad de estar asociados con estancias hospitalarias prolongadas** (≥23.5 días). Esto puede indicar:
@@ -44,16 +44,16 @@ Los códigos listados arriba tienen una **alta probabilidad de estar asociados c
 
 | Código | N° Pacientes | % del Total |
 |--------|--------------|-------------|
-| **4A1ZXQZ** | 1,026 | 8.60% |
-| **10E0XZZ** | 722 | 6.05% |
-| **30233N1** | 638 | 5.35% |
-| **4A023N7** | 626 | 5.25% |
-| **B2111ZZ** | 548 | 4.59% |
+| **4A1ZXQZ** | 1,027 | 8.59% |
+| **10E0XZZ** | 722 | 6.04% |
+| **30233N1** | 641 | 5.36% |
+| **4A023N7** | 627 | 5.25% |
+| **B2111ZZ** | 549 | 4.59% |
 
 ### Interpretación de Frecuencia
 Los códigos más frecuentes representan las condiciones o procedimientos más comunes en la población hospitalaria analizada.
 
-**Código más frecuente:** **4A1ZXQZ** aparece en 1,026 pacientes (8.60% del total).
+**Código más frecuente:** **4A1ZXQZ** aparece en 1,027 pacientes (8.59% del total).
 
 ---
 

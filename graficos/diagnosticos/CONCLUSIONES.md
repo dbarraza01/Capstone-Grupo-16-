@@ -6,12 +6,12 @@
 ## 📊 Resumen Ejecutivo
 
 ### Estadísticas Generales
-- **Total de pacientes analizados:** 11,932
-- **Total de registros código-paciente:** 91,903
-- **LOS promedio:** 12.89 días
+- **Total de pacientes analizados:** 11,951
+- **Total de registros código-paciente:** 92,141
+- **LOS promedio:** 12.93 días
 - **LOS mediana:** 5.0 días
 - **Umbral outlier (Q3 + 1.5*IQR):** 34.5 días
-- **Registros outlier:** 8,435 (9.2%)
+- **Registros outlier:** 8,491 (9.2%)
 
 ---
 
@@ -44,16 +44,16 @@ Los códigos listados arriba tienen una **alta probabilidad de estar asociados c
 
 | Código | N° Pacientes | % del Total |
 |--------|--------------|-------------|
-| **UUUUUU** | 3,472 | 29.10% |
-| **I10** | 2,480 | 20.78% |
-| **Z7982** | 1,812 | 15.19% |
-| **F17210** | 1,329 | 11.14% |
-| **E669** | 1,297 | 10.87% |
+| **UUUUUU** | 3,486 | 29.17% |
+| **I10** | 2,484 | 20.78% |
+| **Z7982** | 1,814 | 15.18% |
+| **F17210** | 1,336 | 11.18% |
+| **E669** | 1,301 | 10.89% |
 
 ### Interpretación de Frecuencia
 Los códigos más frecuentes representan las condiciones o procedimientos más comunes en la población hospitalaria analizada.
 
-**Código más frecuente:** **UUUUUU** aparece en 3,472 pacientes (29.10% del total).
+**Código más frecuente:** **UUUUUU** aparece en 3,486 pacientes (29.17% del total).
 
 ---
 
