@@ -27,24 +27,30 @@ ARCHIVO_SALIDA_CASO_DIAGNOSTICO = "data/processed/caso_diagnostico.csv"
 ARCHIVO_SALIDA_CASO_PROCEDIMIENTO = "data/processed/caso_procedimiento.csv"
 ARCHIVO_SALIDA_REPORTE = "data/reports/reporte_limpieza.csv"
 
-# Patrones REGEX para códigos ICD-10 válidos
-# ICD-10-CM (Clinical Modification) para DIAGNÓSTICOS - Formato SIN DECIMAL
-# Formato: [A-TV-Z][0-9][0-9A-Z] opcionalmente seguido de hasta 4 caracteres alfanuméricos
-# Excepción 1: códigos U07 (COVID) permiten U070 o U071
-# Excepción 2: código UUUUUU (urgencia) se CONSERVA
-# Ejemplos válidos: E6601, S72302E, Z6841, I10, U071, UUUUUU
-# Ejemplos inválidos: DDDDDD, AAAAAA, 123, ABC, E6 (muy corto)
-ICD10_CM_REGEX = r'^(?:[A-TV-Z][0-9][0-9A-Z](?:[0-9A-Z]{0,4})?|U07[01]?|UUUUUU)$'
+# Patrones REGEX para códigos ICD-10-CM válidos
+# ICD-10-CM (Clinical Modification) para DIAGNÓSTICOS - VALIDACIÓN DE FORMA (sin punto decimal)
+# Longitud total permitida: 3 a 7 caracteres
+# Primer carácter: letra A-Z
+# Segundo carácter: dígito obligatorio (0-9)
+# Tercer carácter: dígito o letra (0-9 o A-Z)
+# Hasta 4 caracteres alfanuméricos adicionales opcionales
+# Ejemplos válidos: E6601, S72302E, Z6841, I10, U071, A1234B
+# Ejemplos inválidos: DDDDDD, AAAAAA, E6 (muy corto), 123 (no comienza con letra)
+ICD10_CM_REGEX = r'^[A-Z][0-9][0-9A-Z][0-9A-Z]{0,4}$'
 
-# ICD-10-PCS (Procedure Coding System) para PROCEDIMIENTOS
-# Formato: exactamente 7 caracteres alfanuméricos [0-9A-HJ-NP-Z]
-# Excluye letras I, O (evitar confusión con 1, 0)
+# ICD-10-PCS (Procedure Coding System) para PROCEDIMIENTOS - VALIDACIÓN DE FORMA SINTÁCTICA
+# Longitud exacta: 7 caracteres
+# Caracteres permitidos: números (0-9) y letras alfanuméricas excepto I y O
+# Nota: esta validación es de FORMA estructural, no valida existencia en tablas oficiales PCS
 # Ejemplos válidos: 0DB64Z3, 0BB64ZZ, 02H60JZ
-# Ejemplos inválidos: 0DB64Z (muy corto), 0DB64Z3X (muy largo), OIIOIIO (letras I/O)
+# Ejemplos inválidos: 0DB64Z (6 chars), 0DB64Z3X (8 chars), OIIOIIO (contiene I/O prohibidas)
 ICD10_PCS_REGEX = r'^[0-9A-HJ-NP-Z]{7}$'
 
 # Valores permitidos para PrincSec (Principal/Secundario)
 VALORES_PRINCSEC_VALIDOS = {'P', 'S'}
+
+# Token especial del dataset para marcar admisiones por urgencia
+TOKEN_URGENCIA = 'UUUUUU'
 
 
 # ============================================================================
@@ -90,17 +96,17 @@ def limpiar_diagnosticos(df):
 
     Proceso:
     1. Estandariza nombres de columnas
-    2. Identifica códigos ICD-10 inválidos
-    3. Identifica TODOS los pacientes que tienen AL MENOS UN código inválido
-    4. Captura los códigos inválidos específicos de cada paciente
-    5. Filtra solo códigos válidos para agregación de pacientes aceptados
-    6. Devuelve lista de pacientes rechazados y sus códigos inválidos
+    2. Identifica códigos ICD-10-CM inválidos
+    3. FILTRA REGISTROS (no pacientes): solo elimina registros diagnósticos inválidos
+    4. Mantiene pacientes que tienen AL MENOS UN diagnóstico válido
+    5. Captura códigos inválidos para auditoría (no para rechazo de paciente)
+    6. Devuelve datos limpios a nivel paciente
 
     Args:
         df: DataFrame con columnas CASE, PrincSec, Diagnosis
 
     Returns:
-        tuple: (df_paciente_aceptados, set_case_id_rechazados, dict_codigos_invalidos)
+        tuple: (df_paciente_aceptados, set_case_id_rechazados_vacio, dict_codigos_invalidos)
     """
     print("\n" + "=" * 70)
     print("PASO 2: Limpiando y validando diagnósticos...")
@@ -132,9 +138,10 @@ def limpiar_diagnosticos(df):
     print(f"Registros con PrincSec inválido: {invalidos_princsec:,}")
 
     # -------------------------------------------------------------------------
-    # Validación 2: Diagnosis debe cumplir patrón ICD-10-CM
+    # Validación 2: Diagnosis debe cumplir patrón ICD-10-CM o ser token de urgencia
     # -------------------------------------------------------------------------
-    df['diagnosis_valido'] = df['diagnosis'].str.match(ICD10_CM_REGEX, na=False)
+    # Acepta códigos ICD-10-CM válidos formales O el token especial TOKEN_URGENCIA
+    df['diagnosis_valido'] = (df['diagnosis'].str.match(ICD10_CM_REGEX, na=False)) | (df['diagnosis'] == TOKEN_URGENCIA)
     invalidos_diagnosis = (~df['diagnosis_valido']).sum()
     print(f"Registros con código ICD-10-CM inválido: {invalidos_diagnosis:,}")
 
@@ -144,21 +151,26 @@ def limpiar_diagnosticos(df):
         print(f"  Ejemplos de códigos inválidos: {codigos_invalidos_unicos[:10]}")
 
     # -------------------------------------------------------------------------
-    # IDENTIFICAR PACIENTES CON CÓDIGOS INVÁLIDOS
+    # PARA AUDITORÍA: Capturar TODOS los códigos inválidos encontrados
     # -------------------------------------------------------------------------
-    # Obtener TODOS los case_id que tienen AL MENOS UN código inválido
+    # Nota: En Opción A, filtramos REGISTROS (no pacientes)
+    # Entonces registramos inválidos solo para auditoría/reporte, no para rechazo de paciente
     df_invalidos = df[~df['diagnosis_valido']]
 
-    # Crear diccionario: case_id -> lista de códigos inválidos
+    # Crear diccionario: case_id -> lista de códigos inválidos (para auditoría)
     dict_codigos_invalidos = {}
     for case_id in df_invalidos['case_id'].unique():
         codigos = df_invalidos[df_invalidos['case_id'] == case_id]['diagnosis'].unique()
         dict_codigos_invalidos[case_id] = list(codigos)
 
-    set_case_id_rechazados = set(dict_codigos_invalidos.keys())
+    # En Opción A: NO rechazamos pacientes por códigos inválidos
+    # Solo registramos los inválidos encontrados
+    set_case_id_rechazados = set()  # VACÍO para Opción A
 
-    print(f"\n⚠ Pacientes con AL MENOS UN código inválido: {len(set_case_id_rechazados):,}")
-    print(f"  (Estos pacientes serán RECHAZADOS completamente)")
+    if len(dict_codigos_invalidos) > 0:
+        print(f"\n⚠ Códigos diagnósticos inválidos encontrados en {len(dict_codigos_invalidos):,} pacientes")
+        print(f"  (Estos registros serán FILTRADOS pero los pacientes NO serán rechazados)")
+        print(f"  (Total de registros inválidos a eliminar: {len(df_invalidos):,})")
 
     # -------------------------------------------------------------------------
     # Filtrar solo registros que cumplan AMBAS validaciones
@@ -426,18 +438,20 @@ def integrar_datos(df_diagnosticos_paciente, df_procedimientos_paciente, set_cas
     """
     Integra los datos de diagnósticos y procedimientos en un dataset maestro.
 
-    Regla de rechazo:
-    - Pacientes con códigos ICD-10-CM inválidos (contiene_codigo_diagnostico_invalido)
-    - Pacientes que están en un archivo pero NO en el otro
-    - Pacientes con fechas inválidas (NaT)
-    - Pacientes con LOS negativo (fecha egreso < fecha ingreso)
+    Regla de rechazo (Opción A - Filtrado de registros, no de pacientes):
+    - Registros diagnósticos inválidos se FILTRARON previamente
+    - Pacientes con solo registros inválidos fueron excluidos automáticamente
+    - Criterios de rechazo a nivel PACIENTE (integración):
+      * Pacientes que están en un archivo pero NO en el otro
+      * Pacientes con fechas inválidas (NaT)
+      * Pacientes con LOS negativo (fecha egreso < fecha ingreso)
     - NO se rechazan pacientes por LOS=0 (son datos válidos)
 
     Args:
-        df_diagnosticos_paciente: DataFrame de diagnósticos agregados
+        df_diagnosticos_paciente: DataFrame de diagnósticos agregados (ya filtrados)
         df_procedimientos_paciente: DataFrame de procedimientos agregados
-        set_case_id_rechazados: Set de case_id con códigos diagnósticos inválidos
-        dict_codigos_invalidos: Dict mapeando case_id -> lista de códigos inválidos
+        set_case_id_rechazados: Set vacío (Opción A no rechaza por códigos inválidos)
+        dict_codigos_invalidos: Dict mapeando case_id -> lista de códigos inválidos (auditoría)
 
     Returns:
         tuple: (df_maestro, df_rechazados, df_completo, dict_codigos_invalidos)
@@ -487,11 +501,11 @@ def integrar_datos(df_diagnosticos_paciente, df_procedimientos_paciente, set_cas
     df['n_diag_total'] = df['n_diag_primarios'] + df['n_diag_secundarios']
     df['tiene_diag_primario'] = df['n_diag_primarios'] > 0
 
-    # Crear bandera de urgencia (es_urgencia = 1 si contiene UUUUUU, 0 si no)
+    # Crear bandera de urgencia (es_urgencia = 1 si contiene TOKEN_URGENCIA, 0 si no)
     def tiene_codigo_urgencia(lista_diag_primarios, lista_diag_secundarios):
-        """Verifica si el paciente tiene código UUUUUU en cualquiera de sus diagnósticos"""
+        """Verifica si el paciente tiene token TOKEN_URGENCIA en cualquiera de sus diagnósticos"""
         todos_diags = lista_diag_primarios + lista_diag_secundarios
-        return 1 if 'UUUUUU' in todos_diags else 0
+        return 1 if TOKEN_URGENCIA in todos_diags else 0
 
     df['es_urgencia'] = df.apply(
         lambda row: tiene_codigo_urgencia(
@@ -502,7 +516,7 @@ def integrar_datos(df_diagnosticos_paciente, df_procedimientos_paciente, set_cas
     )
 
     # -------------------------------------------------------------------------
-    # Criterios de RECHAZO
+    # Criterios de RECHAZO (Opción A: sin rechazo por códigos inválidos)
     # -------------------------------------------------------------------------
     print("\n" + "-" * 70)
     print("Aplicando criterios de rechazo...")
@@ -511,12 +525,8 @@ def integrar_datos(df_diagnosticos_paciente, df_procedimientos_paciente, set_cas
     # Lista de razones de rechazo para cada paciente
     df['razones_rechazo'] = [[] for _ in range(len(df))]
 
-    # CRITERIO 0: Paciente contiene códigos diagnósticos inválidos
-    mask_invalidos = df['case_id'].isin(set_case_id_rechazados)
-    df.loc[mask_invalidos, 'razones_rechazo'] = df.loc[mask_invalidos, 'razones_rechazo'].apply(
-        lambda x: x + ['contiene_codigo_diagnostico_invalido']
-    )
-    print(f"  ✗ Contiene códigos diagnósticos inválidos: {mask_invalidos.sum():,}")
+    # NOTA: En Opción A, NO rechazamos por "contiene_codigo_diagnostico_invalido"
+    # Los registros inválidos fueron filtrados en limpiar_diagnosticos()
 
     # CRITERIO 1: Paciente solo en procedimientos (no en diagnósticos)
     mask_solo_proc = df['_merge'] == 'left_only'
@@ -546,8 +556,9 @@ def integrar_datos(df_diagnosticos_paciente, df_procedimientos_paciente, set_cas
     )
     print(f"  ✗ LOS negativo: {mask_los_negativo.sum():,}")
 
-    # CRITERIOS EXPLÍCITAMENTE NO APLICADOS:
-    print("\n  ✓ LOS = 0: NO rechazados (son datos válidos)")
+    # CRITERIOS EXPLÍCITAMENTE NO APLICADOS (Opción A):
+    print(f"\n  ✓ Registros con códigos diagnósticos inválidos: FILTRADOS (no rechazan paciente)")
+    print(f"  ✓ LOS = 0: NO rechazados (son datos válidos)")
 
     # -------------------------------------------------------------------------
     # Separar dataset maestro y rechazados
@@ -620,8 +631,8 @@ def generar_caso_diagnostico(df_diag_raw, set_case_id_rechazados):
 
     print(f"Registros totales: {len(df):,}")
 
-    # Validar códigos ICD-10-CM
-    df['diagnosis_valido'] = df['diagnosis'].str.match(ICD10_CM_REGEX, na=False)
+    # Validar códigos ICD-10-CM (incluida aceptación de token de urgencia)
+    df['diagnosis_valido'] = (df['diagnosis'].str.match(ICD10_CM_REGEX, na=False)) | (df['diagnosis'] == TOKEN_URGENCIA)
     df['princsec_valido'] = df['princsec'].isin(VALORES_PRINCSEC_VALIDOS)
 
     # Filtrar solo registros válidos
@@ -846,7 +857,7 @@ def guardar_resultados(df_maestro, df_rechazados, df_completo, dict_codigos_inva
     # Crear un resumen ejecutivo de la limpieza
 
     # Contar rechazados por motivo
-    n_invalidos_diag = (df_rechazados['motivo_rechazo'].str.contains('contiene_codigo_diagnostico_invalido', na=False)).sum() if len(df_rechazados) > 0 else 0
+    n_invalidos_diag = 0  # Opción A: no rechaza por códigos inválidos
     n_falta_diag = (df_rechazados['motivo_rechazo'].str.contains('falta_en_diagnosticos', na=False)).sum() if len(df_rechazados) > 0 else 0
     n_falta_proc = (df_rechazados['motivo_rechazo'].str.contains('falta_en_procedimientos', na=False)).sum() if len(df_rechazados) > 0 else 0
     n_fechas_invalidas = (df_rechazados['motivo_rechazo'].str.contains('fechas_invalidas', na=False)).sum() if len(df_rechazados) > 0 else 0
@@ -859,7 +870,7 @@ def guardar_resultados(df_maestro, df_rechazados, df_completo, dict_codigos_inva
             'pacientes_rechazados',
             'tasa_aceptacion_pct',
             'pacientes_con_los_cero',
-            'pacientes_rechazados_por_codigos_invalidos',
+            'registros_diagnostico_filtrados_por_codigo_invalido',
             'pacientes_falta_diagnosticos',
             'pacientes_falta_procedimientos',
             'pacientes_fechas_invalidas',
@@ -874,7 +885,7 @@ def guardar_resultados(df_maestro, df_rechazados, df_completo, dict_codigos_inva
             len(df_rechazados),
             round(len(df_maestro) / len(df_completo) * 100, 2) if len(df_completo) > 0 else 0,
             (df_maestro['los_cero'] == True).sum() if len(df_maestro) > 0 else 0,
-            n_invalidos_diag,
+            len(dict_codigos_invalidos),  # Auditoría: número de pacientes con registros inválidos
             n_falta_diag,
             n_falta_proc,
             n_fechas_invalidas,
