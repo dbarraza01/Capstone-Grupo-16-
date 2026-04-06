@@ -1,0 +1,13 @@
+seccion;variable;valor
+GENERAL;pacientes_rechazados;19
+MOTIVOS;motivo_01;contiene_codigo_diagnostico_invalido (19)
+CODIGOS_INVALIDOS;total_codigos_invalidos;19
+CODIGOS_INVALIDOS;codigos_unicos;1
+CODIGOS_INVALIDOS;codigo_01;AAAAAA (19)
+LOS;count;19
+LOS;mean;24.53
+LOS;median;16.0
+LOS;min;2
+LOS;max;96
+PROCEDIMIENTOS;mean;2.32
+DIAGNOSTICOS;mean;13.05

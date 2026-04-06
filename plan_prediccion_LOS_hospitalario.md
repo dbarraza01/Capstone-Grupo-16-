@@ -452,6 +452,9 @@ Se entrenan cuatro modelos sobre el conjunto de train, evaluados con validación
 
 **Gradient Boosting (XGBoost)** construye los árboles en secuencia: cada árbol nuevo aprende a corregir los errores del árbol anterior, siguiendo la dirección del gradiente de la función de error. Es el método más preciso en datos tabulares clínicos, pero requiere calibrar más hiperparámetros.
 
+
+**Modelos de Hugo** 
+
 ```python
 from sklearn.linear_model  import Ridge, Lasso
 from sklearn.ensemble       import RandomForestRegressor
