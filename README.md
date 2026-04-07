@@ -167,6 +167,89 @@ python3 visualizar_weight_verosimilitud.py
 
 ---
 
+## 📊 Distribución de Pacientes por Rango de LOS
+
+### Concentración de Estancias
+
+| Rango de LOS | Pacientes | Porcentaje | Acumulado |
+|---|---:|---:|---:|
+| **0 días** | 250 | 2.09% | 2.09% |
+| **1-2 días** | 5,662 | 47.38% | 49.47% |
+| **3-6 días** | 3,400 | 28.45% | 77.92% |
+| **7-13 días** | 1,243 | 10.40% | 88.32% |
+| **14-29 días** | 890 | 7.45% | 95.77% |
+| **30-59 días** | 384 | 3.21% | 98.98% |
+| **60-89 días** | 69 | 0.58% | 99.56% |
+| **90+ días** | 53 | 0.44% | 100.00% |
+
+### Insights Clave
+
+- **35.05%** de pacientes se quedan ≤ 1 día (admisión/egreso mismo día o 1 día)
+- **61.39%** de pacientes completan su estancia en ≤ 3 días
+- **80.88%** de pacientes se van en ≤ 7 días (primera semana)
+- **96.05%** de pacientes se van en ≤ 30 días (primer mes)
+- Solo **0.44%** de pacientes tienen estancias prolongadas (> 90 días)
+
+---
+
+## 🔍 Explicación del Gráfico: Distribución LOS con Transformación Logarítmica
+
+### ¿Por qué dos ejes X?
+
+El gráfico `02_distribucion_los_transformacion_logaritmica.png` tiene **dos ejes X**:
+
+#### **Eje X INFERIOR (escala original en días)**
+- Muestra los valores **sin transformación**: 0, 10, 20, 30, ..., 260 días
+- Representa el rango real de Length of Stay en el dataset
+
+#### **Eje X SUPERIOR (escala logarítmica)**
+- Muestra la transformación `log(1+LOS)` que lineariza la distribución
+- Permite visualizar mejor la forma de la distribución en rangos bajos (donde está la mayoría de datos)
+
+### Conversión: LOS Original → Valor Logarítmico
+
+| LOS Original | Fórmula | Valor Log |
+|---|---|---:|
+| 0 días | log(1+0) = log(1) | 0.000 |
+| 1 día | log(1+1) = log(2) | 0.693 |
+| 3 días | log(1+3) = log(4) | **1.386** |
+| 7 días | log(1+7) = log(8) | 2.079 |
+| 14 días | log(1+14) = log(15) | 2.708 |
+| 30 días | log(1+30) = log(31) | 3.434 |
+| 60 días | log(1+60) = log(61) | 4.111 |
+| 90 días | log(1+90) = log(91) | 4.511 |
+| 262 días (máximo) | log(1+262) = log(263) | 5.572 |
+
+### ¿Por qué la frecuencia es tan alta en el rango 0-1?
+
+**La respuesta es simple:** El rango logarítmico [0.00 a 1.39] corresponde a los primeros **3 días reales** de estancia, y allí se concentra la mayoría de pacientes:
+
+- **log(0.000) → LOS = 0 días**: 250 pacientes (2.09%)
+- **log(0.693) → LOS = 1 día**: 3,939 pacientes (32.96%)
+- **log(1.386) → LOS = 3 días**: 1,425 pacientes (11.92%)
+
+**Total en los primeros 3 días: 5,614 pacientes (47.0%)**
+
+### ¿Por qué usar transformación log(1+LOS)?
+
+1. **Distribución original es SESGADA**: Los datos tienen forma de cola larga (mayoría en días bajos, pocos casos extremos a 262 días)
+
+2. **Log comprensa valores grandes**:
+   - Los primeros 10 días se "expanden" en el eje logarítmico
+   - Los días 100-262 se "comprimen" en el eje logarítmico
+
+3. **Beneficio visual**: Permite ver claramente la forma de la distribución en el rango donde está la mayoría de datos (0-30 días)
+
+4. **¿Por qué log(1+x) y no log(x)?**
+   - log(0) = indefinido (infinito negativo) ❌
+   - log(1+0) = log(1) = 0 ✅ (bien definido, permite incluir LOS=0)
+
+### Interpretación Final
+
+La **alta frecuencia en el rango 0-1 del eje logarítmico** NO significa que todos los días se compriman ahí. Significa que los primeros 3 días de estancia (donde está casi la mitad de los pacientes) ocupan ese pequeño espacio visual. Es un comportamiento esperado en distribuciones sesgadas con concentración en valores bajos.
+
+---
+
 ## 📊 Archivos de Entrada
 
 ### 1. `datos_diagnostico.csv`
