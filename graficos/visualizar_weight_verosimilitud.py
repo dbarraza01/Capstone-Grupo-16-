@@ -12,7 +12,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Cargar datos
-df = pd.read_csv('data/processed/dataset_maestro.csv', sep=';', dtype=str)
+df = pd.read_csv('../data/processed/dataset_maestro.csv', sep=';', dtype=str)
 df['los_dias'] = pd.to_numeric(df['los_dias'], errors='coerce')
 los = df['los_dias'].dropna()
 los_shift = los + 1
@@ -64,7 +64,7 @@ for w in weights:
         return negative_log_likelihood_for_weight(w, los_shift, shape_ln, scale_ln, shape_w, scale_w)
 
     result_opt = minimize(objective, initial_params, method='Nelder-Mead',
-                         options={'maxiter': 1000, 'disp': False})
+                            options={'maxiter': 1000, 'disp': False})
 
     if result_opt.success:
         shape_ln_opt, scale_ln_opt, shape_w_opt, scale_w_opt = result_opt.x
@@ -97,19 +97,19 @@ ax.plot(weights*100, log_likelihoods, 'b-', linewidth=3, label='Log-Verosimilitu
 
 # Marcar el máximo
 ax.scatter([optimal_weight*100], [max_ll], color='red', s=300, zorder=5,
-          label=f'Óptimo: weight={optimal_weight:.1%}', marker='*')
+            label=f'Óptimo: weight={optimal_weight:.1%}', marker='*')
 ax.axvline(optimal_weight*100, color='red', linestyle='--', linewidth=2, alpha=0.6)
 
 # Sombrear región alrededor del óptimo
 ax.axvspan(max(0, (optimal_weight-0.05)*100),
-          min(100, (optimal_weight+0.05)*100),
-          alpha=0.2, color='red', label='Rango óptimo ±5%')
+            min(100, (optimal_weight+0.05)*100),
+            alpha=0.2, color='red', label='Rango óptimo ±5%')
 
 # Marcar componentes puros
 ax.scatter([0], [log_likelihoods[0]],
-          color='green', s=150, marker='s', alpha=0.7, label='100% Weibull (w=0)')
+            color='green', s=150, marker='s', alpha=0.7, label='100% Weibull (w=0)')
 ax.scatter([100], [log_likelihoods[-1]],
-          color='orange', s=150, marker='^', alpha=0.7, label='100% Log-Normal (w=1)')
+            color='orange', s=150, marker='^', alpha=0.7, label='100% Log-Normal (w=1)')
 
 # Línea de referencia: Log-Normal simple (w=1)
 ll_lognorm_only = log_likelihoods[-1]  # El último valor es weight=1.0
@@ -119,15 +119,15 @@ ax.text(2, ll_lognorm_only+10, f'Log-Normal solo (w=1): LL={ll_lognorm_only:.0f}
 # Mejora porcentual
 improvement = ((max_ll - ll_lognorm_only) / abs(ll_lognorm_only)) * 100
 ax.text(optimal_weight*100, max_ll+100,
-       f'Mejora: +{improvement:.1f}%\n(Mezcla vs Log-Normal)',
-       fontsize=11, fontweight='bold', ha='center',
-       bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
+        f'Mejora: +{improvement:.1f}%\n(Mezcla vs Log-Normal)',
+        fontsize=11, fontweight='bold', ha='center',
+        bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
 
 # Etiquetas y formato
 ax.set_xlabel('Weight (w) - Proporción de Log-Normal en la Mezcla (%)',
-             fontsize=13, fontweight='bold')
+                fontsize=13, fontweight='bold')
 ax.set_ylabel('Log-Verosimilitud', fontsize=13, fontweight='bold')
-ax.set_title('¿Por Qué el Algoritmo Elige 75%-25%?\nLa Verosimilitud es Máxima en weight ≈ 0.75',
+ax.set_title('¿Por Qué el Algoritmo Elige 42%-58%?\nLa Verosimilitud es Máxima en weight ≈ 0.42',
             fontsize=14, fontweight='bold', pad=20)
 ax.legend(fontsize=11, loc='lower left')
 ax.grid(True, alpha=0.3, linestyle='--')
@@ -147,7 +147,7 @@ ax.text(0.98, 0.02, textstr, transform=ax.transAxes, fontsize=10,
        family='monospace')
 
 plt.tight_layout()
-output_path = 'graficos/07_verosimilitud_vs_weight.png'
+output_path = './07_verosimilitud_vs_weight.png'
 plt.savefig(output_path, dpi=300, bbox_inches='tight')
 print(f"\n✓ Gráfica guardada: {output_path}")
 plt.close()

@@ -21,11 +21,11 @@ ARCHIVO_DIAGNOSTICOS = "datos_diagnostico.csv"
 ARCHIVO_PROCEDIMIENTOS = "procedimiento_pacientes.csv"
 
 # Rutas de archivos de salida
-ARCHIVO_SALIDA_MAESTRO = "data/processed/dataset_maestro.csv"
-ARCHIVO_SALIDA_RECHAZADOS = "data/processed/pacientes_rechazados.csv"
-ARCHIVO_SALIDA_CASO_DIAGNOSTICO = "data/processed/caso_diagnostico.csv"
-ARCHIVO_SALIDA_CASO_PROCEDIMIENTO = "data/processed/caso_procedimiento.csv"
-ARCHIVO_SALIDA_REPORTE = "data/reports/reporte_limpieza.csv"
+ARCHIVO_SALIDA_MAESTRO = "processed/dataset_maestro.csv"
+ARCHIVO_SALIDA_RECHAZADOS = "processed/pacientes_rechazados.csv"
+ARCHIVO_SALIDA_CASO_DIAGNOSTICO = "processed/caso_diagnostico.csv"
+ARCHIVO_SALIDA_CASO_PROCEDIMIENTO = "processed/caso_procedimiento.csv"
+ARCHIVO_SALIDA_REPORTE = "reports/reporte_limpieza.csv"
 
 # Patrones REGEX para códigos ICD-10-CM válidos
 # ICD-10-CM (Clinical Modification) para DIAGNÓSTICOS - VALIDACIÓN DE FORMA (sin punto decimal)

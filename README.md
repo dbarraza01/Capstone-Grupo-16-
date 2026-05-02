@@ -7,22 +7,22 @@
 
 Este proyecto implementa un sistema de **limpieza y preparación de datos** para predecir la duración de estancia hospitalaria (LOS) de pacientes. El objetivo es integrar y limpiar datos de diagnósticos y procedimientos médicos para generar un dataset maestro listo para modelado predictivo.
 
-**Fecha de actualización:** 2026-03-30
+**Fecha de actualización:** 2026-05-02
 
 ---
 
 ## 🐍 Scripts Python - Guía Rápida
 
-| Script | Propósito | Entrada | Salida | Orden |
-|--------|-----------|---------|--------|-------|
-| **limpieza_datos.py** | Limpia, valida ICD-10, integra diagnósticos y procedimientos | CSV crudos (datos_diagnostico, procedimiento_pacientes) | dataset_maestro, caso_diagnostico, caso_procedimiento, pacientes_rechazados | 1️⃣ |
-| **analisis.py** | Genera 3 reportes estadísticos completos | dataset_maestro, caso_diagnostico, pacientes_rechazados | reporte_estadistico_*.csv | 2️⃣ |
-| **analisis_codigos_outliers.py** | Identifica qué códigos ICD-10 generan estancias largas + visualizaciones | dataset_maestro | Gráficos + CONCLUSIONES.md + estadísticas | 3️⃣ |
-| **analisis_distribucion_los.py** | Ajusta distribuciones (Log-Normal, Weibull, Gamma, Mezcla) y genera gráficos QQ | dataset_maestro | PNG: comparación de modelos y criterios AIC/KS | 4️⃣ |
-| **visualizacion_los.py** | Histogramas lineales/logarítmicos y boxplots de LOS | dataset_maestro | PNG: distribuciones | 5️⃣ |
-| **visualizar_weight_verosimilitud.py** | Gráfico: cómo cambia verosimilitud según peso en mezcla | dataset_maestro | PNG: verosimilitud vs weight | 6️⃣ |
-| **icd-10-cm.py** | Diccionarios de referencia de capítulos y categorías ICD-10-CM | - | Python module (para consulta manual) | 🔍 |
-| **icd-10-pcs.py** | Función utilitaria para decodificar códigos ICD-10-PCS | - | Python module (para consulta manual) | 🔍 |
+| Script | Ubicación | Propósito | Entrada | Salida | Orden |
+|--------|-----------|-----------|---------|--------|-------|
+| **limpieza_datos.py** | `data/` | Limpia, valida ICD-10, integra diagnósticos y procedimientos | CSV crudos (datos_diagnostico, procedimiento_pacientes) | dataset_maestro, caso_diagnostico, caso_procedimiento, pacientes_rechazados | 1️⃣ |
+| **analisis.py** | `data/` | Genera 3 reportes estadísticos completos | dataset_maestro, caso_diagnostico, pacientes_rechazados | reporte_estadistico_*.csv | 2️⃣ |
+| **analisis_codigos_outliers.py** | `graficos/diag_proc/` | Identifica qué códigos ICD-10 generan estancias largas + visualizaciones | dataset_maestro | Gráficos + CONCLUSIONES.md + estadísticas | 3️⃣ |
+| **analisis_complejidad_los.py** | `graficos/diag_proc/` | Análisis boxplot: LOS vs complejidad (diagnósticos, procedimientos) | dataset_maestro | PNG: boxplots comparativos | 4️⃣ |
+| **visualizacion_los.py** | `graficos/` | Histogramas lineales/logarítmicos y boxplots de LOS | dataset_maestro | PNG: 3 distribuciones | 5️⃣ |
+| **visualizar_weight_verosimilitud.py** | `graficos/` | Gráfico: cómo cambia verosimilitud según peso en mezcla | dataset_maestro | PNG: verosimilitud vs weight | 6️⃣ |
+| **icd-10-cm.py** | Raíz | Diccionarios de referencia de capítulos y categorías ICD-10-CM | - | Python module (para consulta manual) | 🔍 |
+| **icd-10-pcs.py** | Raíz | Función utilitaria para decodificar códigos ICD-10-PCS | - | Python module (para consulta manual) | 🔍 |
 
 ---
 
@@ -31,55 +31,74 @@ Este proyecto implementa un sistema de **limpieza y preparación de datos** para
 ```
 Capstone-Grupo-16-/
 │
-├── SCRIPTS DE DATOS (Limpieza y Análisis)
-│   ├── limpieza_datos.py                    # ⭐ PRINCIPAL: Limpieza, validación ICD-10, integración
-│   ├── analisis.py                          # 📊 Reportes estadísticos (3 archivos: maestro, diag, rechazados)
-│   ├── analisis_codigos_outliers.py         # 🆕 Análisis visual de códigos ICD-10 vs outliers
-│   ├── analisis_distribucion_los.py         # 🆕 Ajuste: Log-Normal, Weibull, Gamma, Mezcla
-│   └── icd-10-cm.py, icd-10-pcs.py         # 📋 Diccionarios de referencia ICD-10
-│
-├── SCRIPTS DE VISUALIZACIÓN
-│   ├── visualizacion_los.py                 # 📈 Histogramas y box plots de LOS
-│   └── visualizar_weight_verosimilitud.py   # 📊 Verosimilitud vs pesos en mezcla
-│
-├── DATOS DE ENTRADA (Crudos)
-│   ├── datos_diagnostico.csv                # Diagnósticos crudos (ICD-10-CM)
-│   └── procedimiento_pacientes.csv          # Procedimientos crudos + fechas (ICD-10-PCS)
-│
-├── data/processed/ (Datos Limpios)
-│   ├── dataset_maestro.csv                  # ⭐ Dataset principal limpio (11,951 pacientes)
-│   ├── caso_diagnostico.csv                 # 📋 Granular: 1 fila por diagnóstico (97,337 registros)
-│   ├── caso_procedimiento.csv               # 📋 Granular: 1 fila por procedimiento (26,568 registros)
-│   └── pacientes_rechazados.csv             # ❌ Pacientes no válidos (0 pacientes)
-│
-├── data/reports/ (Reportes Estadísticos)
-│   ├── reporte_limpieza.csv                 # Resumen de limpieza (tasa aceptación, promedio LOS)
-│   ├── reporte_estadistico_maestro.csv      # 📊 47 métricas del dataset maestro
-│   ├── reporte_estadistico_diagnostico.csv  # 📊 70 métricas de diagnósticos
-│   └── reporte_estadistico_rechazados.csv   # 📊 12 métricas de rechazo
-│
-├── graficos/
-│   ├── diagnosticos/
-│   │   ├── 01_codigos_outliers.png          # Top 20 códigos diagnósticos con prob. outlier
-│   │   ├── 02_boxplot_outliers.png          # Distribución LOS por código diagnóstico
-│   │   ├── 03_codigos_frecuentes.png        # Top 20 códigos más frecuentes
-│   │   ├── 04_violin_frecuentes.png         # Violin plot de códigos frecuentes
-│   │   ├── CONCLUSIONES.md                  # 📝 Análisis + recomendaciones diagnósticos
-│   │   ├── estadisticas_outliers.csv        # Datos completos outliers
-│   │   └── estadisticas_frecuencia.csv      # Datos completos frecuencia
+├── SCRIPTS PRINCIPALES (en data/)
+│   ├── data/
+│   │   ├── limpieza_datos.py                 # ⭐ Limpieza, validación ICD-10, integración
+│   │   ├── analisis.py                       # 📊 Reportes estadísticos (3 archivos)
+│   │   │
+│   │   ├── DATOS DE ENTRADA (Crudos)
+│   │   ├── datos_diagnostico.csv             # Diagnósticos crudos (ICD-10-CM)
+│   │   ├── procedimiento_pacientes.csv       # Procedimientos crudos + fechas (ICD-10-PCS)
+│   │   │
+│   │   ├── processed/ (Datos Limpios)
+│   │   │   ├── dataset_maestro.csv           # ⭐ Dataset principal limpio (11,951 pacientes)
+│   │   │   ├── caso_diagnostico.csv          # 📋 Granular: 1 fila por diagnóstico
+│   │   │   ├── caso_procedimiento.csv        # 📋 Granular: 1 fila por procedimiento
+│   │   │   └── pacientes_rechazados.csv      # ❌ Pacientes no válidos (0 pacientes)
+│   │   │
+│   │   └── reports/ (Reportes Estadísticos)
+│   │       ├── reporte_limpieza.csv          # Resumen de limpieza
+│   │       ├── reporte_estadistico_maestro.csv      # 📊 47 métricas
+│   │       ├── reporte_estadistico_diagnostico.csv  # 📊 70 métricas
+│   │       └── reporte_estadistico_rechazados.csv   # 📊 12 métricas
 │   │
-│   └── procedimientos/
-│       ├── 01_codigos_outliers.png          # Top 20 códigos procedimiento con prob. outlier
-│       ├── 02_boxplot_outliers.png          # Distribución LOS por código procedimiento
-│       ├── 03_codigos_frecuentes.png        # Top 20 códigos más frecuentes
-│       ├── 04_violin_frecuentes.png         # Violin plot de códigos frecuentes
-│       ├── CONCLUSIONES.md                  # 📝 Análisis + recomendaciones procedimientos
-│       ├── estadisticas_outliers.csv        # Datos completos outliers
-│       └── estadisticas_frecuencia.csv      # Datos completos frecuencia
+│   └── Datos proyecto LOS.xlsx               # Datos originales (Excel)
 │
-├── README.md                                # 📖 Este archivo (documentación completa)
-├── .DS_Store                                # macOS
-└── Datos proyecto LOS.xlsx                  # Datos originales (Excel)
+├── SCRIPTS DE VISUALIZACIÓN (en graficos/)
+│   ├── graficos/
+│   │   ├── visualizacion_los.py              # Histogramas y boxplots
+│   │   ├── visualizar_weight_verosimilitud.py # Verosimilitud vs pesos mezcla
+│   │   │
+│   │   ├── diag_proc/
+│   │   │   ├── analisis_codigos_outliers.py  # Análisis visual outliers
+│   │   │   ├── analisis_complejidad_los.py   # Boxplots: LOS vs complejidad
+│   │   │   ├── diagnosticos/
+│   │   │   │   ├── 01_codigos_outliers.png
+│   │   │   │   ├── 02_boxplot_outliers.png
+│   │   │   │   ├── 03_codigos_frecuentes.png
+│   │   │   │   ├── 04_violin_frecuentes.png
+│   │   │   │   ├── 05_los_vs_diagnosticos_*.png
+│   │   │   │   ├── CONCLUSIONES.md
+│   │   │   │   └── estadisticas_*.csv
+│   │   │   │
+│   │   │   └── procedimientos/
+│   │   │       ├── 01_codigos_outliers.png
+│   │   │       ├── 02_boxplot_outliers.png
+│   │   │       ├── 03_codigos_frecuentes.png
+│   │   │       ├── 04_violin_frecuentes.png
+│   │   │       ├── 05_los_vs_procedimientos.png
+│   │   │       ├── CONCLUSIONES.md
+│   │   │       └── estadisticas_*.csv
+│   │   │
+│   │   ├── 01_distribucion_los_escala_lineal.png
+│   │   ├── 02_distribucion_los_transformacion_logaritmica.png
+│   │   ├── 03_boxplot_percentiles_los.png
+│   │   └── 07_verosimilitud_vs_weight.png
+│   │
+│   └── LOS_0/ (Análisis de pacientes con LOS=0)
+│       ├── 01_diagnosticos_procedimientos_los_0.png
+│       ├── 02_principal_vs_secundario_los_0.png
+│       └── 03_distribucion_secciones_pcs_los_0.png
+│
+├── UTILIDADES
+│   ├── icd-10-cm.py                         # Diccionarios ICD-10-CM
+│   ├── icd-10-pcs.py                        # Utilitarios ICD-10-PCS
+│   ├── README.md                            # Este archivo
+│   └── README_GRAFICOS.md                   # Explicación de gráficos
+│
+└── DOCUMENTACIÓN
+    └── memory/ (Auto-memoria del proyecto)
+        └── MEMORY.md                        # Seguimiento de cambios y decisiones
 ```
 
 ### 📊 Flujo de Datos
@@ -129,40 +148,45 @@ pip install pandas numpy matplotlib seaborn scipy
 
 **Paso 1: Limpieza de datos (OBLIGATORIO - primer paso)**
 ```bash
+cd data
 python3 limpieza_datos.py
 ```
 **Salida:**
-- `data/processed/dataset_maestro.csv` (dataset limpio)
-- `data/processed/caso_diagnostico.csv` (granular diagnósticos)
-- `data/processed/caso_procedimiento.csv` (granular procedimientos)
-- `data/processed/pacientes_rechazados.csv` (rechazados)
-- `data/reports/reporte_limpieza.csv` (resumen)
+- `processed/dataset_maestro.csv` (dataset limpio)
+- `processed/caso_diagnostico.csv` (granular diagnósticos)
+- `processed/caso_procedimiento.csv` (granular procedimientos)
+- `processed/pacientes_rechazados.csv` (rechazados)
+- `reports/reporte_limpieza.csv` (resumen)
 
 **Paso 2: Análisis estadístico (OPCIONAL)**
 ```bash
+cd data
 python3 analisis.py
 ```
 **Salida:**
-- `data/reports/reporte_estadistico_maestro.csv`
-- `data/reports/reporte_estadistico_diagnostico.csv`
-- `data/reports/reporte_estadistico_rechazados.csv`
+- `reports/reporte_estadistico_maestro.csv`
+- `reports/reporte_estadistico_diagnostico.csv`
+- `reports/reporte_estadistico_rechazados.csv`
 
 **Paso 3: Análisis visual de códigos y outliers (OPCIONAL)**
 ```bash
+cd graficos/diag_proc
 python3 analisis_codigos_outliers.py
 ```
-**Salida:** Gráficos + conclusiones en `graficos/diagnosticos/` y `graficos/procedimientos/`
+**Salida:** Gráficos + conclusiones en `diagnosticos/` y `procedimientos/`
 
-**Paso 4: Análisis de distribución (OPCIONAL)**
+**Paso 4: Análisis de complejidad (OPCIONAL)**
 ```bash
-python3 analisis_distribucion_los.py
+cd graficos/diag_proc
+python3 analisis_complejidad_los.py
 ```
-**Salida:** Comparación de modelos probabilísticos
+**Salida:** Boxplots comparativos en `diagnosticos/` y `procedimientos/`
 
-**Paso 5: Visualizaciones adicionales (OPCIONAL)**
+**Paso 5: Visualizaciones generales (OPCIONAL)**
 ```bash
-python3 visualizacion_los.py
-python3 visualizar_weight_verosimilitud.py
+cd graficos
+python3 visualizacion_los.py           # Histogramas y boxplots
+python3 visualizar_weight_verosimilitud.py  # Verosimilitud vs weight
 ```
 
 ---
@@ -192,17 +216,52 @@ python3 visualizar_weight_verosimilitud.py
 
 ---
 
-## 🔍 Explicación del Gráfico: Distribución LOS con Transformación Logarítmica
+## 🔴 Descubrimiento Crítico: Proporción Real de Mezcla (Mayo 2026)
+
+### Hallazgo Inesperado
+
+Durante análisis de verosimilitud, se descubrió que los parámetros óptimos de la mezcla diferían de análisis anteriores:
+
+| Métrica | Análisis Anterior | Análisis Actual | Diferencia |
+|---------|-------------------|-----------------|-----------|
+| **Componente Log-Normal** | 74.73% | 42% | -32.73% |
+| **Componente Weibull** | 25.27% | 58% | +32.73% |
+| **Método** | Parámetros iniciales | Optimización global por weight | — |
+
+### Interpretación
+
+**El gráfico `visualizar_weight_verosimilitud.py` muestra:**
+- La verosimilitud es **máxima en weight ≈ 0.42** (no 0.75)
+- Esto significa que los datos reales son mejor explicados por:
+  - **58% Weibull** (estancias complejas/largas) — DOMINANTE
+  - **42% Log-Normal** (estancias cortas/típicas)
+
+**Implicación clínica:**
+- Las urgencias y casos complejos (Weibull) representan más de lo esperado
+- El modelo requiere capturar mejor la cola larga (30-262 días)
+- Dos subpoblaciones clínicas coexisten con pesos casi equilibrados
+
+### Acción Requerida
+
+- ✅ Gráfico actualizado con título correcto (42%-58%)
+- ✅ Discrepancia documentada en memory del proyecto
+- 🔲 Investigar origen del análisis anterior (verificar dataset vs método)
+
+### Referencia
+
+Ver memoria del proyecto: `memory/distribucion_los_correccion.md`
+
+---
 
 ### ¿Por qué dos ejes X?
 
 El gráfico `02_distribucion_los_transformacion_logaritmica.png` tiene **dos ejes X**:
 
-#### **Eje X INFERIOR (escala original en días)**
+#### **Eje X SUPERIOR (escala original en días)**
 - Muestra los valores **sin transformación**: 0, 10, 20, 30, ..., 260 días
 - Representa el rango real de Length of Stay en el dataset
 
-#### **Eje X SUPERIOR (escala logarítmica)**
+#### **Eje X INFERIOR (escala logarítmica)**
 - Muestra la transformación `log(1+LOS)` que lineariza la distribución
 - Permite visualizar mejor la forma de la distribución en rangos bajos (donde está la mayoría de datos)
 
@@ -1267,16 +1326,14 @@ Este proyecto es parte de un trabajo académico del curso Capstone.
 
 ---
 
-**Última actualización:** 2026-03-30
-**Versión del script:** 3.0 (Análisis estadístico + archivos granulares)
-**Mejoras clave:**
-- ✅ Validación ICD-10-CM formato sin decimal (E6601 en lugar de E66.01)
-- ✅ Validación ICD-10-PCS exacta (7 caracteres)
-- ✅ **NUEVO:** Bandera `es_urgencia` para diferenciar urgencias de electivos
-- ✅ **NUEVO:** Archivos granulares `caso_diagnostico.csv` y `caso_procedimiento.csv`
-- ✅ **NUEVO:** Script `analisis.py` con reportes estadísticos detallados
-- ✅ **Filtrado de registros diagnósticos** con código AAAAAA (23 registros, 19 pacientes)
-- ✅ Conserva al paciente con diagnósticos válidos restantes (248 diagnósticos conservados)
-- ✅ Conserva código UUUUUU (urgencia) - 3,472 pacientes
-- ✅ 100.0% tasa de aceptación de pacientes
-- ✅ LOS=0 conservados como datos válidos
+**Última actualización:** 2026-05-02
+**Versión del proyecto:** 4.0 (Reorganización de estructura + Descubrimiento de mezcla real)
+**Cambios principales en esta versión:**
+- ✅ **REORGANIZACIÓN CRÍTICA:** Todos los scripts de datos movidos a `data/`
+- ✅ **REORGANIZACIÓN:** Scripts de visualización consolidados en `graficos/`
+- ✅ **NUEVOS:** Scripts `analisis_codigos_outliers.py` y `analisis_complejidad_los.py` en `graficos/diag_proc/`
+- ✅ **DESCUBRIMIENTO:** Mezcla Log-Normal-Weibull es **42%-58%** (no 75%-25%)
+- ✅ **GRÁFICOS:** Actualizado título de `visualizar_weight_verosimilitud.py`
+- ✅ **DOCUMENTACIÓN:** Agregada sección sobre discrepancia en memoria del proyecto
+- ✅ Estructura de directorios optimizada para navegación y ejecución
+- ✅ Rutas relativas actualizadas en todos los scripts

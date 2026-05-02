@@ -2,6 +2,10 @@
 # DICCIONARIO ICD-10-PCS — Los 7 caracteres explicados
 # =====================================================
 
+'''
+Esto es 100% provisorio, aún no se está usando este diccionario
+'''
+
 # CARÁCTER 1: Sección (ya tienes esto en p_caract_1)
 seccion_pcs = {
     '0': 'Cirugía médica y quirúrgica (Medical & Surgical)',
@@ -103,21 +107,6 @@ abordaje_pcs = {
     'X': 'Externo (sobre la piel)',
 }
 
-# Función utilitaria para decodificar un código PCS completo
-def decodificar_pcs(codigo):
-    """Recibe un código de 7 caracteres y retorna un dict con su significado."""
-    if len(codigo) != 7:
-        return {'error': f'Código debe tener 7 caracteres, tiene {len(codigo)}'}
-    return {
-        'codigo': codigo,
-        'seccion': seccion_pcs.get(codigo[0], f'Sección desconocida ({codigo[0]})'),
-        'sistema': sistema_corporal_pcs.get(codigo[1], f'Sistema desconocido ({codigo[1]})'),
-        'operacion': operacion_raiz_pcs.get(codigo[2], f'Operación desconocida ({codigo[2]})'),
-        'parte_corporal': f'Carácter 4: {codigo[3]} (requiere tabla específica por sistema)',
-        'abordaje': abordaje_pcs.get(codigo[4], f'Abordaje desconocido ({codigo[4]})'),
-        'dispositivo': f'Carácter 6: {codigo[5]} (Z = sin dispositivo)',
-        'calificador': f'Carácter 7: {codigo[6]} (Z = sin calificador)',
-    }
 
 # Ejemplo de uso (descomentar para probar):
 # print(decodificar_pcs('0DB64Z3'))

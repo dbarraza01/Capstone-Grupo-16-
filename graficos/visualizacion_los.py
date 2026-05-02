@@ -17,7 +17,7 @@ plt.rcParams['axes.labelsize'] = 12
 
 # Cargar datos
 print("Cargando dataset maestro...")
-df = pd.read_csv('data/processed/dataset_maestro.csv', sep=';', dtype=str)
+df = pd.read_csv('../data/processed/dataset_maestro.csv', sep=';', dtype=str)
 df['los_dias'] = pd.to_numeric(df['los_dias'], errors='coerce')
 
 # Eliminar NaN si los hay
@@ -126,7 +126,7 @@ ax.set_xlim(left=0)
 plt.tight_layout()
 
 # Guardar
-output_path_1 = 'graficos/01_distribucion_los_escala_lineal.png'
+output_path_1 = './01_distribucion_los_escala_lineal.png'
 plt.savefig(output_path_1, dpi=300, bbox_inches='tight')
 print(f"✓ Guardado: {output_path_1}")
 plt.close()
@@ -204,7 +204,7 @@ ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.8, axis='y')
 plt.tight_layout()
 
 # Guardar
-output_path_2 = 'graficos/02_distribucion_los_transformacion_logaritmica.png'
+output_path_2 = './02_distribucion_los_transformacion_logaritmica.png'
 plt.savefig(output_path_2, dpi=300, bbox_inches='tight')
 print(f"✓ Guardado: {output_path_2}")
 plt.close()
@@ -264,7 +264,7 @@ plt.suptitle(f'Análisis de Percentiles - LOS (N = {len(los):,} pacientes)',
                 fontsize=15, fontweight='bold', y=1.02)
 plt.tight_layout()
 
-output_path_3 = 'graficos/03_boxplot_percentiles_los.png'
+output_path_3 = './03_boxplot_percentiles_los.png'
 plt.savefig(output_path_3, dpi=300, bbox_inches='tight')
 print(f"✓ Guardado: {output_path_3}")
 plt.close()

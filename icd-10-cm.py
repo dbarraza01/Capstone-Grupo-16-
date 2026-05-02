@@ -1,5 +1,9 @@
 # Diccionario de capítulos ICD-10-CM
 # La clave es la letra inicial del código
+'''
+Esto es 100% provisorio, aún no se está usando este diccionario
+'''
+
 capitulos_icd10cm = {
     'A': 'Enfermedades infecciosas y parasitarias (A00-A99)',
     'B': 'Enfermedades infecciosas y parasitarias (B00-B99)',

@@ -9,8 +9,6 @@ Este script genera reportes estadísticos detallados (estilo summary de R) para:
 
 Los reportes incluyen estadísticas descriptivas, distribuciones y métricas clave.
 
-Autor: Sistema de Análisis LOS
-Fecha: 2026-03-30
 """
 
 import pandas as pd
@@ -22,14 +20,14 @@ from datetime import datetime
 # ============================================================================
 
 # Archivos de entrada
-ARCHIVO_DATASET_MAESTRO = "data/processed/dataset_maestro.csv"
-ARCHIVO_CASO_DIAGNOSTICO = "data/processed/caso_diagnostico.csv"
-ARCHIVO_PACIENTES_RECHAZADOS = "data/processed/pacientes_rechazados.csv"
+ARCHIVO_DATASET_MAESTRO = "processed/dataset_maestro.csv"
+ARCHIVO_CASO_DIAGNOSTICO = "processed/caso_diagnostico.csv"
+ARCHIVO_PACIENTES_RECHAZADOS = "processed/pacientes_rechazados.csv"
 
 # Archivos de salida (reportes)
-ARCHIVO_REPORTE_MAESTRO = "data/reports/reporte_estadistico_maestro.csv"
-ARCHIVO_REPORTE_DIAGNOSTICO = "data/reports/reporte_estadistico_diagnostico.csv"
-ARCHIVO_REPORTE_RECHAZADOS = "data/reports/reporte_estadistico_rechazados.csv"
+ARCHIVO_REPORTE_MAESTRO = "reports/reporte_estadistico_maestro.csv"
+ARCHIVO_REPORTE_DIAGNOSTICO = "reports/reporte_estadistico_diagnostico.csv"
+ARCHIVO_REPORTE_RECHAZADOS = "reports/reporte_estadistico_rechazados.csv"
 
 
 # ============================================================================

@@ -20,9 +20,9 @@ plt.rcParams['figure.figsize'] = (14, 8)
 plt.rcParams['font.size'] = 10
 
 # Paths
-DATA_PATH = 'data/processed/dataset_maestro.csv'
-OUTPUT_DIAG = 'graficos/diagnosticos/'
-OUTPUT_PROC = 'graficos/procedimientos/'
+DATA_PATH = '../../data/processed/dataset_maestro.csv'
+OUTPUT_DIAG = 'diagnosticos/'
+OUTPUT_PROC = 'procedimientos/'
 
 # ========================
 # FUNCIONES DE ANÁLISIS
@@ -127,10 +127,10 @@ def graficar_top_codigos_outliers(stats, tipo, umbral_outlier):
     bars = ax.barh(range(len(codes)), probs, color='crimson', alpha=0.7)
     ax.set_yticks(range(len(codes)))
     ax.set_yticklabels(codes)
-    ax.set_xlabel('Probabilidad de Outlier (%)', fontsize=12, fontweight='bold')
+    ax.set_xlabel(f'% de pacientes con este código que tienen LOS ≥ {umbral_outlier:.1f} días', fontsize=12, fontweight='bold')
     ax.set_ylabel(f'Código {tipo.capitalize()}', fontsize=12, fontweight='bold')
     ax.set_title(
-        f'Top 20 Códigos {tipo.capitalize()} Asociados a LOS Outliers (≥{umbral_outlier:.1f} días)',
+        f'Top 20 Códigos {tipo.capitalize()} - Porcentaje de Pacientes con Estancia Prolongada (≥{umbral_outlier:.1f} días)',
         fontsize=14, fontweight='bold', pad=20
     )
     ax.grid(axis='x', alpha=0.3)
@@ -177,19 +177,24 @@ def graficar_boxplot_codigos(df_codigos, stats, tipo):
 
 def graficar_densidad_frecuencia(df_codigos, tipo, top_n=20):
     """
-    Gráfico de barras: códigos más frecuentes (densidad).
+    Gráfico de barras: códigos más frecuentes (densidad en porcentajes).
     """
-    freq = df_codigos['codigo'].value_counts().head(top_n)
+    # Contar pacientes únicos por cada código
+    freq_pacientes = df_codigos.groupby('codigo')['case_id'].nunique().sort_values(ascending=False).head(top_n)
+    total_pacientes = df_codigos['case_id'].nunique()
+
+    # Calcular porcentajes
+    freq_pct = (freq_pacientes / total_pacientes) * 100
 
     fig, ax = plt.subplots(figsize=(14, 8))
 
-    codes = freq.index.values[::-1]
-    counts = freq.values[::-1]
+    codes = freq_pct.index.values[::-1]
+    pcts = freq_pct.values[::-1]
 
-    bars = ax.barh(range(len(codes)), counts, color='steelblue', alpha=0.7)
+    bars = ax.barh(range(len(codes)), pcts, color='steelblue', alpha=0.7)
     ax.set_yticks(range(len(codes)))
     ax.set_yticklabels(codes)
-    ax.set_xlabel('Número de Pacientes', fontsize=12, fontweight='bold')
+    ax.set_xlabel(f'% de pacientes que tienen este {tipo.lower()}', fontsize=12, fontweight='bold')
     ax.set_ylabel(f'Código {tipo.capitalize()}', fontsize=12, fontweight='bold')
     ax.set_title(
         f'Top {top_n} Códigos {tipo.capitalize()} Más Frecuentes',
@@ -198,8 +203,8 @@ def graficar_densidad_frecuencia(df_codigos, tipo, top_n=20):
     ax.grid(axis='x', alpha=0.3)
 
     # Añadir valores en las barras
-    for i, (bar, count) in enumerate(zip(bars, counts)):
-        ax.text(count + max(counts)*0.01, i, f'{count:,}', va='center', fontsize=9)
+    for i, (bar, pct) in enumerate(zip(bars, pcts)):
+        ax.text(pct + max(pcts)*0.01, i, f'{pct:.1f}%', va='center', fontsize=9)
 
     plt.tight_layout()
     return fig
@@ -406,7 +411,7 @@ def analizar_tipo(df, columnas, tipo, output_dir):
 
     # 4. Análisis de frecuencia
     print(f"\n📈 Analizando códigos frecuentes...")
-    freq_top = df_codigos['codigo'].value_counts().head(20)
+    freq_top = df_codigos.groupby('codigo')['case_id'].nunique().sort_values(ascending=False).head(20)
     print(f"   Top código frecuente: {freq_top.index[0]} ({freq_top.values[0]:,} pacientes)")
 
     # 5. Generar gráficos

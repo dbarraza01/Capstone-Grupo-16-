@@ -261,26 +261,36 @@ axes = axes.flatten()
 # 1. Log-Normal Q-Q (usar los_shift = los+1)
 stats.probplot(los_shift, dist=lognorm, sparams=(shape_ln, loc_ln, scale_ln), plot=axes[0])
 axes[0].set_title(f'Gráfica Cuantil-Cuantil: Log-Normal (LOS+1)\nKS={ks_ln:.4f} | AIC={aic_ln:.1f}', fontweight='bold', fontsize=10)
+axes[0].set_xlabel('Días Teóricos (Esperados)', fontsize=10)
+axes[0].set_ylabel('Días Observados (Reales)', fontsize=10)
 axes[0].grid(True, alpha=0.3)
 
 # 2. Gamma Q-Q
 stats.probplot(los_shift, dist=gamma, sparams=(shape_g, loc_g, scale_g), plot=axes[1])
 axes[1].set_title(f'Gráfica Cuantil-Cuantil: Gamma (LOS+1)\nKS={ks_g:.4f} | AIC={aic_g:.1f}', fontweight='bold', fontsize=10)
+axes[1].set_xlabel('Días Teóricos (Esperados)', fontsize=10)
+axes[1].set_ylabel('Días Observados (Reales)', fontsize=10)
 axes[1].grid(True, alpha=0.3)
 
 # 3. Weibull Q-Q
 stats.probplot(los_shift, dist=weibull_min, sparams=(shape_w, loc_w, scale_w), plot=axes[2])
 axes[2].set_title(f'Gráfica Cuantil-Cuantil: Weibull (LOS+1)\nKS={ks_w:.4f} | AIC={aic_w:.1f}', fontweight='bold', fontsize=10)
+axes[2].set_xlabel('Días Teóricos (Esperados)', fontsize=10)
+axes[2].set_ylabel('Días Observados (Reales)', fontsize=10)
 axes[2].grid(True, alpha=0.3)
 
 # 4. Exponencial Q-Q
 stats.probplot(los_shift, dist=expon, sparams=(loc_e, scale_e), plot=axes[3])
 axes[3].set_title(f'Gráfica Cuantil-Cuantil: Exponencial (LOS+1)\nKS={ks_e:.4f} | AIC={aic_e:.1f}', fontweight='bold', fontsize=10)
+axes[3].set_xlabel('Días Teóricos (Esperados)', fontsize=10)
+axes[3].set_ylabel('Días Observados (Reales)', fontsize=10)
 axes[3].grid(True, alpha=0.3)
 
 # 5. Normal Q-Q
 stats.probplot(los_shift, dist='norm', plot=axes[4])
 axes[4].set_title(f'Gráfica Cuantil-Cuantil: Normal (LOS+1)\nKS={ks_n:.4f}', fontweight='bold', fontsize=10)
+axes[4].set_xlabel('Días Teóricos (Esperados)', fontsize=10)
+axes[4].set_ylabel('Días Observados (Reales)', fontsize=10)
 axes[4].grid(True, alpha=0.3)
 
 # 6. Mezcla Log-Normal-Weibull Q-Q
@@ -300,8 +310,8 @@ data_quantiles = np.percentile(los_shift, x_range_qq * 100)
 
 axes[5].scatter(mixture_quantiles, data_quantiles, alpha=0.5, s=10)
 axes[5].plot([0, 100], [0, 100], 'r-', linewidth=2)
-axes[5].set_xlabel('Cuantiles Teóricos (Mezcla)', fontsize=10)
-axes[5].set_ylabel('Cuantiles Observados', fontsize=10)
+axes[5].set_xlabel('Días Teóricos (Esperados)', fontsize=10)
+axes[5].set_ylabel('Días Observados (Reales)', fontsize=10)
 axes[5].set_title(f'Gráfica Cuantil-Cuantil: Mezcla Log-Normal-Weibull (LOS+1)\nKS={ks_mix:.4f} | AIC={aic_mix:.1f}', fontweight='bold', fontsize=10)
 axes[5].grid(True, alpha=0.3)
 
