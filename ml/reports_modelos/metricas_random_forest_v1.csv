@@ -1,0 +1,2 @@
+modelo;target_entrenamiento;mae;rmse;medae;precision_plos_27;recall_plos_27;f1_plos_27
+RandomForestRegressor_v1;log1p(los_dias);4.1595671946746;11.128661064950064;1.3811915122766725;0.0;0.0;0.0

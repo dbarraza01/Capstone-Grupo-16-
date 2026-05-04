@@ -1,0 +1,2 @@
+min;p5;p10;p25;mediana;media;p75;p90;p95;p99;max;std;n_total;n_nulos;umbral_outlier_p95;n_outliers_p95;pct_outliers_p95
+0;1.0;1.0;1.0;3.0;6.471927035394527;6.0;15.0;27.0;60.0;262;13.234392660080891;11951;0;27.0;609;5.095807882185591
