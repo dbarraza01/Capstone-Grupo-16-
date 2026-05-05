@@ -1,0 +1,5 @@
+metrica;valor
+TN (pred corto, real corto);2249
+FP (pred largo, real corto);20
+FN (pred corto, real largo);63
+TP (pred largo, real largo);59

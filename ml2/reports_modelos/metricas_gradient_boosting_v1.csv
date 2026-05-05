@@ -1,0 +1,2 @@
+modelo;target_entrenamiento;mae;rmse;medae;precision_plos_27;recall_plos_27;f1_plos_27
+GradientBoostingRegressor_v1;log1p(los_dias);2.975885286652407;7.591368668737632;0.9360688593657085;0.8571428571428571;0.4918032786885246;0.625

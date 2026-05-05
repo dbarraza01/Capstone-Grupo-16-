@@ -1,0 +1,205 @@
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, median_absolute_error
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
+
+import joblib
+
+# ============================================================================
+# Definir rutas
+# ============================================================================
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+DATA_PATH = BASE_DIR / "ml" / "processed" / "model_data_ml_v2.csv"
+OUT_DIR = BASE_DIR / "ml" / "models"
+REPORT_DIR = BASE_DIR / "ml" / "reports_modelos"
+
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+# ============================================================================
+# Leer dataset
+# ============================================================================
+
+df = pd.read_csv(DATA_PATH, sep=";")
+
+print("Shape dataset:", df.shape)
+print("Nulos totales:", df.isna().sum().sum())
+
+# ============================================================================
+# Separar variables predictoras y target
+# ============================================================================
+
+ID_COL = "case_id"
+TARGET = "los_dias"
+
+X = df.drop(columns=[ID_COL, TARGET])
+y = df[TARGET]
+case_ids = df[ID_COL]
+
+# ============================================================================
+# Asegurar que X sea numérico
+# ============================================================================
+
+no_numericas = X.select_dtypes(exclude=[np.number]).columns.tolist()
+
+if len(no_numericas) > 0:
+    print("Columnas no numéricas detectadas:", no_numericas)
+    print("Convirtiendo a numéricas...")
+    for col in no_numericas:
+        X[col] = X[col].astype(int)
+
+restantes = X.select_dtypes(exclude=[np.number]).columns.tolist()
+if len(restantes) > 0:
+    raise ValueError(f"Columnas no numéricas restantes: {restantes}")
+
+print("Todas las columnas de X son numéricas.")
+
+# ============================================================================
+# Crear tramos para estratificación
+# ============================================================================
+
+los_tramo = pd.cut(
+    y,
+    bins=[-1, 2, 6, 13, 26, np.inf],
+    labels=["0-2", "3-6", "7-13", "14-26", "27+"]
+)
+
+print("Distribución por tramos:")
+print(los_tramo.value_counts(normalize=True).sort_index())
+
+# ============================================================================
+# Separar train/test
+# ============================================================================
+
+X_train, X_test, y_train, y_test, ids_train, ids_test = train_test_split(
+    X,
+    y,
+    case_ids,
+    test_size=0.20,
+    random_state=42,
+    stratify=los_tramo
+)
+
+# ============================================================================
+# Función para evaluar modelos
+# ============================================================================
+
+def evaluar_modelo(nombre_modelo, y_test, y_pred, ids_test, report_dir):
+    y_pred = np.clip(y_pred, 0, None)
+
+    mae = mean_absolute_error(y_test, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    medae = median_absolute_error(y_test, y_pred)
+
+    print(f"\n===== {nombre_modelo} =====")
+    print("MAE:", mae)
+    print("RMSE:", rmse)
+    print("MedAE:", medae)
+
+    df_pred = pd.DataFrame({
+        "case_id": ids_test.values,
+        "los_real": y_test.values,
+        "los_pred": y_pred
+    })
+
+    df_pred["error"] = df_pred["los_pred"] - df_pred["los_real"]
+    df_pred["abs_error"] = df_pred["error"].abs()
+    df_pred["subestima"] = (df_pred["error"] < 0).astype(int)
+
+    df_pred["tramo_los"] = pd.cut(
+        df_pred["los_real"],
+        bins=[-1, 2, 6, 13, 26, np.inf],
+        labels=["0-2", "3-6", "7-13", "14-26", "27+"]
+    )
+
+    metricas_tramo = (
+        df_pred
+        .groupby("tramo_los", observed=True)
+        .agg(
+            n=("case_id", "count"),
+            los_real_promedio=("los_real", "mean"),
+            los_pred_promedio=("los_pred", "mean"),
+            mae=("abs_error", "mean"),
+            medae=("abs_error", "median"),
+            error_medio=("error", "mean"),
+            pct_subestima=("subestima", "mean")
+        )
+        .reset_index()
+    )
+
+    metricas_tramo["pct_subestima"] = metricas_tramo["pct_subestima"] * 100
+
+    print("\nMétricas por tramo:")
+    print(metricas_tramo)
+
+    UMBRAL_PLOS = 27
+    df_pred["plos_real"] = (df_pred["los_real"] >= UMBRAL_PLOS).astype(int)
+    df_pred["plos_pred"] = (df_pred["los_pred"] >= UMBRAL_PLOS).astype(int)
+
+    precision_plos = precision_score(df_pred["plos_real"], df_pred["plos_pred"], zero_division=0)
+    recall_plos = recall_score(df_pred["plos_real"], df_pred["plos_pred"], zero_division=0)
+    f1_plos = f1_score(df_pred["plos_real"], df_pred["plos_pred"], zero_division=0)
+
+    print("\nEvaluación PLOS:")
+    print("Precision PLOS:", precision_plos)
+    print("Recall PLOS:", recall_plos)
+    print("F1 PLOS:", f1_plos)
+
+    cm = confusion_matrix(df_pred["plos_real"], df_pred["plos_pred"])
+    tn, fp, fn, tp = cm.ravel()
+
+    print("\n--- Matriz de Confusión PLOS (LOS >= 27 días) ---")
+    print(f"{'':20s} {'Pred: Corto':>15} {'Pred: Largo':>15}")
+    print(f"{'Real: Corto (<27 d)':20s} {'TN = ' + str(tn):>15} {'FP = ' + str(fp):>15}")
+    print(f"{'Real: Largo (>=27 d)':20s} {'FN = ' + str(fn):>15} {'TP = ' + str(tp):>15}")
+
+    df_pred.to_csv(report_dir / f"predicciones_{nombre_modelo}.csv", sep=";", index=False)
+    metricas_tramo.to_csv(report_dir / f"metricas_por_tramo_{nombre_modelo}.csv", sep=";", index=False)
+
+    metricas_globales = pd.DataFrame([{
+        "modelo": nombre_modelo,
+        "mae": mae,
+        "rmse": rmse,
+        "medae": medae,
+        "precision_plos_27": precision_plos,
+        "recall_plos_27": recall_plos,
+        "f1_plos_27": f1_plos,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "tp": tp
+    }])
+
+    metricas_globales.to_csv(report_dir / f"metricas_{nombre_modelo}.csv", sep=";", index=False)
+
+    return metricas_globales, metricas_tramo, df_pred
+
+# ============================================================================
+# Modelo: Regresión lineal directa sobre LOS
+# ============================================================================
+
+modelo_lineal_los = LinearRegression()
+
+print("\nEntrenando regresión lineal directa sobre LOS...")
+modelo_lineal_los.fit(X_train, y_train)
+
+y_pred_lineal_los = modelo_lineal_los.predict(X_test)
+y_pred_lineal_los = np.clip(y_pred_lineal_los, 0, None)
+
+metricas_los, metricas_tramo_los, pred_los = evaluar_modelo(
+    nombre_modelo="regresion_lineal_los",
+    y_test=y_test,
+    y_pred=y_pred_lineal_los,
+    ids_test=ids_test,
+    report_dir=REPORT_DIR
+)
+
+joblib.dump(modelo_lineal_los, OUT_DIR / "regresion_lineal_los.pkl")
+
+print("\nArchivos guardados correctamente (Modelo Directo).")
