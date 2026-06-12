@@ -384,8 +384,9 @@ def main():
     data_to_plot = [df_preds[df_preds['tramo_los'] == t]['abs_error'].values for t in tramos_labels]
     
     plt.figure(figsize=(10, 6))
-    plt.boxplot(data_to_plot, labels=tramos_labels, patch_artist=True, 
+    plt.boxplot(data_to_plot, patch_artist=True, 
                 boxprops=dict(facecolor='lightblue', color='blue'))
+    plt.xticks(range(1, len(tramos_labels) + 1), tramos_labels)
     plt.xlabel('Tramo LOS Real')
     plt.ylabel('Error Absoluto (Días)')
     plt.title('Distribución del Error Absoluto por Tramos de Estancia')

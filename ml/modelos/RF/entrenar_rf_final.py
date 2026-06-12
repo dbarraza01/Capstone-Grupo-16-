@@ -388,8 +388,9 @@ def main():
     data_box = [df_preds[df_preds["tramo_los"] == t]["abs_error"].values for t in tramos_labels]
 
     plt.figure(figsize=(10, 6))
-    plt.boxplot(data_box, tick_labels=tramos_labels, patch_artist=True,
+    plt.boxplot(data_box, patch_artist=True,
                 boxprops=dict(facecolor="lightsteelblue", color="navy"))
+    plt.xticks(range(1, len(tramos_labels) + 1), tramos_labels)
     plt.xlabel("Tramo LOS Real")
     plt.ylabel("Error Absoluto (Días)")
     plt.title("Error Absoluto por Tramo de Estancia — RF Final")
