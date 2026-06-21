@@ -28,8 +28,8 @@ print("🚀 Iniciando procesamiento de features v2 para Machine Learning...\n")
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
-os.makedirs("ml/processed", exist_ok=True)
-os.makedirs("ml/reports", exist_ok=True)
+os.makedirs("ml/feature_engineering/processed_v2", exist_ok=True)
+os.makedirs("ml/feature_engineering/reports_features", exist_ok=True)
 
 UMBRAL_DIAG = 20           # Umbral para diagnósticos (código completo y cat. 3 chars)
 UMBRAL_PROC_CODE = 10      # Umbral para procedimientos — código completo (más bajo que v1)
@@ -129,19 +129,19 @@ mapeo_diag = df_diag_clean[['d_code', 'd_caract_3', 'd_caract_1', 'grupo_final',
 mapeo_diag['pacientes_d_code'] = mapeo_diag['d_code'].map(freq_d_code)
 mapeo_diag['pacientes_d_caract_3'] = mapeo_diag['d_caract_3'].map(freq_d_3)
 mapeo_diag['pacientes_d_caract_1'] = mapeo_diag['d_caract_1'].map(freq_d_1)
-mapeo_diag.to_csv("ml/reports/mapeo_reemplazos_diagnosticos_v2.csv", sep=";", index=False)
+mapeo_diag.to_csv("ml/feature_engineering/reports_features/mapeo_reemplazos_diagnosticos.csv", sep=";", index=False)
 
 # Reporte de frecuencias finales
 frec_final_diag = df_diag_clean.groupby('grupo_final')['case_id'].nunique().reset_index(name='pacientes_unicos')
 frec_final_diag.sort_values('pacientes_unicos', ascending=False).to_csv(
-    "ml/reports/reporte_frecuencias_diagnosticos_v2.csv", sep=";", index=False)
+    "ml/feature_engineering/reports_features/reporte_frecuencias_diagnosticos.csv", sep=";", index=False)
 
 # Matriz binaria
 print("⚙️  Creando matriz binaria de diagnósticos v2...")
 df_diag_clean['grupo_final_col'] = 'diag_' + df_diag_clean['grupo_final']
 matriz_diag = pd.crosstab(df_diag_clean['case_id'], df_diag_clean['grupo_final_col'])
 matriz_diag = (matriz_diag > 0).astype(int)
-matriz_diag.to_csv("ml/processed/features_diagnosticos_agrupados_v2.csv", sep=";")
+matriz_diag.to_csv("ml/feature_engineering/processed_v2/features_diagnosticos_agrupados_v2.csv", sep=";")
 
 # ============================================================
 # 4. PROCESAMIENTO DE PROCEDIMIENTOS (v2)
@@ -184,18 +184,18 @@ mapeo_proc = df_proc[['p_code', 'p_caract_3', 'p_caract_1', 'grupo_final', 'nive
 mapeo_proc['pacientes_p_code'] = mapeo_proc['p_code'].map(freq_p_code)
 mapeo_proc['pacientes_p_caract_3'] = mapeo_proc['p_caract_3'].map(freq_p_3)
 mapeo_proc['pacientes_p_caract_1'] = mapeo_proc['p_caract_1'].map(freq_p_1)
-mapeo_proc.to_csv("ml/reports/mapeo_reemplazos_procedimientos_v2.csv", sep=";", index=False)
+mapeo_proc.to_csv("ml/feature_engineering/reports_features/mapeo_reemplazos_procedimientos.csv", sep=";", index=False)
 
 frec_final_proc = df_proc.groupby('grupo_final')['case_id'].nunique().reset_index(name='pacientes_unicos')
 frec_final_proc.sort_values('pacientes_unicos', ascending=False).to_csv(
-    "ml/reports/reporte_frecuencias_procedimientos_v2.csv", sep=";", index=False)
+    "ml/feature_engineering/reports_features/reporte_frecuencias_procedimientos.csv", sep=";", index=False)
 
 # Matriz binaria
 print("⚙️  Creando matriz binaria de procedimientos v2...")
 df_proc['grupo_final_col'] = 'proc_' + df_proc['grupo_final']
 matriz_proc = pd.crosstab(df_proc['case_id'], df_proc['grupo_final_col'])
 matriz_proc = (matriz_proc > 0).astype(int)
-matriz_proc.to_csv("ml/processed/features_procedimientos_agrupados_v2.csv", sep=";")
+matriz_proc.to_csv("ml/feature_engineering/processed_v2/features_procedimientos_agrupados_v2.csv", sep=";")
 
 # ============================================================
 # 5. FEATURES DE REPETICIÓN / CARGA DE CÓDIGOS
@@ -237,7 +237,7 @@ rep_merge = rep_diag[['case_id', 'n_diag_codigos_repetidos', 'grupos_unicos_diag
     rep_proc[['case_id', 'n_proc_codigos_repetidos', 'grupos_unicos_proc', 'max_repeticion_proc_grupo']],
     on='case_id', how='outer'
 )
-rep_merge.to_csv("ml/reports/reporte_repeticiones_codigos_v2.csv", sep=";", index=False)
+rep_merge.to_csv("ml/feature_engineering/reports_features/reporte_repeticiones_codigos.csv", sep=";", index=False)
 print(f"   Pacientes con repeticiones de diagnósticos: {(rep_merge['n_diag_codigos_repetidos'] > 0).sum()}")
 print(f"   Pacientes con repeticiones de procedimientos: {(rep_merge['n_proc_codigos_repetidos'] > 0).sum()}")
 
@@ -272,7 +272,7 @@ percentiles['pct_outliers_p95'] = 100 * n_outliers_p95 / len(los)
 
 # Guardar reporte
 reporte_los = pd.DataFrame([percentiles])
-reporte_los.to_csv("ml/reports/reporte_target_los_v2.csv", sep=";", index=False)
+reporte_los.to_csv("ml/feature_engineering/reports_features/reporte_target_los.csv", sep=";", index=False)
 
 for k, v in percentiles.items():
     print(f"   {k}: {v}")
@@ -302,7 +302,7 @@ else:
     top_proc_outliers = pd.DataFrame(columns=['grupo_final', 'pacientes_outlier', 'tipo'])
 
 reporte_outliers = pd.concat([top_diag_outliers.head(30), top_proc_outliers.head(30)], ignore_index=True)
-reporte_outliers.to_csv("ml/reports/reporte_codigos_outliers_v2.csv", sep=";", index=False)
+reporte_outliers.to_csv("ml/feature_engineering/reports_features/reporte_codigos_outliers.csv", sep=";", index=False)
 print(f"   Pacientes outlier analizados: {len(outlier_case_ids)}")
 print(f"   Top diagnóstico en outliers: {top_diag_outliers.iloc[0]['grupo_final'] if len(top_diag_outliers) > 0 else 'N/A'}")
 print(f"   Top procedimiento en outliers: {top_proc_outliers.iloc[0]['grupo_final'] if len(top_proc_outliers) > 0 else 'N/A'}")
@@ -357,7 +357,7 @@ for c in cols_rep:
         df_ml[c] = df_ml[c].fillna(0).astype(int)
 
 # Guardar
-path_final = "ml/processed/model_data_ml_v2.csv"
+path_final = "ml/feature_engineering/processed_v2/model_data_ml_v2.csv"
 df_ml.to_csv(path_final, sep=";", index=False)
 
 # ============================================================

@@ -10,21 +10,21 @@ La carpeta `ml/` contiene la **pipeline completa de ingeniería de features** pa
 ### Estructura del directorio
 
 ```text
-ml/
+ml/feature_engineering/
 ├── procesamiento_features_v2.py               ← Script de ingeniería de features
 ├── analisis_ml_features.md                    ← Este documento
-├── processed/
+├── processed_v2/
 │   ├── features_diagnosticos_agrupados_v2.csv ← Matriz binaria diagnósticos
 │   ├── features_procedimientos_agrupados_v2.csv ← Matriz binaria procedimientos
 │   └── model_data_ml_v2.csv                   ← Dataset final (LISTO PARA USAR)
-└── reports/
-    ├── mapeo_reemplazos_diagnosticos_v2.csv        ← Trazabilidad diagnósticos
-    ├── mapeo_reemplazos_procedimientos_v2.csv      ← Trazabilidad procedimientos
-    ├── reporte_frecuencias_diagnosticos_v2.csv     ← Frecuencias de diagnósticos
-    ├── reporte_frecuencias_procedimientos_v2.csv   ← Frecuencias de procedimientos
-    ├── reporte_repeticiones_codigos_v2.csv         ← Features de repetición
-    ├── reporte_target_los_v2.csv                   ← Estadísticas del target (LOS)
-    └── reporte_codigos_outliers_v2.csv             ← Códigos en pacientes outliers LOS
+└── reports_features/
+    ├── mapeo_reemplazos_diagnosticos.csv        ← Trazabilidad diagnósticos
+    ├── mapeo_reemplazos_procedimientos.csv      ← Trazabilidad procedimientos
+    ├── reporte_frecuencias_diagnosticos.csv     ← Frecuencias de diagnósticos
+    ├── reporte_frecuencias_procedimientos.csv   ← Frecuencias de procedimientos
+    ├── reporte_repeticiones_codigos.csv         ← Features de repetición
+    ├── reporte_target_los.csv                   ← Estadísticas del target (LOS)
+    └── reporte_codigos_outliers.csv             ← Códigos en pacientes outliers LOS
 ```
 
 ---
@@ -58,15 +58,15 @@ Script principal v2. Implementa la misma lógica jerárquica de agrupación con 
 
 Además: excluye `UUUUUU`, genera features de repetición, valida LOS, analiza outliers.
 
-### 3.2 `processed/features_diagnosticos_agrupados_v2.csv`
+### 3.2 `processed_v2/features_diagnosticos_agrupados_v2.csv`
 
 Matriz binaria de **11,951 pacientes × 1,122 features diagnósticas**. Diferencia con v1: `UUUUUU` excluido (-1 feature), y las features de fallback ahora tienen prefijo `diag_rare_cap_*` en vez de `diag_E`, `diag_I`, etc.
 
-### 3.3 `processed/features_procedimientos_agrupados_v2.csv`
+### 3.3 `processed_v2/features_procedimientos_agrupados_v2.csv`
 
 Matriz binaria de **11,951 pacientes × 514 features procedimentales**. Diferencia con v1: +154 features porque el umbral de código completo bajó de 20 a 10, conservando más procedimientos específicos antes de colapsar.
 
-### 3.4 `processed/model_data_ml_v2.csv` — **DATASET PARA ENTRENAR**
+### 3.4 `processed_v2/model_data_ml_v2.csv` — **DATASET PARA ENTRENAR**
 
 Dataset integrado final:
 - **11,951 filas** (pacientes)
@@ -81,17 +81,17 @@ Dataset integrado final:
 - `y` = `los_dias`
 - `case_id` se mantiene solo como identificador
 
-### 3.5 Archivos de reportes v2
+### 3.5 Archivos de reportes (en `reports_features/`)
 
 | Archivo | Contenido |
 |---------|-----------|
-| `mapeo_reemplazos_diagnosticos_v2.csv` | Trazabilidad de 6,124 códigos diagnósticos (sin UUUUUU) → grupo asignado y nivel |
-| `mapeo_reemplazos_procedimientos_v2.csv` | Trazabilidad de 3,278 códigos procedimentales → grupo asignado y nivel |
-| `reporte_frecuencias_diagnosticos_v2.csv` | Frecuencias por pacientes únicos de cada grupo diagnóstico final |
-| `reporte_frecuencias_procedimientos_v2.csv` | Frecuencias por pacientes únicos de cada grupo procedimental final |
-| `reporte_repeticiones_codigos_v2.csv` | Para cada paciente: cuántos códigos repetidos tiene, cuántos grupos únicos, máxima repetición de un grupo |
-| `reporte_target_los_v2.csv` | Estadísticas descriptivas de `los_dias`: media, mediana, std, percentiles, outliers |
-| `reporte_codigos_outliers_v2.csv` | Top 30 diagnósticos y top 30 procedimientos más frecuentes en pacientes con LOS ≥ P95 |
+| `mapeo_reemplazos_diagnosticos.csv` | Trazabilidad de 6,124 códigos diagnósticos (sin UUUUUU) → grupo asignado y nivel |
+| `mapeo_reemplazos_procedimientos.csv` | Trazabilidad de 3,278 códigos procedimentales → grupo asignado y nivel |
+| `reporte_frecuencias_diagnosticos.csv` | Frecuencias por pacientes únicos de cada grupo diagnóstico final |
+| `reporte_frecuencias_procedimientos.csv` | Frecuencias por pacientes únicos de cada grupo procedimental final |
+| `reporte_repeticiones_codigos.csv` | Para cada paciente: cuántos códigos repetidos tiene, cuántos grupos únicos, máxima repetición de un grupo |
+| `reporte_target_los.csv` | Estadísticas descriptivas de `los_dias`: media, mediana, std, percentiles, outliers |
+| `reporte_codigos_outliers.csv` | Top 30 diagnósticos y top 30 procedimientos más frecuentes en pacientes con LOS ≥ P95 |
 
 ---
 

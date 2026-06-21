@@ -1,1339 +1,395 @@
-# Predicción de LOS (Length of Stay) Hospitalario
-### Proyecto Capstone - Grupo 16
+# Predicción de Estancia Hospitalaria (LOS)
+### Proyecto Capstone - Guía de Estructura, Ejecución y Modelado V2 (Final Regularizado)
 
 ---
 
 ## 📋 Descripción del Proyecto
 
-Este proyecto implementa un sistema de **limpieza y preparación de datos** para predecir la duración de estancia hospitalaria (LOS) de pacientes. El objetivo es integrar y limpiar datos de diagnósticos y procedimientos médicos para generar un dataset maestro listo para modelado predictivo.
+Este proyecto implementa una solución de **Machine Learning** de extremo a extremo para predecir la duración de la estancia hospitalaria (**Length of Stay - LOS**) de pacientes a partir de datos clínicos estructurados. Utiliza información de diagnósticos (ICD-10-CM), procedimientos (ICD-10-PCS), medidas de comorbilidad clínica (Índices de Charlson y Elixhauser), y factores de ingreso. 
 
-**Fecha de actualización:** 2026-05-02
-
----
-
-## 🐍 Scripts Python - Guía Rápida
-
-| Script | Ubicación | Propósito | Entrada | Salida | Orden |
-|--------|-----------|-----------|---------|--------|-------|
-| **limpieza_datos.py** | `data/` | Limpia, valida ICD-10, integra diagnósticos y procedimientos | CSV crudos (datos_diagnostico, procedimiento_pacientes) | dataset_maestro, caso_diagnostico, caso_procedimiento, pacientes_rechazados | 1️⃣ |
-| **analisis.py** | `data/` | Genera 3 reportes estadísticos completos | dataset_maestro, caso_diagnostico, pacientes_rechazados | reporte_estadistico_*.csv | 2️⃣ |
-| **analisis_codigos_outliers.py** | `graficos/diag_proc/` | Identifica qué códigos ICD-10 generan estancias largas + visualizaciones | dataset_maestro | Gráficos + CONCLUSIONES.md + estadísticas | 3️⃣ |
-| **analisis_complejidad_los.py** | `graficos/diag_proc/` | Análisis boxplot: LOS vs complejidad (diagnósticos, procedimientos) | dataset_maestro | PNG: boxplots comparativos | 4️⃣ |
-| **visualizacion_los.py** | `graficos/` | Histogramas lineales/logarítmicos y boxplots de LOS | dataset_maestro | PNG: 3 distribuciones | 5️⃣ |
-| **visualizar_weight_verosimilitud.py** | `graficos/` | Gráfico: cómo cambia verosimilitud según peso en mezcla | dataset_maestro | PNG: verosimilitud vs weight | 6️⃣ |
-| **icd-10-cm.py** | Raíz | Diccionarios de referencia de capítulos y categorías ICD-10-CM | - | Python module (para consulta manual) | 🔍 |
-| **icd-10-pcs.py** | Raíz | Función utilitaria para decodificar códigos ICD-10-PCS | - | Python module (para consulta manual) | 🔍 |
+El modelo definitivo es un **XGBoost Regularizado (Escenario B - Charlson)** que opera bajo una transformación logarítmica `log1p(LOS)` para mitigar la asimetría de la cola larga, logrando un **MAE de 3.057 días** en el Holdout Test Set.
 
 ---
 
-## 📂 Estructura del Proyecto
+## 📂 Estructura Completa del Proyecto
 
 ```
-Capstone-Grupo-16-/
+Capstone-Grupo-16/
+├── README.md                                          # 💡 Esta guía rápida de entrada
+├── RF_1.png, RF_2.png                                 # 📊 Gráficos de residuos de Random Forest
+├── XGB_1.png, XGB_2.png                               # 📊 Gráficos de residuos de XGBoost
+├── resumen_modelamiento_los_para_equipo.md            # 📄 Resumen de metodología y resultados V2
+├── urgencias.md                                       # 📄 Análisis de urgencias y código UUUUUU
 │
-├── SCRIPTS PRINCIPALES (en data/)
-│   ├── data/
-│   │   ├── limpieza_datos.py                 # ⭐ Limpieza, validación ICD-10, integración
-│   │   ├── analisis.py                       # 📊 Reportes estadísticos (3 archivos)
-│   │   │
-│   │   ├── DATOS DE ENTRADA (Crudos)
-│   │   ├── datos_diagnostico.csv             # Diagnósticos crudos (ICD-10-CM)
-│   │   ├── procedimiento_pacientes.csv       # Procedimientos crudos + fechas (ICD-10-PCS)
-│   │   │
-│   │   ├── processed/ (Datos Limpios)
-│   │   │   ├── dataset_maestro.csv           # ⭐ Dataset principal limpio (11,951 pacientes)
-│   │   │   ├── caso_diagnostico.csv          # 📋 Granular: 1 fila por diagnóstico
-│   │   │   ├── caso_procedimiento.csv        # 📋 Granular: 1 fila por procedimiento
-│   │   │   └── pacientes_rechazados.csv      # ❌ Pacientes no válidos (0 pacientes)
-│   │   │
-│   │   └── reports/ (Reportes Estadísticos)
-│   │       ├── reporte_limpieza.csv          # Resumen de limpieza
-│   │       ├── reporte_estadistico_maestro.csv      # 📊 47 métricas
-│   │       ├── reporte_estadistico_diagnostico.csv  # 📊 70 métricas
-│   │       └── reporte_estadistico_rechazados.csv   # 📊 12 métricas
-│   │
-│   └── Datos proyecto LOS.xlsx               # Datos originales (Excel)
+├── LOS_0/                                             # 🔍 Análisis de egresos inmediatos (LOS = 0)
+│   ├── analisis_los_0.py, analisis_correlaciones_los_0.py
+│   ├── correlaciones_diagnostico_procedimiento_los_0.csv, *.csv
+│   ├── RESUMEN_ANALISIS_LOS_0.md, RESUMEN_CORRELACIONES_LOS_0.md
+│   └── 01_*.png, 02_*.png, 03_*.png, 04_*.png, 05_*.png, 06_*.png
 │
-├── SCRIPTS DE VISUALIZACIÓN (en graficos/)
-│   ├── graficos/
-│   │   ├── visualizacion_los.py              # Histogramas y boxplots
-│   │   ├── visualizar_weight_verosimilitud.py # Verosimilitud vs pesos mezcla
-│   │   │
-│   │   ├── diag_proc/
-│   │   │   ├── analisis_codigos_outliers.py  # Análisis visual outliers
-│   │   │   ├── analisis_complejidad_los.py   # Boxplots: LOS vs complejidad
-│   │   │   ├── diagnosticos/
-│   │   │   │   ├── 01_codigos_outliers.png
-│   │   │   │   ├── 02_boxplot_outliers.png
-│   │   │   │   ├── 03_codigos_frecuentes.png
-│   │   │   │   ├── 04_violin_frecuentes.png
-│   │   │   │   ├── 05_los_vs_diagnosticos_*.png
-│   │   │   │   ├── CONCLUSIONES.md
-│   │   │   │   └── estadisticas_*.csv
-│   │   │   │
-│   │   │   └── procedimientos/
-│   │   │       ├── 01_codigos_outliers.png
-│   │   │       ├── 02_boxplot_outliers.png
-│   │   │       ├── 03_codigos_frecuentes.png
-│   │   │       ├── 04_violin_frecuentes.png
-│   │   │       ├── 05_los_vs_procedimientos.png
-│   │   │       ├── CONCLUSIONES.md
-│   │   │       └── estadisticas_*.csv
-│   │   │
-│   │   ├── 01_distribucion_los_escala_lineal.png
-│   │   ├── 02_distribucion_los_transformacion_logaritmica.png
-│   │   ├── 03_boxplot_percentiles_los.png
-│   │   └── 07_verosimilitud_vs_weight.png
-│   │
-│   └── LOS_0/ (Análisis de pacientes con LOS=0)
-│       ├── 01_diagnosticos_procedimientos_los_0.png
-│       ├── 02_principal_vs_secundario_los_0.png
-│       └── 03_distribucion_secciones_pcs_los_0.png
+├── data/                                              # 💾 Datos crudos y preprocesamiento
+│   ├── Datos proyecto LOS.xlsx                        # Datos crudos en Excel
+│   ├── datos_diagnostico.csv, procedimiento_pacientes.csv
+│   ├── limpieza_datos.py, analisis.py                 # Limpieza y reportes descriptivos
+│   ├── processed/                                     # CSVs limpios generados
+│   │   ├── dataset_maestro.csv, caso_diagnostico.csv, caso_procedimiento.csv, pacientes_rechazados.csv
+│   └── reports/                                       # CSVs de auditoría y métricas
+│       └── reporte_limpieza.csv, reporte_estadistico_*.csv
 │
-├── UTILIDADES
-│   ├── icd-10-cm.py                         # Diccionarios ICD-10-CM
-│   ├── icd-10-pcs.py                        # Utilitarios ICD-10-PCS
-│   ├── README.md                            # Este archivo
-│   └── README_GRAFICOS.md                   # Explicación de gráficos
+├── graficos/                                          # 📈 Análisis y visualización de la variable target
+│   ├── analisis_distribucion_los.py, visualizacion_los.py, visualizar_weight_verosimilitud.py
+│   ├── README_GRAFICOS.md, explicacion_grafico_verosimilitud_mezcla.md
+│   ├── 01_*.png, 02_*.png, 03_*.png, 04_*.png, 05_*.png, 06_*.png, 07_*.png
+│   └── diag_proc/                                     # Visualización de impacto de códigos
+│       ├── analisis_codigos_outliers.py, analisis_complejidad_los.py
+│       ├── diagnosticos/                              # Plots, conclusiones y CSVs de outliers Dx
+│       └── procedimientos/                            # Plots, conclusiones y CSVs de outliers Px
 │
-└── DOCUMENTACIÓN
-    └── memory/ (Auto-memoria del proyecto)
-        └── MEMORY.md                        # Seguimiento de cambios y decisiones
-```
-
-### 📊 Flujo de Datos
-
-```
-ENTRADA                    PROCESAMIENTO               SALIDA
-│                          │                           │
-├─ datos_diagnostico.csv ──┤                           ├─ dataset_maestro.csv        ⭐
-├─ procedimiento_           limpieza_datos.py ────────►├─ caso_diagnostico.csv
-  pacientes.csv             (validación ICD-10)       ├─ caso_procedimiento.csv
-                                                       ├─ pacientes_rechazados.csv
-                                                       └─ reporte_limpieza.csv
-
-dataset_maestro.csv ──┬─────────────────────────────────►├─ reporte_estadistico_maestro.csv
-caso_diagnostico.csv ─┼─ analisis.py (reporting) ─────►├─ reporte_estadistico_diagnostico.csv
-caso_procedimiento.csv ─────────────────────────────────►└─ reporte_estadistico_rechazados.csv
-
-
-dataset_maestro.csv ──┬─ analisis_codigos_outliers.py ─┬─ graficos/diagnosticos/
-                      │   (análisis visual)             ├─ graficos/procedimientos/
-                      │                                 └─ CONCLUSIONES.md (x2)
-
-
-dataset_maestro.csv ──┬─ analisis_distribucion_los.py ─►PNG: distribuciones
-                      ├─ visualizacion_los.py          └─ comparación modelos
-                      └─ visualizar_weight_verosimilitud.py
+├── ml/                                                # 🤖 Modelado Predictivo V2 (Final Regularizado)
+│   ├── plan_implementacion_modelos.md                 # Plan inicial de diseño de variables
+│   ├── informe_final_comparativo_modelos.md           # Reporte de resultados de test holdout
+│   ├── feature_engineering/                           # Ingeniería de variables
+│   │   ├── comordibipy.py, procesamiento_features_v2.py, procesamiento_features_v3.py, *.md
+│   │   ├── processed_v2/                              # Datos agrupados binarios v2
+│   │   ├── processed_v3/                              # Escenarios B y C con target log1p
+│   │   └── reports_features/                          # Auditoría de agrupaciones de soporte (v2/v3)
+│   └── modelos/                                       # Algoritmos entrenados y evaluados
+│       ├── reporte_comparativo_tuning.md              # Comparativa de hiperparámetros
+│       ├── LR/                                        # Regresión Lineal Baseline (entrenamiento y final/)
+│       ├── RF/                                        # Random Forest (tuning, entrenar y final/plots/CSVs)
+│       ├── XGB/                                       # XGBoost (tuning, entrenar, final/reporte/plots/CSVs)
+│       └── graficos_comparativos/                     # Comparación cruzada de modelos
+│           ├── generar_graficos*.py                   # Scripts de visualización
+│           ├── comparativa_3_modelos/                 # Gráficos comparativos LR vs RF vs XGB
+│           └── xgb_vs_rf/                             # Gráficos comparativos RF vs XGB
+│
+└── ml2/                                               # ⚠️ Versión 1 de Modelado (Obsolescente)
+    ├── entrenar_*_v1.py                               # Scripts sin regularizar
+    ├── models/                                        # Serialización de pkl v1
+    └── reports_modelos/                               # CSVs de predicciones y métricas v1
 ```
 
 ---
 
-## 🚀 Cómo Ejecutar el Proyecto
+## 🛠️ Guía de Referencia Rápida para Modificaciones
 
-### Requisitos
-- Python 3.7+
-- pandas
-- numpy
-- matplotlib
-- seaborn
-- scipy
+Para realizar cambios o buscar información, dirígirse a los siguientes archivos clave (rutas relativas):
 
-### Instalación
+*   **Modificar la limpieza o cruce de datos iniciales:** Modifica el script [limpieza_datos.py](data/limpieza_datos.py).
+*   **Modificar variables predictoras (Charlson, Elixhauser o soporte):** Modifica el script [procesamiento_features_v3.py](ml/feature_engineering/procesamiento_features_v3.py).
+*   **Cambiar la grilla de búsqueda de hiperparámetros de XGBoost:** Modifica el script [tuning_xgboost_regularizado.py](ml/modelos/XGB/tuning_xgboost_regularizado.py).
+*   **Re-entrenar el modelo final XGBoost ganador y generar sus métricas:** Ejecuta o modifica [entrenar_xgboost_final.py](ml/modelos/XGB/entrenar_xgboost_final.py).
+*   **Modificar los gráficos comparativos de rendimiento:** Modifica el script [generar_graficos_3_modelos.py](ml/graficos_comparativos/generar_graficos_3_modelos.py).
+*   **Consultar la justificación de modelado y resultados de Holdout:** Consulta el archivo [informe_final_comparativo_modelos.md](ml/informe_final_comparativo_modelos.md).
+
+---
+
+## 📖 Catálogo Detallado de Archivos
+
+### 1. Directorio Raíz del Proyecto
+
+*   **[resumen_modelamiento_los_para_equipo.md](resumen_modelamiento_los_para_equipo.md)**:
+    - *Función:* Resumen técnico de la metodología, justificaciones y resultados V2.
+    - *Entrada/Salida:* Documento markdown descriptivo con métricas cruzadas y holdout.
+    - *Rol:* Guía técnica para el equipo sobre el tuning y regularización aplicada.
+    - *Edición:* Actualizar al re-calcular modelos o agregar algoritmos adicionales.
+*   **[urgencias.md](urgencias.md)**:
+    - *Función:* Documento explicativo sobre el impacto del tipo de ingreso (Urgencia vs Electivo).
+    - *Entrada/Salida:* Justificación teórica sobre el código administrativo general `UUUUUU`.
+    - *Rol:* Respalda metodológicamente la separación de urgencias de patologías clínicas.
+    - *Edición:* Modificar si se incorporan otras marcas administrativas especiales.
+*   **Gráficos de dispersión y residuos en la raíz ([RF_1.png](RF_1.png), [RF_2.png](RF_2.png), [XGB_1.png](XGB_1.png), [XGB_2.png](XGB_2.png))**:
+    - *Función:* Visualizan la estancia real vs predicha y la distribución de errores de RF y XGB.
+    - *Entrada/Salida:* Gráficos PNG autogenerados por los scripts de entrenamiento final.
+    - *Rol:* Diagnóstico visual rápido del comportamiento de residuos sobre holdout.
+    - *Edición:* Se re-generan automáticamente al re-entrenar los modelos correspondientes.
+
+### 2. Directorio `data/` (Datos y Preprocesamiento)
+
+*   **[Datos proyecto LOS.xlsx](data/Datos%20proyecto%20LOS.xlsx)**:
+    - *Función:* Hoja Excel original con los datos clínicos crudos de la institución.
+    - *Entrada/Salida:* Archivo estático inicial que actúa como fuente de origen del proyecto.
+    - *Rol:* Datos de partida históricos de diagnósticos y procedimientos.
+    - *Edición:* No modificar. Reemplazar solo con nuevos lotes manteniendo las columnas de origen.
+*   **CSV de Entrada ([datos_diagnostico.csv](data/datos_diagnostico.csv), [procedimiento_pacientes.csv](data/procedimiento_pacientes.csv))**:
+    - *Función:* Datos en bruto delimitados por punto y coma de diagnósticos y procedimientos.
+    - *Entrada/Salida:* Insumos directos que consume el script de limpieza inicial.
+    - *Rol:* Proveen el historial clínico y las fechas de hospitalización del paciente.
+    - *Edición:* Actualizar al ingresar nuevos registros clínicos para preprocesamiento.
+*   **[limpieza_datos.py](data/limpieza_datos.py)**:
+    - *Función:* Carga, valida formatos de códigos, depura fechas incorrectas y cruza datos.
+    - *Entrada/Salida:* Lee CSVs crudos y escribe datasets limpios en `data/processed/`.
+    - *Rol:* Script primario encargado de consolidar y curar la muestra de pacientes.
+    - *Edición:* Modificar si cambian los límites temporales (ej: LOS < 0) o reglas de validación.
+*   **[analisis.py](data/analisis.py)**:
+    - *Función:* Genera reportes estadísticos descriptivos estilo `summary` de R para los datos limpios.
+    - *Entrada/Salida:* Lee datos maestros y escribe métricas CSV en `data/reports/`.
+    - *Rol:* Automatiza la auditoría de calidad de datos y las estadísticas generales.
+    - *Edición:* Modificar si se requiere reportar cuantiles o correlaciones adicionales.
+
+#### Subcarpeta `data/processed/` (Datos Limpios)
+*   **Tablas de salida ([dataset_maestro.csv](data/processed/dataset_maestro.csv), [caso_diagnostico.csv](data/processed/caso_diagnostico.csv), [caso_procedimiento.csv](data/processed/caso_procedimiento.csv), [pacientes_rechazados.csv](data/processed/pacientes_rechazados.csv))**:
+    - *Función:* CSVs limpios a nivel de paciente, a nivel granular de códigos y de registros excluidos.
+    - *Entrada/Salida:* Generados automáticamente tras ejecutar `limpieza_datos.py`.
+    - *Rol:* Base de datos curada para análisis exploratorio, gráficos y modelamiento predictivo.
+    - *Edición:* No modificar manualmente. Re-generar ejecutando la tubería de limpieza.
+
+#### Subcarpeta `data/reports/` (Reportes Estadísticos)
+*   **Métricas resultantes ([reporte_limpieza.csv](data/reports/reporte_limpieza.csv), [reporte_estadistico_maestro.csv](data/reports/reporte_estadistico_maestro.csv), [reporte_estadistico_diagnostico.csv](data/reports/reporte_estadistico_diagnostico.csv), [reporte_estadistico_rechazados.csv](data/reports/reporte_estadistico_rechazados.csv))**:
+    - *Función:* Tablas estructuradas con tasa de aceptación, promedios, percentiles y motivos de rechazo.
+    - *Entrada/Salida:* Generados de forma automática como resultado de ejecutar `analisis.py`.
+    - *Rol:* Insumos estadísticos tabulares para el capítulo de caracterización clínica.
+    - *Edición:* Consultar para obtener métricas; no editar directamente.
+
+### 3. Directorio `LOS_0/` (Pacientes con Estancia Cero)
+
+*   **Scripts descriptivos ([analisis_los_0.py](LOS_0/analisis_los_0.py), [analisis_correlaciones_los_0.py](LOS_0/analisis_correlaciones_los_0.py))**:
+    - *Función:* Caracterizan diagnósticos y evalúan correlaciones estadísticas en casos de alta inmediata.
+    - *Entrada/Salida:* Leen `dataset_maestro.csv` y guardan reportes y figuras de coexistencia en `/LOS_0`.
+    - *Rol:* Explican los determinantes clínicos detrás de pacientes con estancia de 0 días.
+    - *Edición:* Modificar si se requiere cambiar el tipo de coeficiente o gráficos de asociación.
+*   **Resultados de soporte ([correlaciones_diagnostico_procedimiento_los_0.csv](LOS_0/correlaciones_diagnostico_procedimiento_los_0.csv), [diagnosticos_detallado_los_0.csv](LOS_0/diagnosticos_detallado_los_0.csv), [procedimientos_detallado_los_0.csv](LOS_0/procedimientos_detallado_los_0.csv))**:
+    - *Función:* Tablas de frecuencias y coeficientes de correlación de códigos en LOS = 0.
+    - *Entrada/Salida:* Generados por los scripts de análisis de estancia cero.
+    - *Rol:* Respaldo cuantitativo de las patologías e intervenciones del subgrupo.
+    - *Edición:* Se re-generan corriendo automáticamente los scripts asociados.
+*   **Documentación de conclusiones ([RESUMEN_ANALISIS_LOS_0.md](LOS_0/RESUMEN_ANALISIS_LOS_0.md), [RESUMEN_CORRELACIONES_LOS_0.md](LOS_0/RESUMEN_CORRELACIONES_LOS_0.md))**:
+    - *Función:* Síntesis explicativa markdown con la interpretación de las altas del mismo día.
+    - *Entrada/Salida:* Textos estáticos descriptivos de soporte clínico.
+    - *Rol:* Insumos de análisis cualitativo y discusión para el manuscrito final.
+    - *Edición:* Editar para actualizar las interpretaciones de los hallazgos médicos.
+*   **Gráficos descriptivos de LOS=0 ([01_diagnosticos_procedimientos_los_0.png](LOS_0/01_diagnosticos_procedimientos_los_0.png) al [06_diagnosticos_por_procedimiento_los_0.png](LOS_0/06_diagnosticos_por_procedimiento_los_0.png))**:
+    - *Función:* Visualizan el ranking de códigos, el heatmap de coexistencia y distribución de tipos en LOS = 0.
+    - *Entrada/Salida:* Gráficos PNG autogenerados por la suite descriptiva de la carpeta.
+    - *Rol:* Ilustraciones que complementan la caracterización de altas rápidas.
+    - *Edición:* Se actualizan de forma automática al ejecutar los scripts descriptivos correspondientes.
+
+### 4. Directorio `graficos/` (Análisis de Distribución de LOS)
+
+*   **Scripts de modelamiento distributivo ([analisis_distribucion_los.py](graficos/analisis_distribucion_los.py), [visualizacion_los.py](graficos/visualizacion_los.py), [visualizar_weight_verosimilitud.py](graficos/visualizar_weight_verosimilitud.py))**:
+    - *Función:* Ajustan mezclas de densidades (Weibull/Log-Normal) y grafican histogramas descriptivos.
+    - *Entrada/Salida:* Leen `dataset_maestro.csv` y guardan curvas de ajuste y verosimilitud en `/graficos`.
+    - *Rol:* Validan el sesgo del target y ubican la verosimilitud máxima en el weight 0.42.
+    - *Edición:* Editar si se desea ensayar otras familias teóricas de ajuste continuo.
+*   **Conceptos matemáticos ([README_GRAFICOS.md](graficos/README_GRAFICOS.md), [explicacion_grafico_verosimilitud_mezcla.md](graficos/explicacion_grafico_verosimilitud_mezcla.md))**:
+    - *Función:* Textos markdown que explican las fórmulas, la escala logarítmica dual y la mezcla.
+    - *Entrada/Salida:* Explicaciones estáticas de soporte estadístico.
+    - *Rol:* Facilitan la correcta lectura metodológica de los histogramas de estancia.
+    - *Edición:* Modificar si se incorporan nuevos análisis descriptivos de la variable target.
+*   **Gráficos de distribución general ([01_distribucion_los_escala_lineal.png](graficos/01_distribucion_los_escala_lineal.png) al [07_verosimilitud_vs_weight.png](graficos/07_verosimilitud_vs_weight.png))**:
+    - *Función:* Histogramas (lineal y log1p), percentiles boxplot, Q-Q plots, curvas CDF y PDF.
+    - *Entrada/Salida:* PNGs generadas por los scripts de distribución de la carpeta.
+    - *Rol:* Exposición visual de la asimetría y el modelado de mezclas teóricas.
+    - *Edición:* Se actualizan automáticamente al re-correr la suite de visualización distributiva.
+
+#### Subcarpeta `graficos/diag_proc/` (Outliers y Complejidad Clínica)
+*   **Scripts descriptivos ([analisis_codigos_outliers.py](graficos/diag_proc/analisis_codigos_outliers.py), [analisis_complejidad_los.py](graficos/diag_proc/analisis_complejidad_los.py))**:
+    - *Función:* Identifican códigos causantes de estancias largas y estudian el LOS vs volumen de códigos.
+    - *Entrada/Salida:* Leen `dataset_maestro.csv` y guardan reportes en subcarpetas `/diagnosticos` y `/procedimientos`.
+    - *Rol:* Sustentan el impacto de la complejidad clínica sobre el aumento de la estancia.
+    - *Edición:* Editar si cambian los umbrales estadísticos para definir registros outliers.
+*   **Visualización de Diagnósticos (en `/diagnosticos/`: [CONCLUSIONES.md](graficos/diag_proc/diagnosticos/CONCLUSIONES.md), CSVs e imágenes 01 a 06)**:
+    - *Función:* Gráficos descriptivos de patologías outliers, violines de frecuentes y tablas de dispersión.
+    - *Entrada/Salida:* Producidos por los scripts de outliers y complejidad clínica.
+    - *Rol:* Identifican visualmente qué enfermedades específicas incrementan el LOS.
+    - *Edición:* Se re-generan automáticamente al ejecutar el script de análisis de outliers.
+*   **Visualización de Procedimientos (en `/procedimientos/`: [CONCLUSIONES.md](graficos/diag_proc/procedimientos/CONCLUSIONES.md), CSVs e imágenes 01 a 05)**:
+    - *Función:* Gráficos descriptivos de cirugías complejas (incluyendo copias _pro) y tablas de dispersión.
+    - *Entrada/Salida:* Producidos en el pipeline descriptivo quirúrgico de la carpeta.
+    - *Rol:* Documentan la variabilidad quirúrgica asociada a colas largas.
+    - *Edición:* Se actualizan de forma automatizada al correr el script general de outliers.
+
+### 5. Directorio `ml/` (Modelado Predictivo - Versión 2)
+
+*   **[informe_final_comparativo_modelos.md](ml/informe_final_comparativo_modelos.md)**:
+    - *Función:* Comparación del rendimiento de los tres modelos finales en el set de holdout.
+    - *Entrada/Salida:* Texto estructurado con métricas oficiales (MAE, RMSE, MedAE, PLOS).
+    - *Rol:* Reporte definitivo de la fase final de modelamiento predictivo.
+    - *Edición:* Modificar si se actualizan los estimadores o se recalculan resultados en test.
+*   **[plan_implementacion_modelos.md](ml/plan_implementacion_modelos.md)**:
+    - *Función:* Planificación inicial del diseño de variables y esquemas de validación cruzada.
+    - *Entrada/Salida:* Pautas markdown de diseño de ingeniería de características.
+    - *Rol:* Estableció los lineamientos de modelamiento de la v2 antes de codificar.
+    - *Edición:* Documento histórico; modificar únicamente si se varía la metodología base.
+
+#### Subcarpeta `ml/feature_engineering/` (Ingeniería de Variables)
+*   **[comordibipy.py](ml/feature_engineering/comordibipy.py)**:
+    - *Función:* Script interactivo que demuestra el funcionamiento de la librería `comorbidipy`.
+    - *Entrada/Salida:* Imprime la tabla de pesos y traduce diagnósticos de ejemplo.
+    - *Rol:* Auditoría y aprendizaje clínico para validar el cálculo de Charlson y Elixhauser.
+    - *Edición:* Modificar los códigos de prueba para auditar el comportamiento con otros diagnósticos.
+*   **Scripts de procesamiento ([procesamiento_features_v2.py](ml/feature_engineering/procesamiento_features_v2.py), [procesamiento_features_v3.py](ml/feature_engineering/procesamiento_features_v3.py))**:
+    - *Función:* Codifican variables One-Hot, aplican soporte jerárquico y calculan comorbilidades.
+    - *Entrada/Salida:* Leen datos maestros limpios y guardan CSVs estructurados en `processed_v2/` y `processed_v3/`.
+    - *Rol:* El script v3 construye las variables y escenarios finales de modelado (A, B y C).
+    - *Edición:* Editar v3 si se varía el soporte mínimo o la definición de escenarios predictivos.
+*   **[analisis_ml_features.md](ml/feature_engineering/analisis_ml_features.md)**:
+    - *Función:* Análisis estadístico de la dimensionalidad de las variables binarias resultantes.
+    - *Entrada/Salida:* Justificación markdown sobre la agrupación y el soporte mínimo de 20 casos.
+    - *Rol:* Respaldo metodológico sobre el control de sobreajuste reduciendo características dispersas.
+    - *Edición:* Editar si cambian las justificaciones teóricas del agrupamiento.
+*   **Datasets estructurados resultantes (en `/processed_v2/` y `/processed_v3/`)**:
+    - *Función:* Matrices predictoras One-Hot por escenarios listas para entrenar algoritmos.
+    - *Entrada/Salida:** CSVs resultantes de ejecutar los scripts de ingeniería de variables.
+    - *Rol:* Insumos de modelamiento; `model_data_v3_escenario_B_charlson.csv` alimenta al mejor modelo.
+    - *Edición:* No modificar a mano. Re-generar corriendo el script de variables definitivo.
+*   **[reporte_analisis_comorbilidades_v3.md](ml/feature_engineering/processed_v3/reporte_analisis_comorbilidades_v3.md)**:
+    - *Función:* Describe y evalúa el impacto de los índices Charlson y Elixhauser en la estancia.
+    - *Entrada/Salida:* Análisis descriptivo del cruce de índices contra días de hospitalización.
+    - *Rol:* Respalda la elección de incorporar Charlson en el escenario predictivo óptimo.
+    - *Edición:* Modificar si cambia el cálculo o categorización de comorbilidades.
+*   **Tablas de trazabilidad y reportes (en `/reports_features/`)**:
+    - *Función:* CSVs con mapeos de reemplazo, frecuencias intermedias y repetición de códigos.
+    - *Entrada/Salida:* Generados por `procesamiento_features_v2.py` para control de calidad.
+    - *Rol:* Auditoría de agregación jerárquica para comprobar el soporte de 20 casos mínimos.
+    - *Edición:* Consultar para trazar agrupamientos; no deben modificarse manualmente.
+
+#### Subcarpeta `ml/modelos/` (Entrenamiento, Tuning y Métricas)
+*   **[reporte_comparativo_tuning.md](ml/modelos/reporte_comparativo_tuning.md)**:
+    - *Función:* Documenta las configuraciones de parámetros y grillas de búsqueda evaluadas.
+    - *Entrada/Salida:* Resumen markdown técnico comparativo del tuning.
+    - *Rol:* Sustento de la selección hiperparamétrica y regularización del proyecto.
+    - *Edición:* Actualizar al probar nuevas grillas de búsqueda en validación cruzada.
+*   **Scripts de Tuning ([tuning_random_forest.py](ml/modelos/RF/tuning_random_forest.py), [tuning_rf_regularizado.py](ml/modelos/RF/tuning_rf_regularizado.py), [tuning_xgboost.py](ml/modelos/XGB/tuning_xgboost.py), [tuning_xgboost_regularizado.py](ml/modelos/XGB/tuning_xgboost_regularizado.py))**:
+    - *Función:* Realizan Randomized Search CV de 5 folds para optimizar MAE continuo.
+    - *Entrada/Salida:* Leen escenario B y escriben los hiperparámetros óptimos en archivos JSON.
+    - *Rol:* Los de grilla regularizada son críticos para frenar el sobreajuste masivo en test.
+    - *Edición:* Modificar para ensayar rangos o distribuciones paramétricas distintas.
+*   **Scripts de Entrenamiento ([entrenar_lr_final.py](ml/modelos/LR/entrenar_lr_final.py), [entrenar_rf_final.py](ml/modelos/RF/entrenar_rf_final.py), [entrenar_xgboost_final.py](ml/modelos/XGB/entrenar_xgboost_final.py))**:
+    - *Función:* Ajustan los modelos en train (80%) y evalúan la generalización en holdout (20%).
+    - *Entrada/Salida:* Leen escenario B e hiperparámetros y escriben métricas y pkl en subcarpetas `/final`.
+    - *Rol:* Generan los estimadores oficiales evaluados sobre datos nunca antes vistos.
+    - *Edición:* Editar para ensayar entrenamientos sobre otros escenarios o particiones.
+*   **Evaluación del Holdout (en las carpetas `/final/` de LR, RF y XGB)**:
+    - *Función:* CSVs de matriz de confusión PLOS, métricas kfold, predicciones y resumen de validación.
+    - *Entrada/Salida:* Generados automáticamente tras ejecutar el entrenamiento final correspondiente.
+    - *Rol:* Respaldo numérico de las métricas en holdout para armar la comparativa del informe.
+    - *Edición:* Re-generar corriendo los scripts de ajuste de modelos definitivos.
+*   **Gráficos diagnósticos de holdout (en `/RF/final/` y `/XGB/final/`)**:
+    - *Función:* PNGs de MAE/RMSE por tramo, porcentaje de subestimación, residuos histograma y scatter.
+    - *Entrada/Salida:* Visualizaciones de diagnóstico resultantes de evaluar los modelos finales.
+    - *Rol:* Muestran visualmente el sesgo de regresión a la media por tramos de estancia.
+    - *Edición:* Se re-generan automáticamente al re-correr los entrenamientos correspondientes.
+*   **Tuning intermedio y validación (en `/RF/` y `/XGB/`)**:
+    - *Función:* CSVs con MAE por tramo en validación y predicciones intermedias de escenarios A, B y C.
+    - *Entrada/Salida:* Resultados del tuning y validaciones cruzadas preliminares de escenarios.
+    - *Rol:* Control numérico intermedio para justificar metodológicamente la elección del escenario B.
+    - *Edición:* Se actualizan automáticamente durante las etapas de optimización hiperparamétrica.
+*   **[reporte_xgboost_final.md](ml/modelos/XGB/final/reporte_xgboost_final.md)**:
+    - *Función:* Reporte analítico detallado del modelo ganador (XGBoost Final V2).
+    - *Entrada/Salida:* Análisis de importancia de variables, errores continuos y matrices.
+    - *Rol:* Bitácora principal de los resultados definitivos del boosting de la tesis.
+    - *Edición:* Modificar si cambian las interpretaciones del modelo ganador o se recalcula test.
+*   **Versión 1 preliminar (en subcarpetas `/v1/` de RF y XGB)**:
+    - *Función:* Scripts de entrenamiento, matrices, predicciones y reportes no regularizados obsoletos.
+    - *Entrada/Salida:* CSVs e informes markdown de rendimiento inicial (sobreajustado).
+    - *Rol:* Evidencia del gap masivo de error entre train y test previo a la regularización.
+    - *Edición:* Históricos; no modificar.
+
+#### Subcarpeta `ml/graficos_comparativos/` (Métricas Cruzadas de Rendimiento)
+*   **Scripts comparativos ([generar_graficos.py](ml/graficos_comparativos/generar_graficos.py), [generar_graficos_3_modelos.py](ml/graficos_comparativos/generar_graficos_3_modelos.py), [generar_graficos_xgb_rf.py](ml/graficos_comparativos/generar_graficos_xgb_rf.py))**:
+    - *Función:* Leen los reportes CSV de holdout de los modelos y dibujan curvas comparadas.
+    - *Entrada/Salida:* Consumen métricas e imágenes PNG en `/comparativa_3_modelos` y `/xgb_vs_rf`.
+    - *Rol:* Generan las figuras oficiales que comparan el desempeño continuo e inferencial de los modelos.
+    - *Edición:* Modificar si se desea alterar el diseño de ejes o la paleta cromática de las curvas.
+*   **Gráficos consolidados (en la raíz de `/graficos_comparativos/`, `/comparativa_3_modelos/` y `/xgb_vs_rf/`)**:
+    - *Función:* PNGs comparativas del 01 al 08 (dispersión, residuos, MAE en tramos, PLOS, subestimación, confusion y tabla).
+    - *Entrada/Salida:* Imágenes de salida resultantes de ejecutar los scripts comparativos de la carpeta.
+    - *Rol:* Insumos visuales oficiales para justificar la elección de XGBoost como el mejor estimador.
+    - *Edición:* Se actualizan al ejecutar el script de comparación correspondiente.
+
+### 6. Directorio `ml2/` (Modelado V1 - Obsoleto)
+
+*   **Scripts y modelos v1 ([entrenar_gradient_boosting_v1.py](ml2/entrenar_gradient_boosting_v1.py) a [entrenar_xgboost_v1.py](ml2/entrenar_xgboost_v1.py))**:
+    - *Función:* Entrenamientos iniciales obsoletos en días reales sin técnicas regularizadoras.
+    - *Entrada/Salida:* Guardaban pkl en `ml2/models/` y reportes en `ml2/reports_modelos/`.
+    - *Rol:* Registro histórico de la primera aproximación de algoritmos de bosque y boosting.
+    - *Edición:* Obsoletos; no modificar.
+*   **Reportes e insumos v1 (en `ml2/reports_modelos/` y pkl en `ml2/models/`)**:
+    - *Función:* Predicciones y métricas descriptivas asociadas al modelamiento inicial sobreajustado.
+    - *Entrada/Salida:* CSVs y archivos serializados resultantes de la ejecución de v1.
+    - *Rol:* Insumos comparativos históricos del primer baseline lineal y no lineal del proyecto.
+    - *Edición:* Obsoletos; no modificar.
+
+---
+
+## 🚀 Guía de Ejecución Paso a Paso (End-to-End)
+
+Para ejecutar la tubería completa de datos y modelos del proyecto en el orden metodológico correcto, ejecuta la siguiente secuencia de comandos desde la raíz del repositorio (usando rutas relativas):
+
+### Paso 1: Limpieza e Integración de Datos
+Valida los códigos clínicos de entrada, depura fechas incorrectas y cruza registros.
 ```bash
-pip install pandas numpy matplotlib seaborn scipy
+python3 data/limpieza_datos.py
 ```
+*   **Entrada:** `data/datos_diagnostico.csv` y `data/procedimiento_pacientes.csv`
+*   **Salida Esperada:** Genera `dataset_maestro.csv` y tablas granulares en `data/processed/`, además de `reporte_limpieza.csv` en `data/reports/`.
 
-### Ejecución (Orden recomendado)
-
-**Paso 1: Limpieza de datos (OBLIGATORIO - primer paso)**
+### Paso 2: Análisis Estadístico Descriptivo (Opcional)
+Calcula cuantiles de estancia, distribuciones generales y correlaciones de variables.
 ```bash
-cd data
-python3 limpieza_datos.py
+python3 data/analisis.py
 ```
-**Salida:**
-- `processed/dataset_maestro.csv` (dataset limpio)
-- `processed/caso_diagnostico.csv` (granular diagnósticos)
-- `processed/caso_procedimiento.csv` (granular procedimientos)
-- `processed/pacientes_rechazados.csv` (rechazados)
-- `reports/reporte_limpieza.csv` (resumen)
+*   **Entrada:** Datasets en `data/processed/`
+*   **Salida Esperada:** Genera los reportes estadísticos estructurados en `data/reports/` (`reporte_estadistico_maestro.csv`, etc.).
 
-**Paso 2: Análisis estadístico (OPCIONAL)**
+### Paso 3: Ingeniería de Variables y Escenarios
+Crea las matrices predictoras One-Hot, calcula Charlson/Elixhauser y aplica la transformación logarítmica.
 ```bash
-cd data
-python3 analisis.py
+python3 ml/feature_engineering/procesamiento_features_v3.py
 ```
-**Salida:**
-- `reports/reporte_estadistico_maestro.csv`
-- `reports/reporte_estadistico_diagnostico.csv`
-- `reports/reporte_estadistico_rechazados.csv`
+*   **Entrada:** Datasets en `data/processed/`
+*   **Salida Esperada:** Genera los datasets por escenarios listos para modelar en `ml/feature_engineering/processed_v3/` (`model_data_v3_escenario_B_charlson.csv` y `model_data_v3_escenario_C_elixhauser.csv`), además de `reporte_analisis_comorbilidades_v3.md`.
 
-**Paso 3: Análisis visual de códigos y outliers (OPCIONAL)**
+### Paso 4: Búsqueda de Hiperparámetros (Tuning Regularizado - Opcional)
+Ejecuta la búsqueda aleatoria cross-validada con fuertes restricciones de regularización.
 ```bash
-cd graficos/diag_proc
-python3 analisis_codigos_outliers.py
+python3 ml/modelos/XGB/tuning_xgboost_regularizado.py
 ```
-**Salida:** Gráficos + conclusiones en `diagnosticos/` y `procedimientos/`
+*   **Entrada:** `ml/feature_engineering/processed_v3/model_data_v3_escenario_B_charlson.csv`
+*   **Salida Esperada:** Actualiza `mejores_hiperparametros_xgboost_regularizado.json` y guarda resultados de búsqueda en `resumen_tuning_xgboost_regularizado.csv`.
 
-**Paso 4: Análisis de complejidad (OPCIONAL)**
+### Paso 5: Entrenamiento Final y Holdout
+Entrena el modelo ganador XGBoost en train (80%) y evalúa en el holdout set de test (20%).
 ```bash
-cd graficos/diag_proc
-python3 analisis_complejidad_los.py
+python3 ml/modelos/XGB/entrenar_xgboost_final.py
 ```
-**Salida:** Boxplots comparativos en `diagnosticos/` y `procedimientos/`
+*   **Entrada:** Dataset del escenario B y configuración JSON de hiperparámetros.
+*   **Salida Esperada:** Genera el modelo serializado `xgboost_final.pkl` y toda la suite de métricas CSV y gráficos PNG diagnósticos en `ml/modelos/XGB/final/`.
 
-**Paso 5: Visualizaciones generales (OPCIONAL)**
+*(Nota: Puedes repetir el paso 5 para Random Forest y Regresión Lineal ejecutando `entrenar_rf_final.py` y `entrenar_lr_final.py` en sus respectivas carpetas).*
+
+### Paso 6: Comparación de Rendimiento y Graficación
+Genera las visualizaciones consolidadas comparativas para los tres modelos finales.
 ```bash
-cd graficos
-python3 visualizacion_los.py           # Histogramas y boxplots
-python3 visualizar_weight_verosimilitud.py  # Verosimilitud vs weight
+python3 ml/graficos_comparativos/generar_graficos_3_modelos.py
 ```
+*   **Entrada:** Archivos de métricas CSV en las carpetas `/final` de LR, RF y XGB.
+*   **Salida Esperada:** Genera los gráficos oficiales en `ml/graficos_comparativos/comparativa_3_modelos/` y el informe comparativo consolidado.
 
 ---
 
-## 📊 Distribución de Pacientes por Rango de LOS
+## 📈 Resumen de Resultados y Modelamiento V2 (Holdout Set)
 
-### Concentración de Estancias
+Al evaluar los modelos definitivos regularizados sobre el **Holdout Test Set (20% de datos nuevos)**, se obtuvieron las siguientes métricas continuas:
 
-| Rango de LOS | Pacientes | Porcentaje | Acumulado |
-|---|---:|---:|---:|
-| **0 días** | 250 | 2.09% | 2.09% |
-| **1-2 días** | 5,662 | 47.38% | 49.47% |
-| **3-6 días** | 3,400 | 28.45% | 77.92% |
-| **7-13 días** | 1,243 | 10.40% | 88.32% |
-| **14-29 días** | 890 | 7.45% | 95.77% |
-| **30-59 días** | 384 | 3.21% | 98.98% |
-| **60-89 días** | 69 | 0.58% | 99.56% |
-| **90+ días** | 53 | 0.44% | 100.00% |
+| Modelo | Escenario | MAE (días) | RMSE (días) | MedAE (días) |
+| :--- | :---: | :---: | :---: | :---: |
+| **XGBoost Final V2** | B (Charlson) | **3.057** | **8.290** | **0.902** |
+| **Random Forest Final V2** | B (Charlson) | 3.268 | 8.959 | 0.972 |
+| **Regresión Lineal Baseline** | B (Charlson) | 6.311 | 53.070 | 0.866 |
 
-### Insights Clave
+### Identificación de Pacientes Críticos (PLOS ≥ 27 días)
 
-- **35.05%** de pacientes se quedan ≤ 1 día (admisión/egreso mismo día o 1 día)
-- **61.39%** de pacientes completan su estancia en ≤ 3 días
-- **80.88%** de pacientes se van en ≤ 7 días (primera semana)
-- **96.05%** de pacientes se van en ≤ 30 días (primer mes)
-- Solo **0.44%** de pacientes tienen estancias prolongadas (> 90 días)
+| Métrica | Reg. Lineal | RF Final | XGBoost Final |
+| :--- | :---: | :---: | :---: |
+| **Precision PLOS** | 65.98% | **80.85%** | 78.67% |
+| **Recall PLOS** | **52.46%** | 31.15% | 48.36% |
+| **F1 PLOS** | 58.45% | 44.97% | **59.90%** |
 
----
+### Conclusiones de Modelado
 
-## 🔴 Descubrimiento Crítico: Proporción Real de Mezcla (Mayo 2026)
-
-### Hallazgo Inesperado
-
-Durante análisis de verosimilitud, se descubrió que los parámetros óptimos de la mezcla diferían de análisis anteriores:
-
-| Métrica | Análisis Anterior | Análisis Actual | Diferencia |
-|---------|-------------------|-----------------|-----------|
-| **Componente Log-Normal** | 74.73% | 42% | -32.73% |
-| **Componente Weibull** | 25.27% | 58% | +32.73% |
-| **Método** | Parámetros iniciales | Optimización global por weight | — |
-
-### Interpretación
-
-**El gráfico `visualizar_weight_verosimilitud.py` muestra:**
-- La verosimilitud es **máxima en weight ≈ 0.42** (no 0.75)
-- Esto significa que los datos reales son mejor explicados por:
-  - **58% Weibull** (estancias complejas/largas) — DOMINANTE
-  - **42% Log-Normal** (estancias cortas/típicas)
-
-**Implicación clínica:**
-- Las urgencias y casos complejos (Weibull) representan más de lo esperado
-- El modelo requiere capturar mejor la cola larga (30-262 días)
-- Dos subpoblaciones clínicas coexisten con pesos casi equilibrados
-
-### Acción Requerida
-
-- ✅ Gráfico actualizado con título correcto (42%-58%)
-- ✅ Discrepancia documentada en memory del proyecto
-- 🔲 Investigar origen del análisis anterior (verificar dataset vs método)
-
-### Referencia
-
-Ver memoria del proyecto: `memory/distribucion_los_correccion.md`
-
----
-
-### ¿Por qué dos ejes X?
-
-El gráfico `02_distribucion_los_transformacion_logaritmica.png` tiene **dos ejes X**:
-
-#### **Eje X SUPERIOR (escala original en días)**
-- Muestra los valores **sin transformación**: 0, 10, 20, 30, ..., 260 días
-- Representa el rango real de Length of Stay en el dataset
-
-#### **Eje X INFERIOR (escala logarítmica)**
-- Muestra la transformación `log(1+LOS)` que lineariza la distribución
-- Permite visualizar mejor la forma de la distribución en rangos bajos (donde está la mayoría de datos)
-
-### Conversión: LOS Original → Valor Logarítmico
-
-| LOS Original | Fórmula | Valor Log |
-|---|---|---:|
-| 0 días | log(1+0) = log(1) | 0.000 |
-| 1 día | log(1+1) = log(2) | 0.693 |
-| 3 días | log(1+3) = log(4) | **1.386** |
-| 7 días | log(1+7) = log(8) | 2.079 |
-| 14 días | log(1+14) = log(15) | 2.708 |
-| 30 días | log(1+30) = log(31) | 3.434 |
-| 60 días | log(1+60) = log(61) | 4.111 |
-| 90 días | log(1+90) = log(91) | 4.511 |
-| 262 días (máximo) | log(1+262) = log(263) | 5.572 |
-
-### ¿Por qué la frecuencia es tan alta en el rango 0-1?
-
-**La respuesta es simple:** El rango logarítmico [0.00 a 1.39] corresponde a los primeros **3 días reales** de estancia, y allí se concentra la mayoría de pacientes:
-
-- **log(0.000) → LOS = 0 días**: 250 pacientes (2.09%)
-- **log(0.693) → LOS = 1 día**: 3,939 pacientes (32.96%)
-- **log(1.386) → LOS = 3 días**: 1,425 pacientes (11.92%)
-
-**Total en los primeros 3 días: 5,614 pacientes (47.0%)**
-
-### ¿Por qué usar transformación log(1+LOS)?
-
-1. **Distribución original es SESGADA**: Los datos tienen forma de cola larga (mayoría en días bajos, pocos casos extremos a 262 días)
-
-2. **Log comprensa valores grandes**:
-   - Los primeros 10 días se "expanden" en el eje logarítmico
-   - Los días 100-262 se "comprimen" en el eje logarítmico
-
-3. **Beneficio visual**: Permite ver claramente la forma de la distribución en el rango donde está la mayoría de datos (0-30 días)
-
-4. **¿Por qué log(1+x) y no log(x)?**
-   - log(0) = indefinido (infinito negativo) ❌
-   - log(1+0) = log(1) = 0 ✅ (bien definido, permite incluir LOS=0)
-
-### Interpretación Final
-
-La **alta frecuencia en el rango 0-1 del eje logarítmico** NO significa que todos los días se compriman ahí. Significa que los primeros 3 días de estancia (donde está casi la mitad de los pacientes) ocupan ese pequeño espacio visual. Es un comportamiento esperado en distribuciones sesgadas con concentración en valores bajos.
-
----
-
-## 📊 Archivos de Entrada
-
-### 1. `datos_diagnostico.csv`
-
-**Descripción:** Contiene los diagnósticos médicos de los pacientes codificados en ICD-10.
-
-**Formato:** CSV con separador `;`
-
-**Columnas:**
-
-| Columna | Tipo | Descripción | Ejemplo |
-|---------|------|-------------|---------|
-| `CASE` | String | Identificador único del paciente | `13872110` |
-| `PrincSec` | String | Tipo de diagnóstico:<br>• `P` = Principal<br>• `S` = Secundario | `P` |
-| `Diagnosis` | String | Código ICD-10 del diagnóstico | `E6601` |
-
-**Ejemplo de datos:**
-```csv
-CASE;PrincSec;Diagnosis
-13872110;P;E6601
-13872110;S;Z6841
-14035188;P;J984
-```
-
-**Notas:**
-- Un paciente puede tener **múltiples diagnósticos** (primarios y secundarios)
-- Códigos **ICD-10-CM** (Clinical Modification) válidos **formato sin decimal**:
-  - Formato general: `[A-TV-Z][0-9][0-9A-Z]` opcionalmente seguido de hasta 4 caracteres alfanuméricos
-  - Ejemplo: `E6601` (Obesidad mórbida), `S72302E` (Fractura femoral), `Z6841` (IMC), `I10` (Hipertensión)
-  - **Nota importante:** Los datos usan nomenclatura ICD-10-CM pero **sin punto decimal** (ej: `E6601` en lugar de `E66.01`)
-  - **Excepción COVID:** códigos `U070` y `U071` permitidos
-  - **Excepción urgencia:** código `UUUUUU` indica ingreso por urgencia (NO electivo) - se **CONSERVA**
-- Códigos rechazados: `AAAAAA`, `DDDDDD` y otros placeholders inválidos (23 registros filtrados)
-- **Justificación nomenclatura ICD-10-CM:** Es el estándar internacional para codificación de diagnósticos clínicos, adoptado por la OMS y requerido por sistemas de salud en EE.UU., Canadá y múltiples países. Su estructura jerárquica permite agregación por categorías (ej: E66* = todos los tipos de obesidad). El formato sin decimal es una codificación compacta válida usada en algunos sistemas hospitalarios.
-
----
-
-### 2. `procedimiento_pacientes.csv`
-
-**Descripción:** Contiene los procedimientos médicos realizados y las fechas de ingreso/egreso.
-
-**Formato:** CSV con separador `;`
-
-**Columnas:**
-
-| Columna | Tipo | Descripción | Ejemplo |
-|---------|------|-------------|---------|
-| `Case` | String | Identificador único del paciente | `13872110` |
-| `Procedure` | String | Código del procedimiento médico (ICD-10-PCS) | `0DB64Z3` |
-| `Date` | String | Fecha de ingreso (formato `DD-MM-YY`) | `18-01-18` |
-| `Release` | String | Fecha de egreso (formato `DD-MM-YY`) | `21-01-18` |
-
-**Ejemplo de datos:**
-```csv
-Case;Procedure;Date;Release
-13872110;0DB64Z3;18-01-18;21-01-18
-14035188;0BB64ZZ;11-01-18;14-01-18
-```
-
-**Notas:**
-- Un paciente puede tener **múltiples procedimientos** en diferentes fechas
-- Códigos **ICD-10-PCS** (Procedure Coding System) válidos:
-  - Formato: **exactamente 7 caracteres** alfanuméricos
-  - Caracteres permitidos: `0-9, A-H, J-N, P-Z` (excluye I y O para evitar confusión con 1 y 0)
-  - Ejemplo: `0DB64Z3` (Excisión de duodeno), `0BB64ZZ` (Excisión de lóbulo pulmonar)
-  - Cada posición tiene significado: Sección, Sistema corporal, Operación raíz, Parte del cuerpo, Abordaje, Dispositivo, Calificador
-- **Justificación nomenclatura ICD-10-PCS:** Sistema estandarizado de codificación de procedimientos usado en hospitales de EE.UU. Su estructura de 7 caracteres permite codificación precisa y única de cada procedimiento quirúrgico, garantizando interoperabilidad entre sistemas de salud y consistencia en facturación.
-- El script calcula el **LOS** automáticamente como: `Release - Date` (en días)
-- Si un paciente tiene múltiples procedimientos, se toma:
-  - **Fecha de ingreso** = fecha más temprana (`min`)
-  - **Fecha de egreso** = fecha más tardía (`max`)
-
----
-
-## 📦 Archivos de Salida
-
-### 1. `dataset_maestro.csv` (Principal)
-
-**Descripción:** Dataset limpio con todos los pacientes válidos, listo para análisis y modelado.
-
-**Formato:** CSV con separador `;`
-
-**Columnas:**
-
-| Columna | Tipo | Descripción | Ejemplo |
-|---------|------|-------------|---------|
-| `case_id` | String | Identificador único del paciente | `13872110` |
-| `fecha_ingreso` | Date | Fecha de ingreso (primer procedimiento) | `2018-01-18` |
-| `fecha_egreso` | Date | Fecha de egreso (último procedimiento) | `2018-01-21` |
-| `los_dias` | Integer | **LOS (Length of Stay)** en días | `3` |
-| `es_urgencia` | Integer | Bandera de urgencia (1 = urgencia, 0 = electivo) | `1` |
-| `procedimientos` | String | Lista de códigos de procedimientos (separados por `,`) | `0DB64Z3,0BB64ZZ` |
-| `n_procedimientos` | Integer | Número total de procedimientos | `2` |
-| `diagnosticos_primarios` | String | Lista de diagnósticos primarios (separados por `,`) | `E6601` |
-| `diagnosticos_secundarios` | String | Lista de diagnósticos secundarios (separados por `,`) | `Z6841,I119` |
-| `n_diag_primarios` | Integer | Número de diagnósticos primarios | `1` |
-| `n_diag_secundarios` | Integer | Número de diagnósticos secundarios | `2` |
-| `n_diag_total` | Integer | Total de diagnósticos (primarios + secundarios) | `3` |
-| `tiene_diag_primario` | Boolean | Flag: ¿Tiene al menos un diagnóstico primario? | `True` |
-| `los_negativo` | Boolean | Flag: ¿LOS es negativo? (siempre False en maestro) | `False` |
-| `los_cero` | Boolean | Flag: ¿LOS es cero? | `False` |
-| `fechas_invalidas` | Boolean | Flag: ¿Hay fechas inválidas? (siempre False en maestro) | `False` |
-
-**Notas importantes:**
-- Las columnas de listas (`procedimientos`, `diagnosticos_*`) están en formato string separadas por comas
-- Para usar en Python: `df['procedimientos'].str.split(',')` para convertir a lista
-- **LOS = 0 SÍ está incluido** (son estancias válidas de admisión/egreso el mismo día)
-- **`los_dias`** está posicionado justo después de `fecha_egreso` para facilitar análisis temporal
-- **`es_urgencia`** diferencia casos electivos (0) de urgencias (1) - útil para estratificación
-
----
-
-### 2. `caso_diagnostico.csv` (Granular)
-
-**Descripción:** Diagnósticos a nivel granular - **una fila por diagnóstico**.
-
-**Propósito:** Responde a "¿Qué diagnósticos están presentes en los casos y cómo se relacionan con el LOS?"
-
-**Formato:** CSV con separador `;`
-
-**Columnas:**
-
-| Columna | Tipo | Descripción | Ejemplo |
-|---------|------|-------------|---------|
-| `case_id` | String | Identificador del paciente (llave foránea) | `13872110` |
-| `d_code` | String | Código ICD-10-CM limpio del diagnóstico | `E6601` |
-| `tipo_d` | String | Tipo de diagnóstico: `P` (primario) o `S` (secundario) | `P` |
-| `d_caract_1` | String | Primera letra del código (capítulo general) | `E` |
-| `d_caract_3` | String | Primeros 3 caracteres (categoría clínica) | `E66` |
-
-**Ejemplo de datos:**
-```csv
-case_id;d_code;tipo_d;d_caract_1;d_caract_3
-13872110;E6601;P;E;E66
-13872110;Z6841;S;Z;Z68
-14035188;J984;P;J;J98
-14035188;I119;S;I;I11
-```
-
-**Estadísticas:**
-- **Registros totales:** 97,337 diagnósticos
-- **Pacientes únicos:** 11,951
-- **Códigos únicos:** 6,108
-- **Diagnósticos primarios:** 18,718 (19.2%)
-- **Diagnósticos secundarios:** 78,619 (80.8%)
-- **Promedio por paciente:** 8.14 diagnósticos
-
-**Usos:**
-- Análisis de comorbilidades (diagnósticos secundarios)
-- Agregación por capítulo ICD-10 (letra inicial)
-- Identificación de diagnósticos principales más frecuentes
-- Feature engineering para modelos predictivos
-
----
-
-### 3. `caso_procedimiento.csv` (Granular)
-
-**Descripción:** Procedimientos a nivel granular - **una fila por procedimiento**.
-
-**Propósito:** Responde a "¿Qué le hicieron al paciente y cómo eso influye en el LOS?"
-
-**Formato:** CSV con separador `;`
-
-**Columnas:**
-
-| Columna | Tipo | Descripción | Ejemplo |
-|---------|------|-------------|---------|
-| `case_id` | String | Identificador del paciente (llave foránea) | `13872110` |
-| `p_code` | String | Código ICD-10-PCS del procedimiento | `0DB64Z3` |
-| `p_caract_1` | String | Primera letra (tipo de procedimiento) | `0` |
-| `p_caract_3` | String | Primeros 3 caracteres | `0DB` |
-
-**Ejemplo de datos:**
-```csv
-case_id;p_code;p_caract_1;p_caract_3
-13872110;0DB64Z3;0;0DB
-14035188;0BB64ZZ;0;0BB
-14114821;0H0V0JZ;0;0H0
-14114821;0J0L0ZZ;0;0J0
-```
-
-**Estadísticas:**
-- **Registros totales:** 26,568 procedimientos
-- **Pacientes únicos:** 11,951
-- **Promedio por paciente:** 2.22 procedimientos
-
-**Notas sobre caracteres:**
-- **`p_caract_1`** separa grandes categorías:
-  - `0` = Médico-quirúrgico
-  - `B` = Imagenología
-  - `F` = Rehabilitación y medicina física
-  - `3` = Administración
-- **`p_caract_3`** permite agrupación por sistema corporal y operación
-
-**Usos:**
-- Clasificación de complejidad quirúrgica
-- Análisis de tipos de procedimientos por caso
-- Identificación de procedimientos correlacionados con LOS largo
-- Feature engineering para modelos predictivos
-
----
-
-### 4. `pacientes_rechazados.csv`
-
-**Descripción:** Pacientes que NO pasaron los criterios de validación.
-
-**Formato:** CSV con separador `;`
-
-**Columnas principales:**
-
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `case_id` | String | Identificador del paciente rechazado |
-| `motivo_rechazo` | String | Razón(es) de rechazo (separadas por `\|`) |
-| `codigos_diagnostico_invalidos` | String | Códigos inválidos detectados (ej: AAAAAA) |
-| `los_dias` | Integer/NaN | LOS calculado (puede ser nulo) |
-| `n_procedimientos` | Integer | Número de procedimientos |
-| `n_diag_total` | Integer | Número de diagnósticos |
-| `fecha_ingreso` | Date/NaT | Fecha de ingreso |
-| `fecha_egreso` | Date/NaT | Fecha de egreso |
-
-**Motivos de rechazo posibles:**
-
-| Motivo | Descripción |
-|--------|-------------|
-| `falta_en_diagnosticos` | Paciente existe en procedimientos pero NO en diagnósticos |
-| `falta_en_procedimientos` | Paciente existe en diagnósticos pero NO en procedimientos |
-| `fechas_invalidas` | Fechas de ingreso o egreso son inválidas (NaT) |
-| `los_negativo` | Fecha de egreso es anterior a fecha de ingreso (error en datos) |
-
-**Estadísticas actuales:**
-- **Pacientes rechazados:** 0 (0.00%)
-- **Registros diagnósticos filtrados (inválidos):** 23 registros con código AAAAAA
-- **Nota:** Los registros diagnósticos inválidos se **filtran** pero se **conservan los pacientes** con sus diagnósticos válidos
-
-**Motivos que NO causan rechazo:**
-- ✅ **Códigos diagnósticos inválidos (AAAAAA, etc.)** - se filtran solo los registros inválidos, se conserva el paciente
-- ✅ **LOS = 0** (son datos válidos)
-
----
-
-### 5. `reporte_limpieza.csv`
-
-**Descripción:** Resumen ejecutivo con métricas de calidad de la limpieza.
-
-**Formato:** CSV con separador `;`
-
-**Métricas incluidas:**
-
-| Métrica | Descripción |
-|---------|-------------|
-| `pacientes_totales` | Total de pacientes únicos en la unión de ambos archivos |
-| `pacientes_maestro` | Pacientes válidos en el dataset maestro |
-| `pacientes_rechazados` | Pacientes que no pasaron validación |
-| `tasa_aceptacion_pct` | Porcentaje de pacientes aceptados |
-| `pacientes_con_los_cero` | Pacientes con estancia de 0 días (conservados) |
-| `pacientes_falta_diagnosticos` | Pacientes sin datos de diagnósticos |
-| `pacientes_falta_procedimientos` | Pacientes sin datos de procedimientos |
-| `pacientes_fechas_invalidas` | Pacientes con fechas mal formateadas |
-| `pacientes_los_negativo` | Pacientes con LOS negativo (error en datos) |
-| `los_promedio_dias` | Promedio de LOS en el dataset maestro |
-| `procedimientos_promedio` | Promedio de procedimientos por paciente |
-| `diagnosticos_promedio` | Promedio de diagnósticos por paciente |
-
-**Ejemplo:**
-```csv
-metrica;valor
-pacientes_totales;11951
-pacientes_maestro;11951
-pacientes_rechazados;0
-registros_diagnostico_filtrados_por_codigo_invalido;23
-tasa_aceptacion_pct;100.00
-los_promedio_dias;6.40
-```
-
----
-
-## 📈 Reportes Estadísticos (analisis.py)
-
-El script `analisis.py` genera reportes estadísticos detallados estilo `summary()` de R para cada dataset.
-
-### 1. `reporte_estadistico_maestro.csv`
-
-**Descripción:** Análisis estadístico completo del dataset maestro.
-
-**Formato:** CSV con separador `;` (columnas: `seccion`, `variable`, `valor`)
-
-**Secciones incluidas:**
-
-#### **GENERAL**
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| `numero_pacientes` | Total de pacientes en dataset maestro | 11,932 |
-| `periodo_inicio` | Fecha más temprana de ingreso | 2017-07-12 |
-| `periodo_fin` | Fecha más tardía de egreso | 2018-06-30 |
-
-#### **LOS (Length of Stay)**
-| Variable | Descripción |
-|----------|-------------|
-| `count` | Número de observaciones |
-| `mean` | Promedio de días de estancia |
-| `std` | Desviación estándar |
-| `min`, `percentil_25`, `median`, `percentil_75`, `max` | Cuartiles |
-| `percentil_90`, `percentil_95`, `percentil_99` | Percentiles superiores |
-
-**Ejemplo:**
-```csv
-seccion;variable;valor
-LOS;mean;6.44
-LOS;median;3.0
-LOS;percentil_90;15.0
-LOS;percentil_95;27.0
-```
-
-#### **LOS_RANGOS**
-Distribución de pacientes por rangos de estancia:
-- `los_0`: Pacientes con LOS = 0 días
-- `los_1_3`: Estancias cortas (1-3 días)
-- `los_4_7`: Estancias medias (4-7 días)
-- `los_8_14`: Estancias largas (8-14 días)
-- `los_15_30`: Estancias muy largas (15-30 días)
-- `los_mas_30`: Estancias prolongadas (>30 días)
-
-#### **URGENCIA**
-| Variable | Descripción |
-|----------|-------------|
-| `pacientes_urgencia` | Número de ingresos por urgencia (es_urgencia=1) |
-| `pacientes_electivos` | Número de ingresos electivos (es_urgencia=0) |
-| `porcentaje_urgencias` | % de ingresos por urgencia |
-| `los_promedio_urgencia` | LOS promedio para urgencias |
-| `los_promedio_electivo` | LOS promedio para electivos |
-
-**Insight importante:**
-```csv
-URGENCIA;los_promedio_urgencia;11.44
-URGENCIA;los_promedio_electivo;4.39
-```
-→ Las urgencias tienen **2.6x más LOS** que ingresos electivos.
-
-#### **PROCEDIMIENTOS** y **DIAGNOSTICOS**
-Estadísticas descriptivas de número de procedimientos/diagnósticos por paciente:
-- `mean`, `std`, `min`, `median`, `max`
-- Distribuciones por rangos
-
-#### **CORRELACIONES**
-| Variable | Descripción |
-|----------|-------------|
-| `los_vs_procedimientos` | Correlación de Pearson entre LOS y número de procedimientos |
-| `los_vs_diagnosticos` | Correlación de Pearson entre LOS y número de diagnósticos |
-
----
-
-### 2. `reporte_estadistico_diagnostico.csv`
-
-**Descripción:** Análisis estadístico de diagnósticos granulares.
-
-**Formato:** CSV con separador `;` (columnas: `seccion`, `variable`, `valor`)
-
-**Secciones incluidas:**
-
-#### **GENERAL**
-| Variable | Valor |
-|----------|-------|
-| `numero_diagnosticos` | 97,089 |
-| `pacientes_unicos` | 11,932 |
-| `codigos_unicos` | 6,108 |
-| `diagnosticos_por_paciente_promedio` | 8.14 |
-
-#### **TIPO**
-| Variable | Valor |
-|----------|-------|
-| `primarios` | 18,678 |
-| `secundarios` | 78,411 |
-| `porcentaje_primarios` | 19.24% |
-
-#### **TOP_CODIGOS**
-Top 20 códigos diagnósticos más frecuentes:
-```csv
-seccion;variable;valor
-TOP_CODIGOS;top_01;UUUUUU (3472)
-TOP_CODIGOS;top_02;I10 (2525)
-TOP_CODIGOS;top_03;Z7982 (1846)
-```
-
-**Interpretación:**
-- `UUUUUU`: Código de urgencia (conservado intencionalmente)
-- `I10`: Hipertensión esencial
-- `Z7982`: IMC alto
-
-#### **TOP_CAPITULOS**
-Top 20 capítulos ICD-10 más frecuentes (primera letra):
-- `Z`: Factores que influyen en el estado de salud
-- `I`: Enfermedades del sistema circulatorio
-- `E`: Enfermedades endocrinas, nutricionales y metabólicas
-- `J`: Enfermedades del sistema respiratorio
-
-#### **TOP_CATEGORIAS**
-Top 20 categorías ICD-10 más frecuentes (primeros 3 caracteres).
-
-#### **DISTRIBUCION**
-| Variable | Descripción |
-|----------|-------------|
-| `min_diag_por_paciente` | Mínimo número de diagnósticos |
-| `max_diag_por_paciente` | Máximo número de diagnósticos |
-| `median_diag_por_paciente` | Mediana de diagnósticos |
-
----
-
-### 3. `reporte_estadistico_rechazados.csv`
-
-**Descripción:** Análisis estadístico de pacientes rechazados.
-
-**Formato:** CSV con separador `;` (columnas: `seccion`, `variable`, `valor`)
-
-**Secciones incluidas:**
-
-#### **GENERAL**
-| Variable | Valor |
-|----------|-------|
-| `pacientes_rechazados` | 19 |
-
-#### **MOTIVOS**
-Distribución de motivos de rechazo:
-```csv
-seccion;variable;valor
-MOTIVOS;motivo_01;contiene_codigo_diagnostico_invalido (19)
-```
-
-#### **CODIGOS_INVALIDOS**
-| Variable | Descripción |
-|----------|-------------|
-| `total_codigos_invalidos` | Número total de códigos inválidos encontrados |
-| `codigos_unicos` | Códigos inválidos únicos |
-| `codigo_01`, `codigo_02`, ... | Top códigos inválidos con frecuencia |
-
-**Ejemplo:**
-```csv
-CODIGOS_INVALIDOS;codigo_01;AAAAAA (19)
-```
-
-#### **LOS**, **PROCEDIMIENTOS**, **DIAGNOSTICOS**
-Estadísticas descriptivas de pacientes rechazados (si aplica).
-
----
-
-### Cómo Usar los Reportes Estadísticos
-
-```python
-import pandas as pd
-
-# Cargar reporte maestro
-df_reporte = pd.read_csv('data/reports/reporte_estadistico_maestro.csv', sep=';')
-
-# Ver estadísticas de LOS
-los_stats = df_reporte[df_reporte['seccion'] == 'LOS']
-print(los_stats)
-
-# Ver correlaciones
-corr_stats = df_reporte[df_reporte['seccion'] == 'CORRELACIONES']
-print(corr_stats)
-
-# Ver top diagnósticos
-df_diag = pd.read_csv('data/reports/reporte_estadistico_diagnostico.csv', sep=';')
-top_codigos = df_diag[df_diag['seccion'] == 'TOP_CODIGOS']
-print(top_codigos)
-```
-
----
-
-## 🔧 Explicación del Script `analisis.py`
-
-El script `analisis.py` está estructurado en **4 funciones principales**:
-
-### **FUNCIÓN 1: `analizar_dataset_maestro()`**
-
-**Propósito:** Generar reporte estadístico completo del dataset maestro.
-
-**Proceso:**
-1. Carga `dataset_maestro.csv`
-2. Convierte columnas numéricas (`los_dias`, `es_urgencia`, `n_procedimientos`, etc.)
-3. Calcula estadísticas descriptivas (mean, std, percentiles)
-4. Genera distribuciones por rangos (LOS, procedimientos, diagnósticos)
-5. Calcula estadísticas por tipo de ingreso (urgencia vs electivo)
-6. Calcula correlaciones entre variables
-7. Retorna DataFrame con todas las estadísticas
-
-**Estadísticas clave:**
-- 47 métricas totales
-- 6 secciones: GENERAL, LOS, LOS_RANGOS, URGENCIA, PROCEDIMIENTOS, DIAGNOSTICOS, CORRELACIONES
-
-### **FUNCIÓN 2: `analizar_caso_diagnostico()`**
-
-**Propósito:** Generar reporte estadístico de diagnósticos granulares.
-
-**Proceso:**
-1. Carga `caso_diagnostico.csv`
-2. Calcula estadísticas generales (total, pacientes únicos, códigos únicos)
-3. Analiza distribución de tipos (primarios vs secundarios)
-4. Genera Top 20 de códigos más frecuentes
-5. Genera Top 20 de capítulos (primera letra)
-6. Genera Top 20 de categorías (primeros 3 caracteres)
-7. Calcula distribución de diagnósticos por paciente
-
-**Estadísticas clave:**
-- ~70 métricas totales
-- Secciones: GENERAL, TIPO, TOP_CODIGOS, TOP_CAPITULOS, TOP_CATEGORIAS, DISTRIBUCION
-
-### **FUNCIÓN 3: `analizar_pacientes_rechazados()`**
-
-**Propósito:** Generar reporte estadístico de pacientes rechazados.
-
-**Proceso:**
-1. Carga `pacientes_rechazados.csv`
-2. Cuenta pacientes rechazados
-3. Analiza distribución de motivos de rechazo
-4. Identifica códigos inválidos encontrados
-5. Calcula estadísticas de LOS/procedimientos/diagnósticos (si aplican)
-
-**Estadísticas clave:**
-- ~12 métricas totales
-- Secciones: GENERAL, MOTIVOS, CODIGOS_INVALIDOS, LOS, PROCEDIMIENTOS, DIAGNOSTICOS
-
-### **FUNCIÓN 4: `guardar_reportes()`**
-
-**Propósito:** Guardar los 3 reportes en archivos CSV.
-
-**Proceso:**
-1. Crea directorio `data/reports/` si no existe
-2. Exporta cada reporte con separador `;`
-3. Imprime resumen de estadísticas generadas
-
----
-
-## 🔧 Explicación del Script `limpieza_datos.py`
-
-El script está estructurado en **5 funciones principales** que se ejecutan secuencialmente:
-
----
-
-### **FUNCIÓN 1: `cargar_datos_crudos()`**
-
-**Propósito:** Leer los archivos CSV de entrada.
-
-**Proceso:**
-```python
-# Cargar archivo de diagnósticos con separador ; y todo como strings
-df_diagnosticos = pd.read_csv(ARCHIVO_DIAGNOSTICOS, sep=';', dtype=str)
-
-# Cargar archivo de procedimientos con separador ; y todo como strings
-df_procedimientos = pd.read_csv(ARCHIVO_PROCEDIMIENTOS, sep=';', dtype=str)
-```
-
-**¿Por qué `dtype=str`?**
-- Evita que pandas convierta automáticamente tipos (ej: `01234` → `1234`)
-- Preserva códigos ICD-10 con ceros a la izquierda
-- Permite validación manual posterior
-
----
-
-### **FUNCIÓN 2: `limpiar_diagnosticos(df)`**
-
-**Propósito:** Validar códigos ICD-10 y agregar diagnósticos por paciente.
-
-#### **Bloque 1: Estandarización de columnas**
-```python
-# Convertir todas las columnas a minúsculas para consistencia
-df.columns = df.columns.str.lower()
-
-# Renombrar 'case' → 'case_id' para claridad
-df = df.rename(columns={'case': 'case_id'})
-```
-
-#### **Bloque 2: Validación de PrincSec**
-```python
-# Crear columna booleana: True si es 'P' o 'S', False en caso contrario
-df['princsec_valido'] = df['princsec'].isin({'P', 'S'})
-```
-
-#### **Bloque 3: Validación de códigos ICD-10-CM (sin decimal)**
-```python
-# REGEX para ICD-10-CM (Clinical Modification) - Formato SIN DECIMAL
-# Formato: [A-TV-Z][0-9][0-9A-Z] opcionalmente seguido de hasta 4 caracteres alfanuméricos
-# Excepción 1: códigos U07 (COVID) permiten U070 o U071
-# Excepción 2: código UUUUUU (urgencia) se CONSERVA
-ICD10_CM_REGEX = r'^(?:[A-TV-Z][0-9][0-9A-Z](?:[0-9A-Z]{0,4})?|U07[01]?|UUUUUU)$'
-
-# Validar cada código contra el patrón
-df['diagnosis_valido'] = df['diagnosis'].str.match(ICD10_CM_REGEX, na=False)
-
-# Ejemplos válidos: E6601, S72302E, I10, U071, UUUUUU (urgencia)
-# Ejemplos inválidos: AAAAAA, DDDDDD, 123ABC, E6 (muy corto)
-```
-
-#### **Bloque 4: Filtrado de registros inválidos (NO pacientes completos)**
-```python
-# DECISIÓN CRÍTICA: Solo eliminar REGISTROS con códigos inválidos
-# NO eliminar pacientes completos
-df_valido = df[df['princsec_valido'] & df['diagnosis_valido']].copy()
-
-# Ejemplo 1:
-# Paciente 12345 tiene diagnósticos: E6601 (válido), AAAAAA (inválido), I119 (válido)
-# Resultado: Se conserva paciente con E6601 e I119, se elimina solo AAAAAA
-
-# Ejemplo 2:
-# Paciente 67890 tiene: UUUUUU (urgencia, válido), E6601 (válido)
-# Resultado: Se conservan ambos códigos (UUUUUU indica admisión por urgencia)
-```
-
-#### **Bloque 5: Agregación por paciente**
-```python
-# Separar diagnósticos primarios (P)
-df_primarios = df_valido[df_valido['princsec'] == 'P']
-
-# Agrupar por paciente y convertir a lista
-diag_primarios = (
-    df_primarios
-    .groupby('case_id')['diagnosis']
-    .apply(list)  # Convierte múltiples filas en una lista
-    .rename('diagnosticos_primarios')
-)
-
-# Ejemplo:
-# case_id | diagnosis
-# 12345   | E6601
-# 12345   | I119
-# Resultado: case_id=12345, diagnosticos_primarios=['E6601', 'I119']
-```
-
-#### **Bloque 6: Creación de métricas**
-```python
-# Contar número de diagnósticos
-df_paciente['n_diag_primarios'] = df_paciente['diagnosticos_primarios'].apply(len)
-
-# Flag: tiene al menos un diagnóstico primario
-df_paciente['tiene_diag_primario'] = df_paciente['n_diag_primarios'] > 0
-```
-
----
-
-### **FUNCIÓN 3: `limpiar_procedimientos(df)`**
-
-**Propósito:** Validar códigos ICD-10-PCS, validar fechas, calcular LOS y agregar por paciente.
-
-#### **Bloque 1: Validación de códigos ICD-10-PCS**
-```python
-# REGEX para ICD-10-PCS (Procedure Coding System)
-# Formato: exactamente 7 caracteres alfanuméricos [0-9A-HJ-NP-Z]
-# Excluye letras I, O para evitar confusión con dígitos 1, 0
-ICD10_PCS_REGEX = r'^[0-9A-HJ-NP-Z]{7}$'
-
-# Validar cada código contra el patrón
-df['procedimiento_valido'] = (
-    (df['procedimiento'].notna()) &
-    (df['procedimiento'] != '') &
-    (df['procedimiento'].str.match(ICD10_PCS_REGEX, na=False))
-)
-
-# Ejemplos válidos: 0DB64Z3, 0BB64ZZ, 02H60JZ
-# Ejemplos inválidos: 0DB64Z (6 caracteres), 0DB64Z3X (8 caracteres), OIIOIIO (contiene I/O)
-
-# Filtrar solo registros con códigos válidos
-df = df[df['procedimiento_valido']].copy()
-```
-
-#### **Bloque 2: Conversión de fechas**
-```python
-# Convertir strings 'DD-MM-YY' a objetos datetime
-# dayfirst=True indica que el día va primero
-df['fecha_ingreso'] = pd.to_datetime(
-    df['fecha_ingreso'],
-    format='%d-%m-%y',
-    errors='coerce'  # Convierte fechas inválidas a NaT (Not a Time)
-)
-
-# Ejemplo: '18-01-18' → datetime(2018, 1, 18)
-```
-
-#### **Bloque 3: Agregación de fechas por paciente**
-```python
-# Para cada paciente, obtener:
-# - Fecha de ingreso más temprana (primer procedimiento)
-# - Fecha de egreso más tardía (último procedimiento)
-
-fechas_por_paciente = df.groupby('case_id').agg({
-    'fecha_ingreso': 'min',  # Mínimo = más temprana
-    'fecha_egreso': 'max'    # Máximo = más tardía
-})
-
-# Ejemplo:
-# Paciente 12345 tiene procedimientos en:
-# - 10-01-18 (ingreso) → 12-01-18 (egreso)
-# - 15-01-18 (ingreso) → 20-01-18 (egreso)
-# Resultado: fecha_ingreso=10-01-18, fecha_egreso=20-01-18
-```
-
-#### **Bloque 4: Cálculo de LOS**
-```python
-# LOS = diferencia en días entre egreso e ingreso
-df_paciente['los_dias'] = (
-    (df_paciente['fecha_egreso'] - df_paciente['fecha_ingreso']).dt.days
-)
-
-# Flags de validación
-df_paciente['los_negativo'] = df_paciente['los_dias'] < 0  # Error en datos
-df_paciente['los_cero'] = df_paciente['los_dias'] == 0     # Estancia de 1 día
-
-# Ejemplo:
-# fecha_ingreso=10-01-18, fecha_egreso=13-01-18 → los_dias=3
-# fecha_ingreso=10-01-18, fecha_egreso=10-01-18 → los_dias=0 (VÁLIDO)
-# fecha_ingreso=10-01-18, fecha_egreso=08-01-18 → los_dias=-2 (INVÁLIDO)
-```
-
----
-
-### **FUNCIÓN 4: `integrar_datos(df_diagnosticos, df_procedimientos)`**
-
-**Propósito:** Unir diagnósticos y procedimientos, y aplicar criterios de rechazo.
-
-#### **Bloque 1: Merge OUTER**
-```python
-# outer join: incluye TODOS los pacientes de ambos archivos
-df = df_procedimientos.merge(
-    df_diagnosticos,
-    on='case_id',
-    how='outer',
-    indicator=True  # Crea columna '_merge' con origen de cada fila
-)
-
-# Valores de '_merge':
-# - 'both': paciente en ambos archivos (ESPERADO)
-# - 'left_only': solo en procedimientos (RECHAZADO)
-# - 'right_only': solo en diagnósticos (RECHAZADO)
-```
-
-#### **Bloque 2: Criterios de rechazo**
-```python
-# CRITERIO 1: Falta en diagnósticos
-mask_solo_proc = df['_merge'] == 'left_only'
-# → Paciente tiene procedimientos pero NO diagnósticos → RECHAZADO
-
-# CRITERIO 2: Falta en procedimientos
-mask_solo_diag = df['_merge'] == 'right_only'
-# → Paciente tiene diagnósticos pero NO procedimientos → RECHAZADO
-
-# CRITERIO 3: Fechas inválidas
-mask_fechas_invalidas = df['fechas_invalidas'].fillna(False)
-# → Fechas son NaT (inválidas) → RECHAZADO
-
-# CRITERIO 4: LOS negativo
-mask_los_negativo = df['los_negativo'].fillna(False)
-# → Fecha egreso < fecha ingreso → RECHAZADO
-
-# CRITERIOS QUE NO RECHAZAN:
-# ✅ LOS = 0 → ACEPTADO (admisión/egreso el mismo día)
-# ✅ Códigos ICD-10 inválidos filtrados → ACEPTADO (con códigos válidos restantes)
-```
-
-#### **Bloque 3: Separación maestro vs rechazados**
-```python
-# Crear lista de razones de rechazo para cada paciente
-df['razones_rechazo'] = [[] for _ in range(len(df))]
-
-# Agregar razón si cumple criterio
-df.loc[mask_solo_proc, 'razones_rechazo'] = ...
-# → razones_rechazo = ['falta_en_diagnosticos']
-
-# Marcar como rechazado si tiene al menos una razón
-df['es_rechazado'] = df['razones_rechazo'].apply(len) > 0
-
-# Separar
-df_maestro = df[~df['es_rechazado']].copy()
-df_rechazados = df[df['es_rechazado']].copy()
-```
-
----
-
-### **FUNCIÓN 5: `guardar_resultados(df_maestro, df_rechazados, df_completo)`**
-
-**Propósito:** Exportar resultados a archivos CSV.
-
-#### **Bloque 1: Conversión de listas a strings**
-```python
-# CSV no soporta listas nativamente, convertir a strings
-# ['E6601', 'I119'] → 'E6601,I119'
-
-for col in ['procedimientos', 'diagnosticos_primarios', 'diagnosticos_secundarios']:
-    df[col] = df[col].apply(lambda x: ','.join(x) if isinstance(x, list) else '')
-
-# Para leer de nuevo en Python:
-# df['procedimientos'].str.split(',')
-```
-
-#### **Bloque 2: Creación de reporte de calidad**
-```python
-# Crear DataFrame con métricas resumidas
-reporte = {
-    'metrica': ['pacientes_totales', 'pacientes_maestro', ...],
-    'valor': [len(df_completo), len(df_maestro), ...]
-}
-
-df_reporte = pd.DataFrame(reporte)
-df_reporte.to_csv('reporte_limpieza.csv', index=False, sep=';')
-```
-
----
-
-## 📊 Resultados de la Limpieza Actual
-
-**Ejecución: 2026-03-30**
-
-| Métrica | Valor |
-|---------|-------|
-| **Pacientes totales** | 11,951 |
-| **Pacientes en dataset maestro** | 11,951 (100.0%) ✅ |
-| **Pacientes rechazados** | 0 (0.0%) |
-| **Registros diagnóstico con AAAAAA (filtrados)** | 23 registros en 19 pacientes |
-| **Diagnósticos válidos conservados** | 248 registros (de los 19 pacientes) |
-| **Códigos UUUUUU conservados** | 3,472 (urgencias) ✅ |
-| **Pacientes con urgencia (es_urgencia=1)** | 3,472 (29.1%) |
-| **Pacientes electivos (es_urgencia=0)** | 8,479 (70.9%) |
-| **Pacientes con LOS = 0** | 250 (conservados) |
-| **LOS promedio** | 6.4 días |
-| **LOS promedio urgencias** | 11.44 días |
-| **LOS promedio electivos** | 4.39 días |
-| **LOS máximo** | 262 días |
-| **Procedimientos promedio** | 2.2 por paciente |
-| **Diagnósticos promedio** | 8.14 por paciente |
-| **Diagnósticos granulares generados** | 97,337 registros |
-| **Procedimientos granulares generados** | 26,568 registros |
-| **Códigos diagnósticos únicos** | 6,108 |
-
----
-
-## 🎯 Decisiones de Diseño Importantes
-
-### ✅ **Por qué usar nomenclaturas ICD-10-CM e ICD-10-PCS**
-
-**Nomenclaturas adoptadas:**
-- **ICD-10-CM** (Clinical Modification): Para diagnósticos médicos
-- **ICD-10-PCS** (Procedure Coding System): Para procedimientos quirúrgicos
-
-**Razones técnicas:**
-
-1. **Estándares internacionales oficiales:**
-   - ICD-10-CM es el estándar global adoptado por la OMS (Organización Mundial de la Salud)
-   - ICD-10-PCS es el estándar estadounidense para facturación y codificación hospitalaria
-   - Garantizan **interoperabilidad** entre sistemas de salud de diferentes instituciones
-
-2. **Validación robusta y precisa:**
-   - ICD-10-CM validado en formato sin decimal (ej: `E6601` en lugar de `E66.01`)
-   - ICD-10-PCS valida exactamente 7 caracteres, evitando códigos incompletos o mal formados
-   - Excluye caracteres ambiguos (I, O) que pueden confundirse con dígitos
-   - **Conserva código UUUUUU** (urgencia) por su valor clínico predictivo
-
-3. **Prevención de datos erróneos:**
-   - Filtra códigos placeholder inválidos como `AAAAAA`, `DDDDDD`, etc.
-   - **Conserva UUUUUU** (urgencia) como dato clínico válido
-   - Detecta códigos truncados o con caracteres extra
-   - Maneja espacios en blanco que pueden causar fallos en joins
-
-4. **Trazabilidad y reproducibilidad:**
-   - Nomenclaturas documentadas públicamente (CMS, CDC)
-   - Permite auditoría y verificación de categorías diagnósticas
-   - Facilita agregación jerárquica (ej: E66.* = todos los tipos de obesidad)
-
-**Impacto en calidad de datos:**
-- Reducción de falsos positivos en validación
-- Mayor precisión en categorización de diagnósticos y procedimientos
-- Compatibilidad con sistemas estándar de análisis de datos hospitalarios
-
----
-
-### ✅ **Por qué se filtran REGISTROS diagnósticos inválidos (no pacientes completos)**
-
-**Problema identificado:** Algunos códigos como `AAAAAA` son placeholders inválidos que deben eliminarse.
-
-**Solución adoptada:** Se **filtran los registros diagnósticos inválidos**, pero se **conserva al paciente** con todos sus códigos diagnósticos válidos.
-
-**Nota especial sobre UUUUUU:** Este código **se conserva** porque indica admisión por urgencia (no electiva), lo cual es información clínica valiosa para el modelo predictivo.
-
-**Ejemplos:**
-```
-Paciente 12345:
-- Diagnósticos originales: E6601 (válido), AAAAAA (inválido), I119 (válido)
-- Resultado: Se FILTRA solo AAAAAA, se conserva paciente con [E6601, I119] ✅
-
-Paciente 67890:
-- Diagnósticos originales: UUUUUU (urgencia), E6601 (válido)
-- Resultado: Se conservan ambos diagnósticos [UUUUUU, E6601] ✅
-
-Impact: 23 registros diagnósticos filtrados en 19 pacientes, pero 248 diagnósticos válidos conservados
-```
-
----
-
-### ✅ **Por qué LOS = 0 NO se rechaza**
-
-**Interpretación:** LOS = 0 significa que el paciente ingresó y egresó **el mismo día**.
-
-**Casos reales:**
-- Cirugías ambulatorias
-- Procedimientos diagnósticos rápidos
-- Observación de emergencia con alta el mismo día
-
-**Dato:** 250 pacientes (2.1%) tienen LOS = 0 → **Son datos válidos y útiles para el modelo**.
-
----
-
-### ✅ **Por qué se simplificó el código**
-
-**Sistema anterior:**
-- 17 archivos Python
-- Múltiples carpetas (`src/config`, `src/cleaning`, etc.)
-- Uso de `pathlib`, `settings.py`, `__init__.py` vacíos
-- 200+ líneas distribuidas en módulos
-
-**Sistema actual:**
-- **1 solo archivo** Python (`limpieza_datos.py`)
-- **NO requiere** imports complejos ni configuración
-- **Más fácil de entender** y modificar
-- **Mismo resultado** (mejor incluso)
-
-**Ventajas:**
-- ✅ Más rápido de ejecutar
-- ✅ Más fácil de debuggear
-- ✅ No genera `__pycache__`
-- ✅ Comentarios línea por línea para aprendizaje
-
----
-
-## 🔍 Validación de Datos
-
-### Verificar códigos ICD-10-CM filtrados (diagnósticos)
-```python
-import pandas as pd
-
-df = pd.read_csv('datos_diagnostico.csv', sep=';', dtype=str)
-df['Diagnosis'] = df['Diagnosis'].str.strip()
-
-# Ver códigos inválidos únicos
-import re
-regex = r'^(?:[A-TV-Z][0-9][0-9A-Z](?:[0-9A-Z]{0,4})?|U07[01]?|UUUUUU)$'
-invalidos = df[~df['Diagnosis'].str.match(regex, na=False)]
-print(invalidos['Diagnosis'].value_counts())
-
-# Output esperado:
-# AAAAAA      23
-
-# Verificar que UUUUUU se conserva (urgencia)
-uuuuuu_count = df[df['Diagnosis'] == 'UUUUUU'].shape[0]
-print(f'\nCódigos UUUUUU (urgencia) conservados: {uuuuuu_count:,}')
-# Output esperado: 3,486
-```
-
-### Verificar códigos ICD-10-PCS filtrados (procedimientos)
-```python
-df = pd.read_csv('procedimiento_pacientes.csv', sep=';')
-
-# Ver códigos inválidos únicos
-regex = r'^[0-9A-HJ-NP-Z]{7}$'
-invalidos = df[~df['Procedure'].str.match(regex, na=False)]
-print(f"Códigos inválidos: {len(invalidos)}")
-print(invalidos['Procedure'].value_counts().head(10))
-```
-
-### Verificar pacientes con LOS = 0
-```python
-df_maestro = pd.read_csv('data/processed/dataset_maestro.csv', sep=';')
-
-los_cero = df_maestro[df_maestro['los_dias'] == 0]
-print(f"Pacientes con LOS=0: {len(los_cero)}")
-print(los_cero[['case_id', 'fecha_ingreso', 'fecha_egreso', 'n_procedimientos']])
-```
-
----
-
-## 📝 Siguiente Paso: Modelado
-
-Con el dataset maestro limpio, el siguiente paso es:
-
-1. **Análisis exploratorio (EDA)**
-   - Distribución de LOS
-   - Correlación entre diagnósticos y procedimientos
-   - Identificación de outliers
-
-2. **Feature Engineering**
-   - One-hot encoding de códigos ICD-10
-   - Categorización de procedimientos
-   - Variables temporales (mes, día de la semana)
-
-3. **Modelado Predictivo**
-   - Regresión (predecir días exactos)
-   - Clasificación (categorías: corta/media/larga estancia)
-   - Modelos candidatos: RandomForest, XGBoost, Redes Neuronales
-
----
-
-## 👥 Equipo
-
-**Capstone - Grupo 16**
-Universidad: [Nombre Universidad]
-Fecha: Marzo 2026
-
----
-
-## 📞 Contacto
-
-Para preguntas o problemas con el código, contactar al equipo de desarrollo.
-
----
-
-## 📄 Licencia
-
-Este proyecto es parte de un trabajo académico del curso Capstone.
-
----
-
-**Última actualización:** 2026-05-02
-**Versión del proyecto:** 4.0 (Reorganización de estructura + Descubrimiento de mezcla real)
-**Cambios principales en esta versión:**
-- ✅ **REORGANIZACIÓN CRÍTICA:** Todos los scripts de datos movidos a `data/`
-- ✅ **REORGANIZACIÓN:** Scripts de visualización consolidados en `graficos/`
-- ✅ **NUEVOS:** Scripts `analisis_codigos_outliers.py` y `analisis_complejidad_los.py` en `graficos/diag_proc/`
-- ✅ **DESCUBRIMIENTO:** Mezcla Log-Normal-Weibull es **42%-58%** (no 75%-25%)
-- ✅ **GRÁFICOS:** Actualizado título de `visualizar_weight_verosimilitud.py`
-- ✅ **DOCUMENTACIÓN:** Agregada sección sobre discrepancia en memoria del proyecto
-- ✅ Estructura de directorios optimizada para navegación y ejecución
-- ✅ Rutas relativas actualizadas en todos los scripts
+1.  **Modelo Ganador:** El mejor modelo es **XGBoost Regularizado sobre el Escenario B**. Controla efectivamente el sobreajuste (Train MAE de 2.60 vs Test MAE de 3.05, reduciendo el gap de la v1 de 2.27 a solo 0.45 días).
+2.  **Índice de Charlson:** Su incorporación aporta información clínica valiosa que estabiliza el modelo de boosting, superando al escenario de Elixhauser.
+3.  **Comportamiento de Subestimación:** Todos los modelos sufren de regresión a la media en la cola larga de estancias. XGBoost subestima el 81.1% de los casos de más de 27 días, una limitación documentada en la literatura clínica que se propone abordar en trabajo futuro mediante Regresión por Cuantiles.
+4.  **Mezcla de Estancias:** El análisis de verosimilitud determinó que los datos reales se explican mediante una mezcla óptima de **42% Log-Normal** (estancias típicas cortas) y **58% Weibull** (casos complejos de cola larga).
