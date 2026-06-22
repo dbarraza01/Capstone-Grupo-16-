@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Analytics &amp; Insights - Clinical Stay Intelligence</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Inter:wght@400;500&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#2f1400",
+                        "primary": "#00355f",
+                        "surface-dim": "#cfdaf1",
+                        "tertiary-fixed-dim": "#ffb780",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#dee8ff",
+                        "secondary-fixed": "#6df8e7",
+                        "secondary-fixed-dim": "#4bdbcb",
+                        "on-primary-container": "#8ebdf9",
+                        "tertiary-container": "#743b00",
+                        "outline": "#727780",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#2d6197",
+                        "outline-variant": "#c2c7d1",
+                        "inverse-on-surface": "#ebf1ff",
+                        "inverse-primary": "#a0c9ff",
+                        "primary-fixed-dim": "#a0c9ff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#e7eeff",
+                        "secondary-container": "#6af5e5",
+                        "surface-variant": "#d8e3fa",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "on-primary-fixed": "#001c37",
+                        "on-surface": "#111c2c",
+                        "on-tertiary-container": "#f9a767",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#006f66",
+                        "secondary": "#006a61",
+                        "on-tertiary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "tertiary": "#532800",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0f4c81",
+                        "surface-container-highest": "#d8e3fa",
+                        "primary-fixed": "#d2e4ff",
+                        "on-secondary-fixed": "#00201d",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#42474f",
+                        "on-primary-fixed-variant": "#07497d",
+                        "surface": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "on-background": "#111c2c",
+                        "inverse-surface": "#263142",
+                        "tertiary-fixed": "#ffdcc4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "stack-lg": "32px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px",
+                        "stack-md": "16px",
+                        "container-max": "1440px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Geist"],
+                        "headline-lg": ["Geist"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Geist"],
+                        "label-md": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "display-lg": ["Geist"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        
+        .ai-glow-border {
+            position: relative;
+        }
+        .ai-glow-border::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #00B8A9;
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+        }
+
+        .chart-grid {
+            background-image: 
+                linear-gradient(to right, rgba(114, 119, 128, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(114, 119, 128, 0.05) 1px, transparent 1px);
+            background-size: 14.28% 25%;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen w-full overflow-hidden flex antialiased">
+    <!-- SideNavBar -->
+    <nav class="h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-inverse-surface shadow-sm flex flex-col py-8 border-r border-outline-variant dark:border-outline z-30">
+        <div class="px-gutter mb-8 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+            </div>
+            <div>
+                <h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary leading-tight text-sm">Clinical Intelligence</h1>
+                <p class="text-label-sm font-label-sm text-on-surface-variant">AI Decision Support</p>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto flex flex-col gap-1 px-4">
+            <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/">
+                <span class="material-symbols-outlined">home</span>
+                <span class="text-label-md font-label-md">Predicción Individual</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/bulk">
+                <span class="material-symbols-outlined">upload_file</span>
+                <span class="text-label-md font-label-md">Predicción Masiva</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-inverse-primary font-bold border-r-4 border-primary dark:border-inverse-primary bg-primary-container/20" href="/analytics">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                <span class="text-label-md font-label-md">Analytics & Métricas</span>
+            </a>
+        </div>
+        <div class="mt-auto pt-4 px-4 text-center text-xs text-outline">
+            <span>Grupo 16 - Entregable Final</span>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col ml-64 h-screen relative bg-surface-bright overflow-hidden">
+        <!-- TopNavBar -->
+        <header class="docked full-width top-0 sticky bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl border-b border-outline-variant dark:border-outline shadow-sm z-20 flex justify-between items-center w-full h-16 px-margin-desktop">
+            <div class="flex items-center gap-4">
+                <h2 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary text-xl">Clinical Stay Intelligence</h2>
+                <span class="text-label-sm font-label-sm bg-surface-container px-2 py-1 rounded text-primary border border-primary-container/20">Monitoreo Analítico</span>
+            </div>
+            <div class="flex items-center gap-2 bg-[#00B8A9]/10 text-[#006f66] px-3 py-1.5 rounded-full border border-[#00B8A9]/30">
+                <span class="material-symbols-outlined text-[16px] text-[#00B8A9]">auto_awesome</span>
+                <span class="text-label-md font-label-md font-semibold">[Modelos V2 Regularizados] Activos</span>
+            </div>
+        </header>
+
+        <!-- Main Analytics Canvas -->
+        <main class="flex-1 overflow-y-auto p-margin-desktop relative">
+            <div class="max-w-container-max mx-auto w-full space-y-stack-lg pb-stack-lg">
+                <!-- Page Header Area -->
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h2 class="text-headline-lg font-headline-lg text-on-surface tracking-tight mb-1">Rendimiento e Insights Globales</h2>
+                        <p class="text-body-md font-body-md text-on-surface-variant">Estadísticas del censo de hospitalización basadas en los datos de validación final (Test Set).</p>
+                    </div>
+                </div>
+
+                <!-- KPI Strip (Top Row) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+                    <!-- KPI 1 -->
+                    <div class="bg-surface-container-lowest rounded-xl p-stack-md border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors duration-500"></div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">MAE Promedio (XGBoost)</span>
+                            <span class="material-symbols-outlined text-outline-variant text-[20px]">trending_down</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 relative z-10">
+                            <span class="text-display-lg font-display-lg text-on-surface">3.06</span>
+                            <span class="text-body-md font-body-md text-on-surface-variant">Días</span>
+                        </div>
+                        <div class="text-label-sm font-label-sm text-secondary flex items-center gap-1 relative z-10">
+                            <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                            Error más bajo de desarrollo
+                        </div>
+                    </div>
+                    <!-- KPI 2 -->
+                    <div class="bg-surface-container-lowest rounded-xl p-stack-md border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-error/5 rounded-full blur-xl group-hover:bg-error/10 transition-colors duration-500"></div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Detector PLOS (F1-score)</span>
+                            <span class="material-symbols-outlined text-outline-variant text-[20px]">warning</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 relative z-10">
+                            <span class="text-display-lg font-display-lg text-on-surface">59.9</span>
+                            <span class="text-body-md font-body-md text-on-surface-variant">%</span>
+                        </div>
+                        <div class="text-label-sm font-label-sm text-error flex items-center gap-1 relative z-10">
+                            <span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                            Estancias prolongadas detectadas
+                        </div>
+                    </div>
+                    <!-- KPI 3 -->
+                    <div class="bg-surface-container-lowest rounded-xl p-stack-md border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between h-32 relative overflow-hidden group ai-glow-border">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-[#00B8A9]/5 rounded-full blur-xl group-hover:bg-[#00B8A9]/10 transition-colors duration-500"></div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">MAE Modelo Base (No Urg)</span>
+                            <span class="material-symbols-outlined text-[#00B8A9] text-[20px]">auto_awesome</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 relative z-10">
+                            <span class="text-display-lg font-display-lg text-on-surface">2.08</span>
+                            <span class="text-body-md font-body-md text-on-surface-variant">Días</span>
+                        </div>
+                        <div class="text-label-sm font-label-sm text-outline flex items-center gap-1 relative z-10">
+                            Ridge Regularizado (alpha=50.0)
+                        </div>
+                    </div>
+                    <!-- KPI 4 -->
+                    <div class="bg-surface-container-lowest rounded-xl p-stack-md border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between h-32 relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors duration-500"></div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">MAE Modelo Base (Urg)</span>
+                            <span class="material-symbols-outlined text-outline-variant text-[20px]">medical_services</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 relative z-10">
+                            <span class="text-display-lg font-display-lg text-on-surface">5.75</span>
+                            <span class="text-body-md font-body-md text-on-surface-variant">Días</span>
+                        </div>
+                        <div class="text-label-sm font-label-sm text-secondary flex items-center gap-1 relative z-10">
+                            <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                            Ridge Regularizado (alpha=100.0)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Grid Middle Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter h-auto lg:h-[420px]">
+                    <!-- Distribution LOS (Histograms/Boxplots) - Span 8 -->
+                    <div class="lg:col-span-8 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden relative">
+                        <div class="p-stack-md border-b border-outline-variant/50 flex justify-between items-center bg-surface-bright/50">
+                            <div>
+                                <h3 class="text-headline-md font-headline-md text-on-surface text-[18px]">Distribución de Estancias (LOS) por Tramo</h3>
+                                <p class="text-label-sm font-label-sm text-outline font-normal mt-1">Porcentaje de error absoluto menor o igual a X días en el Test Set</p>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
+                                    <span class="w-3 h-3 rounded-sm bg-primary/40 border border-primary"></span> XGBoost Final
+                                </div>
+                                <div class="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
+                                    <span class="w-3 h-3 rounded-sm bg-[#cfdaf1] border border-outline-variant"></span> Random Forest
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Chart Area -->
+                        <div class="flex-1 p-stack-md pt-8 chart-grid relative w-full h-full flex items-end justify-between px-16 gap-6">
+                            <!-- Y-axis labels -->
+                            <div class="absolute left-4 top-4 bottom-12 flex flex-col justify-between text-label-sm font-label-sm text-outline">
+                                <span>100%</span>
+                                <span>75%</span>
+                                <span>50%</span>
+                                <span>25%</span>
+                                <span>0%</span>
+                            </div>
+                            <!-- Error <= 1d -->
+                            <div class="flex gap-2 w-full h-full items-end justify-center group relative cursor-pointer">
+                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant h-[61%] rounded-t-sm"></div>
+                                <div class="w-8 bg-primary/40 border border-primary h-[65%] rounded-t-sm"></div>
+                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">Error &le; 1 Día: RF 61%, XGB 65%</div>
+                            </div>
+                            <!-- Error <= 3d -->
+                            <div class="flex gap-2 w-full h-full items-end justify-center group relative cursor-pointer">
+                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant h-[84%] rounded-t-sm"></div>
+                                <div class="w-8 bg-primary/40 border border-primary h-[88%] rounded-t-sm"></div>
+                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">Error &le; 3 Días: RF 84%, XGB 88%</div>
+                            </div>
+                            <!-- Error <= 7d -->
+                            <div class="flex gap-2 w-full h-full items-end justify-center group relative cursor-pointer">
+                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant h-[92%] rounded-t-sm"></div>
+                                <div class="w-8 bg-primary/40 border border-primary h-[95%] rounded-t-sm"></div>
+                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">Error &le; 7 Días: RF 92%, XGB 95%</div>
+                            </div>
+                            
+                            <!-- X-axis line & labels -->
+                            <div class="absolute bottom-8 left-12 right-4 h-px bg-outline-variant"></div>
+                            <div class="absolute bottom-2 left-12 right-4 flex justify-between text-label-sm font-label-sm text-outline px-6">
+                                <span class="flex-1 text-center">Error Abs &le; 1 Día</span>
+                                <span class="flex-1 text-center">Error Abs &le; 3 Días</span>
+                                <span class="flex-1 text-center">Error Abs &le; 7 Días</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk by Patient Cohort - Span 4 -->
+                    <div class="lg:col-span-4 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
+                        <div class="p-stack-md border-b border-outline-variant/50 bg-surface-bright/50 flex justify-between items-center">
+                            <h3 class="text-headline-md font-headline-md text-on-surface text-[18px]">Subestimación por Tramo</h3>
+                            <span class="text-xs text-outline font-semibold">Tendencia de Predicción</span>
+                        </div>
+                        <div class="flex-1 p-stack-md flex flex-col justify-center gap-6">
+                            <div class="space-y-4 w-full">
+                                <!-- 0-2 días -->
+                                <div>
+                                    <div class="flex justify-between text-label-md font-label-md mb-1">
+                                        <span class="text-on-surface">Tramo 0–2 días (Corto)</span>
+                                        <span class="text-[#2e7d32] font-mono">21.5% Subestimación</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                                        <div class="bg-[#2e7d32] h-full" style="width: 21.5%"></div>
+                                    </div>
+                                </div>
+                                <!-- 3-6 días -->
+                                <div>
+                                    <div class="flex justify-between text-label-md font-label-md mb-1">
+                                        <span class="text-on-surface">Tramo 3–6 días (Medio)</span>
+                                        <span class="text-outline-variant font-mono">75.3% Subestimación</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                                        <div class="bg-primary/50 h-full" style="width: 75.3%"></div>
+                                    </div>
+                                </div>
+                                <!-- 14-26 días -->
+                                <div>
+                                    <div class="flex justify-between text-label-md font-label-md mb-1">
+                                        <span class="text-on-surface">Tramo 14–26 días (Prolongado)</span>
+                                        <span class="text-error-container text-error font-mono">79.0% Subestimación</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                                        <div class="bg-error h-full" style="width: 79%"></div>
+                                    </div>
+                                </div>
+                                <!-- 27+ días -->
+                                <div>
+                                    <div class="flex justify-between text-label-md font-label-md mb-1">
+                                        <span class="text-on-surface">Tramo 27+ días (Crítico / PLOS)</span>
+                                        <span class="text-error font-mono">81.1% Subestimación</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                                        <div class="bg-[#93000a] h-full" style="width: 81.1%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-on-surface-variant border-t border-outline-variant/30 pt-4 mt-2">
+                                <span class="font-bold text-primary">Nota Metodológica:</span> Todos los modelos sufren de <strong>regresión a la media</strong> en estancias muy largas, debido a la falta de variables clínicas evolutivas intrahospitalarias al momento del ingreso.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bento Grid Bottom Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter h-auto lg:h-[360px]">
+                    <!-- Capacity Projection - Span 7 -->
+                    <div class="lg:col-span-7 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden relative ai-glow-border">
+                        <div class="p-stack-md border-b border-outline-variant/50 bg-surface-bright/50 flex justify-between items-center z-10 relative">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[#00B8A9] text-[20px]">auto_awesome</span>
+                                <h3 class="text-headline-md font-headline-md text-on-surface text-[18px]">Proyección de Capacidad Estimada</h3>
+                            </div>
+                            <span class="text-label-sm font-label-sm text-outline border border-outline-variant/50 px-2 py-0.5 rounded-full bg-surface">Forecast Semanal</span>
+                        </div>
+                        <div class="flex-1 relative overflow-hidden bg-surface-bright p-4">
+                            <!-- Background zone -->
+                            <div class="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-secondary-container/10 to-transparent pointer-events-none"></div>
+                            <!-- Max capacity limit -->
+                            <div class="absolute top-[25%] left-12 right-4 border-t-2 border-dashed border-error/50 flex items-center justify-end pr-2 pointer-events-none">
+                                <span class="bg-surface px-1 text-label-sm text-error/80 -mt-5">Límite de Ocupación Crítica (95%)</span>
+                            </div>
+                            <!-- SVG Chart -->
+                            <div class="w-full h-full relative pl-8 pb-6 flex items-end">
+                                <!-- Y Axis -->
+                                <div class="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-label-sm font-label-sm text-outline items-end pr-2">
+                                    <span>100%</span>
+                                    <span>75%</span>
+                                    <span>50%</span>
+                                    <span>25%</span>
+                                </div>
+                                <!-- X Axis Labels -->
+                                <div class="absolute bottom-0 left-8 right-0 flex justify-between text-label-sm font-label-sm text-outline px-4">
+                                    <span>Hoy</span>
+                                    <span>+1d</span>
+                                    <span>+2d</span>
+                                    <span>+3d</span>
+                                    <span>+4d</span>
+                                    <span>+5d</span>
+                                    <span>+6d</span>
+                                    <span>+7d</span>
+                                </div>
+                                <!-- Chart SVG -->
+                                <svg class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                    <defs>
+                                        <linearGradient id="lineGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+                                            <stop offset="0%" stop-color="#00355f"></stop>
+                                            <stop offset="100%" stop-color="#00B8A9"></stop>
+                                        </linearGradient>
+                                        <linearGradient id="areaGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+                                            <stop offset="0%" stop-color="#00B8A9" stop-opacity="0.25"></stop>
+                                            <stop offset="100%" stop-color="#00B8A9" stop-opacity="0"></stop>
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Area -->
+                                    <path d="M0,82 L14,75 L28,88 L42,65 L56,58 L70,42 L84,48 L100,38 L100,100 L0,100 Z" fill="url(#areaGrad)"></path>
+                                    <!-- Line -->
+                                    <path d="M0,82 L14,75 L28,88 L42,65 L56,58 L70,42 L84,48 L100,38" fill="none" stroke="url(#lineGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <!-- Circles -->
+                                    <circle cx="0" cy="82" fill="#00355f" r="2"></circle>
+                                    <circle cx="42" cy="65" fill="#00355f" r="2"></circle>
+                                    <circle cx="70" cy="42" fill="#00B8A9" r="2"></circle>
+                                    <circle cx="100" cy="38" fill="#ba1a1a" r="2.5" class="animate-pulse"></circle>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Performance Comparison - Span 5 -->
+                    <div class="lg:col-span-5 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
+                        <div class="p-stack-md border-b border-outline-variant/50 bg-surface-bright/50">
+                            <h3 class="text-headline-md font-headline-md text-on-surface text-[18px]">Métricas Oficiales de Validación (Escenario B)</h3>
+                            <p class="text-label-sm font-label-sm text-outline mt-1">Evaluación final sobre el set de prueba Holdout (Pacientes nuevos)</p>
+                        </div>
+                        <div class="flex-1 overflow-auto p-0">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-surface-container-low text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider sticky top-0">
+                                    <tr>
+                                        <th class="py-3 px-4 font-medium border-b border-outline-variant/30">Métrica</th>
+                                        <th class="py-3 px-4 font-medium border-b border-outline-variant/30">XGBoost Final</th>
+                                        <th class="py-3 px-4 font-medium border-b border-outline-variant/30 text-right">Random Forest</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-body-md font-body-md text-on-surface divide-y divide-outline-variant/20">
+                                    <tr class="hover:bg-surface-container-lowest transition-colors group">
+                                        <td class="py-3 px-4 font-medium">MAE (Días)</td>
+                                        <td class="py-3 px-4 font-mono text-primary font-semibold">3.057</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">3.268</td>
+                                    </tr>
+                                    <tr class="hover:bg-surface-container-lowest transition-colors group bg-surface-bright/30">
+                                        <td class="py-3 px-4 font-medium">RMSE (Días)</td>
+                                        <td class="py-3 px-4 font-mono text-primary font-semibold">8.290</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">8.959</td>
+                                    </tr>
+                                    <tr class="hover:bg-surface-container-lowest transition-colors group">
+                                        <td class="py-3 px-4 font-medium">MedAE (Días)</td>
+                                        <td class="py-3 px-4 font-mono text-primary font-semibold">0.902</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">0.972</td>
+                                    </tr>
+                                    <tr class="hover:bg-surface-container-lowest transition-colors group bg-surface-bright/30">
+                                        <td class="py-3 px-4 font-medium">Precisión PLOS (27d)</td>
+                                        <td class="py-3 px-4 font-mono text-on-surface">78.67%</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">80.85%</td>
+                                    </tr>
+                                    <tr class="hover:bg-surface-container-lowest transition-colors group">
+                                        <td class="py-3 px-4 font-medium">Recall PLOS (27d)</td>
+                                        <td class="py-3 px-4 font-mono text-on-surface font-semibold">48.36%</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">31.15%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

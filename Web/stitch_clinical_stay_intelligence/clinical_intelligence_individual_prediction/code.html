@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinical Stay Intelligence - Prediction Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed": "#2f1400",
+                      "primary": "#00355f",
+                      "surface-dim": "#cfdaf1",
+                      "tertiary-fixed-dim": "#ffb780",
+                      "on-error": "#ffffff",
+                      "surface-container-high": "#dee8ff",
+                      "secondary-fixed": "#6df8e7",
+                      "secondary-fixed-dim": "#4bdbcb",
+                      "on-primary-container": "#8ebdf9",
+                      "tertiary-container": "#743b00",
+                      "outline": "#727780",
+                      "error-container": "#ffdad6",
+                      "surface-tint": "#2d6197",
+                      "outline-variant": "#c2c7d1",
+                      "inverse-on-surface": "#ebf1ff",
+                      "inverse-primary": "#a0c9ff",
+                      "primary-fixed-dim": "#a0c9ff",
+                      "on-secondary-fixed-variant": "#005049",
+                      "surface-bright": "#f9f9ff",
+                      "surface-container-low": "#f0f3ff",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container": "#e7eeff",
+                      "secondary-container": "#6af5e5",
+                      "surface-variant": "#d8e3fa",
+                      "on-tertiary-fixed-variant": "#6f3800",
+                      "on-primary-fixed": "#001c37",
+                      "on-surface": "#111c2c",
+                      "on-tertiary-container": "#f9a767",
+                      "on-primary": "#ffffff",
+                      "on-secondary-container": "#006f66",
+                      "secondary": "#006a61",
+                      "on-tertiary": "#ffffff",
+                      "background": "#f9f9ff",
+                      "tertiary": "#532800",
+                      "on-error-container": "#93000a",
+                      "primary-container": "#0f4c81",
+                      "surface-container-highest": "#d8e3fa",
+                      "primary-fixed": "#d2e4ff",
+                      "on-secondary-fixed": "#00201d",
+                      "on-secondary": "#ffffff",
+                      "on-surface-variant": "#42474f",
+                      "on-primary-fixed-variant": "#07497d",
+                      "surface": "#f9f9ff",
+                      "error": "#ba1a1a",
+                      "on-background": "#111c2c",
+                      "inverse-surface": "#263142",
+                      "tertiary-fixed": "#ffdcc4"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "stack-sm": "8px",
+                      "stack-lg": "32px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "40px",
+                      "stack-md": "16px",
+                      "container-max": "1440px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Geist"
+                      ],
+                      "headline-lg": [
+                              "Geist"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Geist"
+                      ],
+                      "label-md": [
+                              "Geist"
+                      ],
+                      "headline-md": [
+                              "Geist"
+                      ],
+                      "display-lg": [
+                              "Geist"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+        }
+        .ai-glow {
+            box-shadow: inset 2px 0 0 0 #00B8A9;
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 20px rgba(0,0,0,0.04);
+        }
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        /* Custom Scrollbar for side nav */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden min-h-screen">
+<!-- SideNavBar (Desktop Only) -->
+<nav class="hidden md:flex bg-surface dark:bg-inverse-surface h-screen w-64 fixed left-0 top-0 flex-col py-8 border-r border-outline-variant dark:border-outline shadow-sm z-50">
+<div class="px-gutter mb-stack-lg flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary leading-tight text-sm">Clinical Intelligence</h1>
+<p class="text-label-sm font-label-sm text-on-surface-variant">AI Decision Support</p>
+</div>
+</div>
+<div class="px-4 mb-stack-md">
+<button class="w-full bg-secondary text-on-secondary rounded-lg py-2 px-4 flex items-center justify-center gap-2 hover:bg-secondary-container hover:text-on-secondary-container transition-colors duration-200 shadow-sm text-label-md font-label-md">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Prediction
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="flex flex-col gap-1 mt-2">
+<!-- Active Item: Predicción Individual -->
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-inverse-primary font-bold border-r-4 border-primary dark:border-inverse-primary bg-primary-container/20 hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="#" style="transform: scale(0.98);">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-md font-label-md">Predicción Individual</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">upload_file</span>
+<span class="text-label-md font-label-md">Predicción Masiva</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-label-md font-label-md">Analytics</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">neurology</span>
+<span class="text-label-md font-label-md">Modelos</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-label-md font-label-md">Reportes</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto pt-8 border-t border-outline-variant/30 dark:border-outline/30 mx-4">
+<ul class="flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-label-md font-label-md">Configuración</span>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="md:ml-64 flex-1 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="docked full-width top-0 sticky bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl border-b border-outline-variant dark:border-outline shadow-sm z-40">
+<div class="flex justify-between items-center w-full h-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<!-- Mobile Menu Trigger (hidden on md) -->
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary hidden md:block text-lg">Clinical Stay Intelligence</h2>
+</div>
+<div class="flex items-center gap-6">
+<!-- Search Bar -->
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-[20px]">search</span>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-full py-1.5 pl-10 pr-4 text-label-md font-label-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all bg-white/50 backdrop-blur-sm" placeholder="Search patients or IDs..." type="text"/>
+</div>
+<!-- Model Selector -->
+<div class="flex items-center gap-2 bg-primary-container/10 border border-primary/20 rounded-lg px-3 py-1.5 text-primary text-label-sm font-label-sm cursor-pointer hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined text-[16px]">model_training</span>
+                        [XGBoost Final]
+                        <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop max-w-container-max mx-auto w-full">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Command Center (Input) -->
+<div class="lg:col-span-5 space-y-stack-md flex flex-col">
+<div class="mb-stack-sm">
+<h3 class="text-headline-md font-headline-md text-on-surface mb-1">New Prediction Setup</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Configure clinical vectors to estimate length of stay.</p>
+</div>
+<!-- Input Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow border border-outline-variant/50 flex-1 flex flex-col gap-6">
+<!-- Diagnoses Search -->
+<div>
+<label class="block text-label-md font-label-md text-on-surface mb-2">ICD-10 Diagnoses</label>
+<div class="relative mb-3">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant">search</span>
+<input class="w-full border border-outline-variant rounded-lg py-2.5 pl-10 pr-4 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all bg-surface hover:bg-surface-container-lowest" placeholder="Search ICD-10 codes or descriptions..." type="text"/>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="bg-surface-container border border-outline-variant/30 rounded-full px-3 py-1 flex items-center gap-2 text-label-sm font-label-sm text-on-surface">
+                                    I21.9 - Acute myocardial infarction
+                                    <button class="text-outline hover:text-error transition-colors"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</div>
+<div class="bg-surface-container border border-outline-variant/30 rounded-full px-3 py-1 flex items-center gap-2 text-label-sm font-label-sm text-on-surface">
+                                    E11.9 - Type 2 diabetes mellitus
+                                    <button class="text-outline hover:text-error transition-colors"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</div>
+</div>
+</div>
+<!-- Procedures Search -->
+<div>
+<label class="block text-label-md font-label-md text-on-surface mb-2">Procedures</label>
+<div class="relative mb-3">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant">search</span>
+<input class="w-full border border-outline-variant rounded-lg py-2.5 pl-10 pr-4 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all bg-surface hover:bg-surface-container-lowest" placeholder="Search procedure codes..." type="text"/>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="bg-surface-container border border-outline-variant/30 rounded-full px-3 py-1 flex items-center gap-2 text-label-sm font-label-sm text-on-surface">
+                                    0210093 - Coronary Artery Bypass
+                                    <button class="text-outline hover:text-error transition-colors"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</div>
+</div>
+</div>
+<hr class="border-outline-variant/30"/>
+<!-- Clinical Derivation Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Admission Type</label>
+<select class="w-full border border-outline-variant rounded-lg py-2 px-3 text-body-md font-body-md bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+<option>Emergency</option>
+<option>Elective</option>
+<option>Transfer</option>
+</select>
+</div>
+<div>
+<label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Charlson Comorbidity Index</label>
+<div class="w-full border border-outline-variant/50 bg-surface-container-low rounded-lg py-2 px-3 text-body-md font-body-md text-on-surface flex justify-between items-center">
+<span>Calculated</span>
+<span class="font-bold text-primary">4</span>
+</div>
+</div>
+</div>
+<!-- Primary Action -->
+<div class="mt-auto pt-4">
+<button class="w-full bg-primary text-on-primary rounded-lg py-4 px-6 flex items-center justify-center gap-2 hover:bg-primary-container hover:shadow-md transition-all duration-200 text-label-md font-label-md tracking-wider">
+<span class="material-symbols-outlined">auto_awesome</span>
+                                PREDECIR ESTANCIA
+                            </button>
+</div>
+</div>
+</div>
+<!-- Prediction Results (Insight Center) -->
+<div class="lg:col-span-7 flex flex-col h-full">
+<div class="mb-stack-sm flex items-center justify-between">
+<h3 class="text-headline-md font-headline-md text-on-surface mb-1 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">memory</span>
+                            AI Insight
+                        </h3>
+<span class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full text-label-sm font-label-sm">High Confidence (92%)</span>
+</div>
+<!-- Massive Insight Card -->
+<div class="glass-panel rounded-2xl p-8 flex-1 flex flex-col justify-center relative overflow-hidden ai-glow mb-stack-md min-h-[300px]">
+<!-- Abstract bg decoration -->
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-secondary-container/20 rounded-full blur-3xl"></div>
+<div class="absolute -left-20 -bottom-20 w-80 h-80 bg-primary-container/10 rounded-full blur-3xl"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-widest mb-2">Estimated Length of Stay</p>
+<div class="flex items-baseline gap-2 mb-4">
+<span class="text-display-lg font-display-lg text-primary font-bold">8.4</span>
+<span class="text-headline-lg font-headline-lg text-on-surface-variant">days</span>
+</div>
+<!-- Risk Indicator -->
+<div class="flex items-center gap-2 bg-[#fff8e1] border border-[#ffc107]/30 px-4 py-2 rounded-full mt-2 shadow-sm">
+<span class="w-3 h-3 rounded-full bg-[#ffc107] animate-pulse"></span>
+<span class="text-label-sm font-label-sm text-[#8f6a00]">Elevated Risk (Median: 5.2 days)</span>
+</div>
+</div>
+</div>
+<!-- Explainability Panel -->
+<div class="bg-surface-container-lowest rounded-xl p-5 soft-shadow border border-outline-variant/50 mb-stack-md">
+<h4 class="text-label-md font-label-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">insights</span>
+                            Key Driving Factors
+                        </h4>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+</div>
+<div>
+<p class="text-label-sm font-label-sm text-on-surface">Charlson Comorbidity Index (4)</p>
+<p class="text-[11px] text-on-surface-variant group-hover:text-on-surface transition-colors">Significantly elevates base stay</p>
+</div>
+</div>
+<span class="text-label-sm font-label-sm text-error font-bold">+2.1 days</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-[#e8f5e9] text-[#2e7d32] flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+</div>
+<div>
+<p class="text-label-sm font-label-sm text-on-surface">Elective Admission</p>
+<p class="text-[11px] text-on-surface-variant group-hover:text-on-surface transition-colors">Planned pathway reduces variance</p>
+</div>
+</div>
+<span class="text-label-sm font-label-sm text-[#2e7d32] font-bold">-0.8 days</span>
+</div>
+</div>
+</div>
+<!-- Model Comparison -->
+<div class="grid grid-cols-3 gap-4 mt-auto">
+<!-- XGBoost (Active) -->
+<div class="bg-surface-container-lowest border-2 border-secondary/50 rounded-lg p-4 soft-shadow relative">
+<div class="absolute top-0 right-0 bg-secondary text-on-secondary text-[10px] px-2 py-0.5 rounded-bl-lg rounded-tr-sm font-bold">ACTIVE</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant mb-1">XGBoost</p>
+<p class="text-headline-md font-headline-md text-on-surface font-bold">8.4d</p>
+<div class="mt-2 text-[10px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-secondary">check_circle</span> 92% Conf.
+                            </div>
+</div>
+<!-- Random Forest -->
+<div class="bg-surface border border-outline-variant/30 rounded-lg p-4 hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<p class="text-label-sm font-label-sm text-on-surface-variant mb-1">Random Forest</p>
+<p class="text-headline-md font-headline-md text-on-surface">8.1d</p>
+<div class="mt-2 text-[10px] text-on-surface-variant flex items-center gap-1">
+                                 89% Conf.
+                            </div>
+</div>
+<!-- Ridge -->
+<div class="bg-surface border border-outline-variant/30 rounded-lg p-4 hover:bg-surface-container-lowest transition-colors cursor-pointer">
+<p class="text-label-sm font-label-sm text-on-surface-variant mb-1">Ridge Reg.</p>
+<p class="text-headline-md font-headline-md text-on-surface">9.0d</p>
+<div class="mt-2 text-[10px] text-on-surface-variant flex items-center gap-1">
+                                 84% Conf.
+                            </div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

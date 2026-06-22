@@ -1,0 +1,4 @@
+case_id;fecha_ingreso;es_urgencia;diagnosticos_primarios;diagnosticos_secundarios;procedimientos;los_predicho_dias;charlson_calculado;nivel_riesgo
+14035188;2018-01-11;1;J984;I119,E669,Z6830;0BB64ZZ;2.0090086460113525;0;low
+14085514;2018-02-07;0;S72302E;V299XXD;0QP934Z;1.9963929653167725;0;low
+14102910;2018-03-12;1;I219;E785,I10;0210093,02500ZZ;1.229848861694336;0;low

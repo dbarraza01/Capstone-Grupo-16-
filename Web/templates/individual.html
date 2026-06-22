@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Clinical Stay Intelligence - Prediction Workspace</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#2f1400",
+                        "primary": "#00355f",
+                        "surface-dim": "#cfdaf1",
+                        "tertiary-fixed-dim": "#ffb780",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#dee8ff",
+                        "secondary-fixed": "#6df8e7",
+                        "secondary-fixed-dim": "#4bdbcb",
+                        "on-primary-container": "#8ebdf9",
+                        "tertiary-container": "#743b00",
+                        "outline": "#727780",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#2d6197",
+                        "outline-variant": "#c2c7d1",
+                        "inverse-on-surface": "#ebf1ff",
+                        "inverse-primary": "#a0c9ff",
+                        "primary-fixed-dim": "#a0c9ff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#e7eeff",
+                        "secondary-container": "#6af5e5",
+                        "surface-variant": "#d8e3fa",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "on-primary-fixed": "#001c37",
+                        "on-surface": "#111c2c",
+                        "on-tertiary-container": "#f9a767",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#006f66",
+                        "secondary": "#006a61",
+                        "on-tertiary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "tertiary": "#532800",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0f4c81",
+                        "surface-container-highest": "#d8e3fa",
+                        "primary-fixed": "#d2e4ff",
+                        "on-secondary-fixed": "#00201d",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#42474f",
+                        "on-primary-fixed-variant": "#07497d",
+                        "surface": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "on-background": "#111c2c",
+                        "inverse-surface": "#263142",
+                        "tertiary-fixed": "#ffdcc4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "stack-lg": "32px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px",
+                        "stack-md": "16px",
+                        "container-max": "1440px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Geist"],
+                        "headline-lg": ["Geist"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Geist"],
+                        "label-md": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "display-lg": ["Geist"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+        }
+        .ai-glow {
+            box-shadow: inset 2px 0 0 0 #00B8A9;
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 20px rgba(0,0,0,0.04);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden min-h-screen">
+    <!-- SideNavBar (Desktop Only) -->
+    <nav class="hidden md:flex bg-surface dark:bg-inverse-surface h-screen w-64 fixed left-0 top-0 flex-col py-8 border-r border-outline-variant dark:border-outline shadow-sm z-50">
+        <div class="px-gutter mb-stack-lg flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+            </div>
+            <div>
+                <h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary leading-tight text-sm">Clinical Intelligence</h1>
+                <p class="text-label-sm font-label-sm text-on-surface-variant">AI Decision Support</p>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+            <ul class="flex flex-col gap-1 mt-2">
+                <!-- Active Item: Predicción Individual -->
+                <li>
+                    <a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-inverse-primary font-bold border-r-4 border-primary dark:border-inverse-primary bg-primary-container/20 hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/">
+                        <span class="material-symbols-outlined">home</span>
+                        <span class="text-label-md font-label-md">Predicción Individual</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/bulk">
+                        <span class="material-symbols-outlined">upload_file</span>
+                        <span class="text-label-md font-label-md">Predicción Masiva</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/analytics">
+                        <span class="material-symbols-outlined">analytics</span>
+                        <span class="text-label-md font-label-md">Analytics & Métricas</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="mt-auto pt-4 px-4 text-center text-xs text-outline">
+            <span>Grupo 16 - Entregable Final</span>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <div class="md:ml-64 flex-1 flex flex-col min-h-screen">
+        <!-- TopNavBar -->
+        <header class="docked full-width top-0 sticky bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl border-b border-outline-variant dark:border-outline shadow-sm z-40">
+            <div class="flex justify-between items-center w-full h-16 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary hidden md:block text-lg">Inferencia Clínica Individual</h2>
+                </div>
+                <div class="flex items-center gap-6">
+                    <!-- Model Selector -->
+                    <div class="flex items-center gap-2">
+                        <label for="model-select" class="text-label-sm font-label-sm text-on-surface-variant whitespace-nowrap">Modelo Activo:</label>
+                        <select id="model-select" class="bg-primary-container/10 border border-primary/20 rounded-lg px-3 py-1.5 text-primary text-label-sm font-label-sm cursor-pointer hover:bg-primary-container/20 transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
+                            <option value="xgboost" selected>XGBoost (Recomendado)</option>
+                            <option value="random_forest">Random Forest</option>
+                            <option value="ridge">Regresión Lineal Base (Ridge)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Canvas -->
+        <main class="flex-1 p-margin-mobile md:p-margin-desktop max-w-container-max mx-auto w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                <!-- Command Center (Input) -->
+                <div class="lg:col-span-5 space-y-stack-md flex flex-col">
+                    <div class="mb-stack-sm">
+                        <h3 class="text-headline-md font-headline-md text-on-surface mb-1">Configuración del Paciente</h3>
+                        <p class="text-body-md font-body-md text-on-surface-variant">Ingrese los códigos clínicos y parámetros de admisión del paciente.</p>
+                    </div>
+                    <!-- Input Card -->
+                    <div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow border border-outline-variant/50 flex-1 flex flex-col gap-6">
+                        <!-- Diagnoses Input -->
+                        <div>
+                            <label class="block text-label-md font-label-md text-on-surface mb-2">Diagnósticos ICD-10-CM (Primero es Primario)</label>
+                            <div class="flex gap-2 mb-3">
+                                <div class="relative flex-1">
+                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant">search</span>
+                                    <input id="diagnosis-input" class="w-full border border-outline-variant rounded-lg py-2.5 pl-10 pr-4 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all bg-surface hover:bg-surface-container-lowest" placeholder="Ej: E11.9, I10, C34.9..." type="text"/>
+                                </div>
+                                <button id="add-diag-btn" class="bg-primary text-white px-4 rounded-lg text-label-md font-label-md hover:bg-primary-container transition-colors">Añadir</button>
+                            </div>
+                            <div id="diagnosis-badges" class="flex flex-wrap gap-2">
+                                <!-- Diagnósticos agregados dinámicamente -->
+                                <div class="bg-primary-container/20 border border-primary/30 rounded-full px-3 py-1 flex items-center gap-2 text-label-sm font-label-sm text-primary">
+                                    <span class="badge-text">E11.9 - Diabetes Mellitus (Primario)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Procedures Input -->
+                        <div>
+                            <label class="block text-label-md font-label-md text-on-surface mb-2">Procedimientos ICD-10-PCS</label>
+                            <div class="flex gap-2 mb-3">
+                                <div class="relative flex-1">
+                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant">search</span>
+                                    <input id="procedure-input" class="w-full border border-outline-variant rounded-lg py-2.5 pl-10 pr-4 text-body-md font-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all bg-surface hover:bg-surface-container-lowest" placeholder="Ej: 0DB64Z3, 0BB64ZZ..." type="text"/>
+                                </div>
+                                <button id="add-proc-btn" class="bg-primary text-white px-4 rounded-lg text-label-md font-label-md hover:bg-primary-container transition-colors">Añadir</button>
+                            </div>
+                            <div id="procedure-badges" class="flex flex-wrap gap-2">
+                                <!-- Procedimientos agregados dinámicamente -->
+                            </div>
+                        </div>
+
+                        <hr class="border-outline-variant/30"/>
+
+                        <!-- Clinical Derivation Grid -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Tipo de Admisión</label>
+                                <select id="admission-type" class="w-full border border-outline-variant rounded-lg py-2 px-3 text-body-md font-body-md bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                    <option value="1">Urgencia</option>
+                                    <option value="0">No Urgencia / Electivo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Índice de Charlson Calculado</label>
+                                <div class="w-full border border-outline-variant/50 bg-surface-container-low rounded-lg py-2 px-3 text-body-md font-body-md text-on-surface flex justify-between items-center">
+                                    <span>Puntaje:</span>
+                                    <span id="charlson-value" class="font-bold text-primary">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Date selection -->
+                        <div>
+                            <label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Fecha de Ingreso</label>
+                            <input id="admission-date" type="date" class="w-full border border-outline-variant rounded-lg py-2 px-3 text-body-md font-body-md bg-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"/>
+                        </div>
+
+                        <!-- Primary Action -->
+                        <div class="mt-auto pt-4">
+                            <button id="predict-btn" class="w-full bg-primary text-on-primary rounded-lg py-4 px-6 flex items-center justify-center gap-2 hover:bg-primary-container hover:shadow-md transition-all duration-200 text-label-md font-label-md tracking-wider">
+                                <span class="material-symbols-outlined">auto_awesome</span>
+                                PREDECIR ESTANCIA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prediction Results (Insight Center) -->
+                <div class="lg:col-span-7 flex flex-col h-full">
+                    <div class="mb-stack-sm flex items-center justify-between">
+                        <h3 class="text-headline-md font-headline-md text-on-surface mb-1 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-secondary">memory</span>
+                            Resultado de Predicción IA
+                        </h3>
+                        <span class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full text-label-sm font-label-sm">Modelo Activo</span>
+                    </div>
+
+                    <!-- Prediction Result Card -->
+                    <div class="glass-panel rounded-2xl p-8 flex-1 flex flex-col justify-center relative overflow-hidden ai-glow mb-stack-md min-h-[300px]">
+                        <div class="absolute -right-20 -top-20 w-64 h-64 bg-secondary-container/20 rounded-full blur-3xl"></div>
+                        <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-primary-container/10 rounded-full blur-3xl"></div>
+                        
+                        <div class="relative z-10 flex flex-col items-center text-center">
+                            <p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-widest mb-2">Estancia Estimada (LOS)</p>
+                            <div class="flex items-baseline gap-2 mb-4">
+                                <span id="predicted-los-value" class="text-display-lg font-display-lg text-primary font-bold">--</span>
+                                <span class="text-headline-lg font-headline-lg text-on-surface-variant">días</span>
+                            </div>
+                            
+                            <!-- Risk Indicator -->
+                            <div id="risk-indicator" class="flex items-center gap-2 bg-[#f0f3ff] border border-outline-variant/30 px-4 py-2 rounded-full mt-2 shadow-sm transition-all">
+                                <span class="risk-dot w-3 h-3 rounded-full bg-outline-variant animate-pulse"></span>
+                                <span class="risk-text text-label-sm font-label-sm text-on-surface-variant">Ingrese datos y presione predecir</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Explainability Panel -->
+                    <div class="bg-surface-container-lowest rounded-xl p-5 soft-shadow border border-outline-variant/50 mb-stack-md">
+                        <h4 class="text-label-md font-label-md text-on-surface mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">insights</span>
+                            Factores Clínicos de Mayor Impacto (Explicación RLM Base)
+                        </h4>
+                        <div id="driving-factors-container" class="space-y-3">
+                            <p class="text-label-sm text-outline text-center py-4">Los factores clínicos más influyentes aparecerán aquí tras realizar la predicción.</p>
+                        </div>
+                    </div>
+
+                    <!-- Model Comparison -->
+                    <div class="grid grid-cols-3 gap-4 mt-auto">
+                        <!-- XGBoost -->
+                        <div id="card-xgb" class="bg-surface border border-outline-variant/30 rounded-lg p-4 hover:bg-surface-container-lowest transition-colors cursor-pointer relative">
+                            <p class="text-label-sm font-label-sm text-on-surface-variant mb-1">XGBoost Final</p>
+                            <p id="comp-xgb-val" class="text-headline-md font-headline-md text-on-surface font-bold">--</p>
+                            <div class="mt-2 text-[10px] text-on-surface-variant">
+                                MAE Test: 3.05d
+                            </div>
+                        </div>
+                        <!-- Random Forest -->
+                        <div id="card-rf" class="bg-surface border border-outline-variant/30 rounded-lg p-4 hover:bg-surface-container-lowest transition-colors cursor-pointer">
+                            <p class="text-label-sm font-label-sm text-on-surface-variant mb-1">Random Forest</p>
+                            <p id="comp-rf-val" class="text-headline-md font-headline-md text-on-surface font-bold">--</p>
+                            <div class="mt-2 text-[10px] text-on-surface-variant">
+                                MAE Test: 3.26d
+                            </div>
+                        </div>
+                        <!-- Ridge -->
+                        <div id="card-ridge" class="bg-surface border border-outline-variant/30 rounded-lg p-4 hover:bg-surface-container-lowest transition-colors cursor-pointer">
+                            <p class="text-label-sm font-label-sm text-on-surface-variant mb-1">Modelo Base Ridge</p>
+                            <p id="comp-ridge-val" class="text-headline-md font-headline-md text-on-surface font-bold">--</p>
+                            <div class="mt-2 text-[10px] text-on-surface-variant">
+                                MAE Test: ~3.9d
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Set date to today
+        document.getElementById('admission-date').valueAsDate = new Date();
+
+        const diagnoses = ["E11.9"];
+        const procedures = [];
+
+        // Add diagnosis
+        document.getElementById('add-diag-btn').addEventListener('click', addDiagnosis);
+        document.getElementById('diagnosis-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addDiagnosis();
+        });
+
+        function addDiagnosis() {
+            const input = document.getElementById('diagnosis-input');
+            const code = input.value.trim().toUpperCase();
+            if (!code) return;
+            
+            if (!diagnoses.includes(code)) {
+                diagnoses.push(code);
+                renderBadges();
+                recalcularCharlsonIndex();
+            }
+            input.value = '';
+        }
+
+        // Add procedure
+        document.getElementById('add-proc-btn').addEventListener('click', addProcedure);
+        document.getElementById('procedure-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addProcedure();
+        });
+
+        function addProcedure() {
+            const input = document.getElementById('procedure-input');
+            const code = input.value.trim().toUpperCase();
+            if (!code) return;
+            
+            if (!procedures.includes(code)) {
+                procedures.push(code);
+                renderBadges();
+            }
+            input.value = '';
+        }
+
+        function removeDiagnosis(index) {
+            diagnoses.splice(index, 1);
+            renderBadges();
+            recalcularCharlsonIndex();
+        }
+
+        function removeProcedure(index) {
+            procedures.splice(index, 1);
+            renderBadges();
+        }
+
+        function renderBadges() {
+            // Render diagnoses
+            const diagContainer = document.getElementById('diagnosis-badges');
+            diagContainer.innerHTML = '';
+            diagnoses.forEach((d, idx) => {
+                const label = idx === 0 ? `${d} (Primario)` : d;
+                const badge = document.createElement('div');
+                badge.className = "bg-primary-container/20 border border-primary/30 rounded-full px-3 py-1 flex items-center gap-2 text-label-sm font-label-sm text-primary";
+                badge.innerHTML = `
+                    <span class="badge-text">${label}</span>
+                    <button class="text-outline hover:text-error transition-colors" onclick="removeDiagnosis(${idx})">
+                        <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                `;
+                diagContainer.appendChild(badge);
+            });
+
+            // Render procedures
+            const procContainer = document.getElementById('procedure-badges');
+            procContainer.innerHTML = '';
+            procedures.forEach((p, idx) => {
+                const badge = document.createElement('div');
+                badge.className = "bg-surface-container border border-outline-variant/30 rounded-full px-3 py-1 flex items-center gap-2 text-label-sm font-label-sm text-on-surface";
+                badge.innerHTML = `
+                    <span class="badge-text">${p}</span>
+                    <button class="text-outline hover:text-error transition-colors" onclick="removeProcedure(${idx})">
+                        <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                `;
+                procContainer.appendChild(badge);
+            });
+        }
+
+        function recalcularCharlsonIndex() {
+            if (diagnoses.length === 0) {
+                document.getElementById('charlson-value').textContent = '0';
+                return;
+            }
+            // Fetch dynamically computed score
+            fetch('/charlson', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({diagnosticos: diagnoses})
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('charlson-value').textContent = data.charlson_index;
+            })
+            .catch(err => console.error("Error al calcular Charlson:", err));
+        }
+
+        // Initialize badges and score
+        renderBadges();
+        recalcularCharlsonIndex();
+
+        // Bind predict button
+        document.getElementById('predict-btn').addEventListener('click', function() {
+            if (diagnoses.length === 0) {
+                alert("Ingrese al menos un diagnóstico antes de predecir.");
+                return;
+            }
+            
+            const admissionType = document.getElementById('admission-type').value;
+            const modelName = document.getElementById('model-select').value;
+            const dateVal = document.getElementById('admission-date').value;
+            const btn = document.getElementById('predict-btn');
+            
+            btn.disabled = true;
+            btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[20px]">sync</span> CALCULANDO...`;
+            
+            fetch('/predict', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    diagnosticos: diagnoses,
+                    procedimientos: procedures,
+                    es_urgencia: parseInt(admissionType),
+                    model_name: modelName,
+                    fecha_ingreso: dateVal
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined">auto_awesome</span> PREDECIR ESTANCIA`;
+                
+                if (data.error) {
+                    alert("Error en la predicción: " + data.error);
+                    return;
+                }
+                
+                // Update views
+                document.getElementById('charlson-value').textContent = data.charlson_index;
+                document.getElementById('predicted-los-value').textContent = data.predicted_los.toFixed(1);
+                
+                // Update Risk Indicator
+                const riskIndicator = document.getElementById('risk-indicator');
+                const dot = riskIndicator.querySelector('.risk-dot');
+                const label = riskIndicator.querySelector('.risk-text');
+                
+                riskIndicator.className = "flex items-center gap-2 px-4 py-2 rounded-full mt-2 shadow-sm transition-all border";
+                if (data.risk_level === 'high') {
+                    riskIndicator.classList.add('bg-[#ffebee]', 'border-[#ffcdd2]');
+                    label.className = "risk-text text-label-sm font-label-sm text-[#c62828]";
+                    dot.className = "risk-dot w-3 h-3 rounded-full bg-[#c62828] animate-pulse";
+                } else if (data.risk_level === 'medium') {
+                    riskIndicator.classList.add('bg-[#fff3e0]', 'border-[#ffe0b2]');
+                    label.className = "risk-text text-label-sm font-label-sm text-[#ef6c00]";
+                    dot.className = "risk-dot w-3 h-3 rounded-full bg-[#ef6c00] animate-pulse";
+                } else {
+                    riskIndicator.classList.add('bg-[#e8f5e9]', 'border-[#c8e6c9]');
+                    label.className = "risk-text text-label-sm font-label-sm text-[#2e7d32]";
+                    dot.className = "risk-dot w-3 h-3 rounded-full bg-[#2e7d32] animate-pulse";
+                }
+                label.textContent = data.risk_label;
+                
+                // Update Driving Factors
+                const factorsContainer = document.getElementById('driving-factors-container');
+                factorsContainer.innerHTML = '';
+                if (data.driving_factors.length === 0) {
+                    factorsContainer.innerHTML = '<p class="text-label-sm text-outline text-center py-4">No se detectaron factores de gran impacto.</p>';
+                } else {
+                    data.driving_factors.forEach(f => {
+                        const isUp = f.direction === 'up';
+                        const icon = isUp ? 'arrow_upward' : 'arrow_downward';
+                        const colorClass = isUp ? 'bg-error-container text-on-error-container' : 'bg-[#e8f5e9] text-[#2e7d32]';
+                        const textClass = isUp ? 'text-error' : 'text-[#2e7d32]';
+                        
+                        const item = `
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-surface hover:bg-surface-container-low transition-colors group">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded ${colorClass} flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-[16px]">${icon}</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-label-sm font-label-sm text-on-surface">${f.factor}</p>
+                                        <p class="text-[11px] text-on-surface-variant group-hover:text-on-surface transition-colors">${f.description}</p>
+                                    </div>
+                                </div>
+                                <span class="text-label-sm font-label-sm ${textClass} font-bold">${f.impact}</span>
+                            </div>
+                        `;
+                        factorsContainer.insertAdjacentHTML('beforeend', item);
+                    });
+                }
+                
+                // Update comparison values
+                document.getElementById('comp-xgb-val').textContent = data.comparison.xgb.toFixed(1) + 'd';
+                document.getElementById('comp-rf-val').textContent = data.comparison.rf.toFixed(1) + 'd';
+                document.getElementById('comp-ridge-val').textContent = data.comparison.ridge.toFixed(1) + 'd';
+                
+                // Highlight selected model card
+                updateActiveCard(modelName);
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined">auto_awesome</span> PREDECIR ESTANCIA`;
+                console.error(err);
+                alert("Error al conectar con el servidor de inferencia.");
+            });
+        });
+
+        // Add selection listener to comparison cards
+        document.getElementById('card-xgb').addEventListener('click', () => changeSelectedModel('xgboost'));
+        document.getElementById('card-rf').addEventListener('click', () => changeSelectedModel('random_forest'));
+        document.getElementById('card-ridge').addEventListener('click', () => changeSelectedModel('ridge'));
+
+        function changeSelectedModel(modelName) {
+            document.getElementById('model-select').value = modelName;
+            updateActiveCard(modelName);
+            // Trigger predict if values are already computed
+            if (document.getElementById('predicted-los-value').textContent !== '--') {
+                document.getElementById('predict-btn').click();
+            }
+        }
+
+        function updateActiveCard(modelName) {
+            const cards = {
+                'xgboost': document.getElementById('card-xgb'),
+                'random_forest': document.getElementById('card-rf'),
+                'ridge': document.getElementById('card-ridge')
+            };
+            
+            Object.keys(cards).forEach(key => {
+                const card = cards[key];
+                card.className = "bg-surface border border-outline-variant/30 rounded-lg p-4 hover:bg-surface-container-lowest transition-colors cursor-pointer relative";
+                // Remove badge if exists
+                const badge = card.querySelector('.active-badge');
+                if (badge) badge.remove();
+            });
+            
+            const activeCard = cards[modelName];
+            activeCard.className = "bg-surface-container-lowest border-2 border-secondary/50 rounded-lg p-4 soft-shadow relative cursor-pointer";
+            const badge = document.createElement('div');
+            badge.className = "active-badge absolute top-0 right-0 bg-secondary text-on-secondary text-[10px] px-2 py-0.5 rounded-bl-lg rounded-tr-sm font-bold";
+            badge.textContent = "ACTIVO";
+            activeCard.appendChild(badge);
+        }
+    </script>
+</body>
+</html>

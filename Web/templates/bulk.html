@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Predicción Masiva - Clinical Stay Intelligence</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#2f1400",
+                        "primary": "#00355f",
+                        "surface-dim": "#cfdaf1",
+                        "tertiary-fixed-dim": "#ffb780",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#dee8ff",
+                        "secondary-fixed": "#6df8e7",
+                        "secondary-fixed-dim": "#4bdbcb",
+                        "on-primary-container": "#8ebdf9",
+                        "tertiary-container": "#743b00",
+                        "outline": "#727780",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#2d6197",
+                        "outline-variant": "#c2c7d1",
+                        "inverse-on-surface": "#ebf1ff",
+                        "inverse-primary": "#a0c9ff",
+                        "primary-fixed-dim": "#a0c9ff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#e7eeff",
+                        "secondary-container": "#6af5e5",
+                        "surface-variant": "#d8e3fa",
+                        "on-tertiary-fixed-variant": "#6f3800",
+                        "on-primary-fixed": "#001c37",
+                        "on-surface": "#111c2c",
+                        "on-tertiary-container": "#f9a767",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#006f66",
+                        "secondary": "#006a61",
+                        "on-tertiary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "tertiary": "#532800",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0f4c81",
+                        "surface-container-highest": "#d8e3fa",
+                        "primary-fixed": "#d2e4ff",
+                        "on-secondary-fixed": "#00201d",
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#42474f",
+                        "on-primary-fixed-variant": "#07497d",
+                        "surface": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "on-background": "#111c2c",
+                        "inverse-surface": "#263142",
+                        "tertiary-fixed": "#ffdcc4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "stack-lg": "32px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px",
+                        "stack-md": "16px",
+                        "container-max": "1440px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Geist"],
+                        "headline-lg": ["Geist"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Geist"],
+                        "label-md": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "display-lg": ["Geist"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .ai-glow-border {
+            position: relative;
+        }
+        .ai-glow-border::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #00B8A9;
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-on-surface font-body-md text-body-md antialiased h-screen overflow-hidden flex">
+    <!-- SideNavBar -->
+    <nav class="h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-inverse-surface flex flex-col py-8 border-r border-outline-variant dark:border-outline shadow-sm z-20">
+        <div class="px-6 mb-8 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+            </div>
+            <div>
+                <h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary text-lg leading-tight">Clinical Intelligence</h1>
+                <p class="text-label-sm font-label-sm text-on-surface-variant">AI Decision Support</p>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto flex flex-col gap-1">
+            <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/">
+                <span class="material-symbols-outlined">home</span>
+                <span class="text-label-md font-label-md">Predicción Individual</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-inverse-primary font-bold border-r-4 border-primary dark:border-inverse-primary bg-primary-container/20 scale-[0.98]" href="/bulk">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">upload_file</span>
+                <span class="text-label-md font-label-md">Predicción Masiva</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-surface-container transition-colors duration-200" href="/analytics">
+                <span class="material-symbols-outlined">analytics</span>
+                <span class="text-label-md font-label-md">Analytics & Métricas</span>
+            </a>
+        </div>
+        <div class="mt-auto pt-4 px-4 text-center text-xs text-outline">
+            <span>Grupo 16 - Entregable Final</span>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 ml-64 flex flex-col h-screen overflow-hidden bg-[#F8FAFC]">
+        <!-- TopNavBar -->
+        <header class="docked full-width top-0 sticky bg-surface/80 dark:bg-inverse-surface/80 backdrop-blur-xl border-b border-outline-variant dark:border-outline shadow-sm flex justify-between items-center w-full h-16 px-margin-desktop z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary text-xl tracking-tight">Clinical Stay Intelligence</h2>
+                <span class="text-label-sm font-label-sm px-2 py-1 bg-surface-container-high text-on-surface-variant rounded-full border border-outline-variant/30">Predicción por Lotes</span>
+            </div>
+        </header>
+
+        <!-- Scrollable Workspace -->
+        <div class="flex-1 overflow-y-auto p-margin-desktop">
+            <div class="max-w-container-max mx-auto space-y-stack-lg">
+                <!-- Page Header -->
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h1 class="text-headline-lg font-headline-lg text-on-surface mb-2">Predicción Masiva de Pacientes</h1>
+                        <p class="text-body-lg font-body-lg text-on-surface-variant">Suba un archivo CSV con listado de pacientes para calcular estancias de forma masiva.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <a href="/download-template" class="px-4 py-2 border border-outline-variant rounded-lg text-label-md font-label-md flex items-center gap-2 hover:bg-surface-container-low transition-colors bg-surface">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+                            Descargar Plantilla CSV
+                        </a>
+                        <button id="run-batch-btn" class="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-label-md font-label-md flex items-center gap-2 shadow-sm hover:bg-on-secondary-container transition-colors group">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">auto_awesome</span>
+                            Ejecutar Inferencia Masiva
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Layout Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                    <!-- Left Column: Upload & Config -->
+                    <div class="lg:col-span-1 space-y-stack-md">
+                        <!-- Dropzone / File Upload -->
+                        <div id="dropzone" class="bg-surface rounded-xl border border-outline-variant/50 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 flex flex-col items-center justify-center text-center h-64 border-dashed border-2 hover:border-primary hover:bg-surface-container-low transition-all cursor-pointer group">
+                            <input type="file" id="file-input" class="hidden" accept=".csv"/>
+                            <div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-primary" style="font-size: 28px;">cloud_upload</span>
+                            </div>
+                            <h3 class="text-label-md font-label-md font-bold mb-1" id="upload-title">Arrastre o seleccione su archivo</h3>
+                            <p class="text-label-sm font-label-sm text-outline mb-4" id="upload-subtitle">Soporta archivos CSV de pacientes (.csv)</p>
+                            <button class="text-primary text-label-sm font-label-sm font-semibold hover:underline" id="browse-btn">Examinar archivos</button>
+                        </div>
+
+                        <!-- Configuration Card -->
+                        <div class="bg-surface rounded-xl border border-outline-variant/50 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
+                            <h3 class="text-label-md font-label-md font-bold mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary" style="font-size: 18px;">settings_suggest</span>
+                                Parámetros de Ejecución
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Modelo de Inferencia</label>
+                                    <select id="batch-model-select" class="w-full bg-surface border border-outline-variant/50 rounded-lg py-2 px-3 text-label-md font-label-md focus:border-primary focus:ring-1 focus:ring-primary">
+                                        <option value="xgboost">XGBoost (Recomendado)</option>
+                                        <option value="random_forest">Random Forest</option>
+                                        <option value="ridge">Regresión Lineal Base (Ridge)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Umbral de Estancia Larga (Días)</label>
+                                    <div class="flex items-center gap-3">
+                                        <input id="threshold-range" class="w-full accent-primary" max="40" min="5" type="range" value="27"/>
+                                        <span id="threshold-val" class="text-label-sm font-label-sm text-on-surface font-mono w-8">27d</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Results Table -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-surface rounded-xl border border-outline-variant/50 shadow-[0_4px_20px_rgba(0,0,0,0.04)] h-full flex flex-col relative overflow-hidden min-h-[400px]">
+                            <!-- Table Header / Actions -->
+                            <div class="px-6 py-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-bright">
+                                <div class="flex items-center gap-3">
+                                    <h3 class="text-label-md font-label-md font-bold">Resultados del Lote</h3>
+                                    <span id="status-badge" class="px-2 py-0.5 rounded text-label-sm font-label-sm bg-surface-container-high text-on-surface-variant">Sin ejecutar</span>
+                                </div>
+                                <button id="export-btn" class="hidden text-label-sm font-label-sm text-primary flex items-center gap-1 hover:bg-surface-container-low px-2 py-1 rounded transition-colors">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">download</span> Exportar Predicciones CSV
+                                </button>
+                            </div>
+                            <!-- Table Content -->
+                            <div class="flex-1 overflow-auto max-h-[400px]" id="table-container">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-surface-container-lowest sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th class="py-3 px-6 text-label-sm font-label-sm text-outline font-medium uppercase tracking-wider">Patient case_id</th>
+                                            <th class="py-3 px-6 text-label-sm font-label-sm text-outline font-medium uppercase tracking-wider">Estancia Predicha</th>
+                                            <th class="py-3 px-6 text-label-sm font-label-sm text-outline font-medium uppercase tracking-wider">Nivel de Riesgo</th>
+                                            <th class="py-3 px-6 text-label-sm font-label-sm text-outline font-medium uppercase tracking-wider">Diagnóstico Principal</th>
+                                            <th class="py-3 px-6 text-label-sm font-label-sm text-outline font-medium uppercase tracking-wider">Charlson Index</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="results-tbody" class="divide-y divide-outline-variant/20">
+                                        <tr>
+                                            <td colspan="5" class="py-12 text-center text-outline-variant font-label-md">
+                                                Cargue un archivo CSV y haga clic en "Ejecutar Inferencia Masiva"
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Table Footer / Pagination -->
+                            <div class="px-6 py-3 border-t border-outline-variant/30 bg-surface-container-lowest flex justify-between items-center">
+                                <span id="pagination-label" class="text-label-sm font-label-sm text-outline-variant">0 registros procesados</span>
+                            </div>
+                            <!-- AI Highlight Overlay -->
+                            <div class="absolute inset-0 pointer-events-none rounded-xl border border-secondary/20 shadow-[inset_0_0_20px_rgba(0,184,169,0.02)]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let selectedFile = null;
+        let batchResultsId = null;
+
+        // Threshold slider
+        const range = document.getElementById('threshold-range');
+        const rangeVal = document.getElementById('threshold-val');
+        range.addEventListener('input', function() {
+            rangeVal.textContent = this.value + 'd';
+        });
+
+        // File upload event listeners
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+
+        browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-primary', 'bg-surface-container-low');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-primary', 'bg-surface-container-low');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-surface-container-low');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.name.endsWith('.csv')) {
+                alert("Por favor suba únicamente archivos con extensión .csv");
+                return;
+            }
+            selectedFile = file;
+            document.getElementById('upload-title').textContent = file.name;
+            document.getElementById('upload-subtitle').textContent = (file.size / 1024).toFixed(1) + " KB";
+            dropzone.classList.add('border-primary');
+        }
+
+        // Run batch inference
+        document.getElementById('run-batch-btn').addEventListener('click', function() {
+            if (!selectedFile) {
+                alert("Por favor seleccione o arrastre un archivo CSV primero.");
+                return;
+            }
+
+            const modelName = document.getElementById('batch-model-select').value;
+            const threshold = document.getElementById('threshold-range').value;
+            
+            const btn = document.getElementById('run-batch-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">sync</span> Procesando lote...`;
+
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('model_name', modelName);
+            formData.append('threshold', threshold);
+
+            // Set running status
+            const badge = document.getElementById('status-badge');
+            badge.textContent = "Procesando...";
+            badge.className = "px-2 py-0.5 rounded text-label-sm font-label-sm bg-[#FFF3E0] text-[#EF6C00]";
+
+            fetch('/predict-bulk', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined">auto_awesome</span> Ejecutar Inferencia Masiva`;
+
+                if (data.error) {
+                    alert("Error en el procesamiento: " + data.error);
+                    badge.textContent = "Error";
+                    badge.className = "px-2 py-0.5 rounded text-label-sm font-label-sm bg-red-100 text-red-700";
+                    return;
+                }
+
+                // Batch successful
+                badge.textContent = "Completado";
+                badge.className = "px-2 py-0.5 rounded text-label-sm font-label-sm bg-[#E8F5E9] text-[#2E7D32]";
+                
+                // Save batch ID for export
+                batchResultsId = data.batch_id;
+                document.getElementById('export-btn').classList.remove('hidden');
+
+                // Render table rows
+                const tbody = document.getElementById('results-tbody');
+                tbody.innerHTML = '';
+                
+                data.predictions.forEach(p => {
+                    let riskClass = "bg-[#E8F5E9] text-[#2E7D32] border-[#C8E6C9]";
+                    if (p.risk_level === 'high') {
+                        riskClass = "bg-[#FFEBEE] text-[#C62828] border-[#FFCDD2]";
+                    } else if (p.risk_level === 'medium') {
+                        riskClass = "bg-[#FFF3E0] text-[#EF6C00] border-[#FFE0B2]";
+                    }
+
+                    const row = `
+                        <tr class="hover:bg-[#F1F5F9] transition-colors group">
+                            <td class="py-3 px-6 text-label-md font-label-md font-mono text-on-surface">${p.case_id}</td>
+                            <td class="py-3 px-6 text-label-md font-label-md font-bold text-on-surface">${p.predicted_los.toFixed(1)} días</td>
+                            <td class="py-3 px-6">
+                                <span class="px-2 py-1 rounded text-label-sm font-label-sm ${riskClass} border">${p.risk_level.toUpperCase()}</span>
+                            </td>
+                            <td class="py-3 px-6 text-label-md text-on-surface-variant">${p.diagnostico_primario}</td>
+                            <td class="py-3 px-6 text-label-md text-on-surface-variant">${p.charlson_index}</td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+
+                document.getElementById('pagination-label').textContent = `${data.predictions.length} registros procesados correctamente.`;
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined">auto_awesome</span> Ejecutar Inferencia Masiva`;
+                console.error(err);
+                alert("Error al enviar el archivo al servidor.");
+                badge.textContent = "Falla de red";
+                badge.className = "px-2 py-0.5 rounded text-label-sm font-label-sm bg-red-100 text-red-700";
+            });
+        });
+
+        // Export button click
+        document.getElementById('export-btn').addEventListener('click', function() {
+            if (batchResultsId) {
+                window.location.href = `/export-bulk/${batchResultsId}`;
+            }
+        });
+    </script>
+</body>
+</html>
