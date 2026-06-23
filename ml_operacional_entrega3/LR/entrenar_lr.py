@@ -1,4 +1,4 @@
-"""Entrenamiento baseline lineal regularizado (Ridge) por subpoblacion."""
+"""Entrenamiento baseline Ridge con interacciones clinicas por subpoblacion."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from ml_operacional_entrega3.utils.model_workflows import train_lr_model
 
 
 def main() -> None:
-    train_lr_model(alpha=1.0)
+    train_lr_model()
 
 
 if __name__ == "__main__":

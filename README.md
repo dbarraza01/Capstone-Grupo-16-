@@ -196,6 +196,11 @@ python3 ml_operacional_entrega3/RF/entrenar_rf.py
 python3 ml_operacional_entrega3/LR/entrenar_lr.py
 ```
 
+El baseline `LR` corresponde a una Regresion Ridge segmentada con interacciones clinicas:
+
+- `urgente`: `alpha=100`, con `charlson_index * n_diag_total`, `charlson_index * n_procedimientos` y `n_procedimientos * n_diag_total`.
+- `programado`: `alpha=50`, con `charlson_index * n_diag_total` y `charlson_index * n_procedimientos`.
+
 Salidas principales:
 
 - `ml_operacional_entrega3/modelos_guardados/clf_xgb_*.joblib`
@@ -254,7 +259,7 @@ Holdout global con `PLOS = LOS >= 14`:
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | XGB | 2391 | 2.8600 | 7.1668 | 0.8359 | 0.8000 | 0.5878 | 0.6777 |
 | RF | 2391 | 3.0966 | 8.2899 | 0.9118 | 0.8197 | 0.5376 | 0.6494 |
-| LR/Ridge | 2391 | 6.6764 | 69.5687 | 0.8486 | 0.7754 | 0.5197 | 0.6223 |
+| LR/Ridge | 2391 | 3.1666 | 8.8553 | 0.8637 | 0.8625 | 0.4946 | 0.6287 |
 
 Holdout por segmento:
 
@@ -264,14 +269,14 @@ Holdout por segmento:
 | XGB | urgente | 698 | 5.3429 | 10.1270 | 0.7969 | 0.5667 | 0.6623 |
 | RF | programado | 1693 | 2.0470 | 6.1960 | 0.8082 | 0.5960 | 0.6860 |
 | RF | urgente | 698 | 5.6423 | 11.9287 | 0.8273 | 0.5056 | 0.6276 |
-| LR/Ridge | programado | 1693 | 2.6008 | 11.0081 | 0.8000 | 0.5253 | 0.6341 |
-| LR/Ridge | urgente | 698 | 16.5618 | 127.6121 | 0.7623 | 0.5167 | 0.6159 |
+| LR/Ridge | programado | 1693 | 2.0873 | 7.2608 | 0.9400 | 0.4747 | 0.6309 |
+| LR/Ridge | urgente | 698 | 5.7846 | 11.8637 | 0.8273 | 0.5056 | 0.6276 |
 
 Lectura principal:
 
 - XGB es el mejor modelo global por MAE y F1 PLOS.
 - RF tiene la mayor precision PLOS global, pero menor recall que XGB.
-- LR/Ridge funciona como baseline, pero es inestable en el segmento urgente.
+- LR/Ridge queda como baseline lineal competitivo e interpretable; mejora fuertemente frente al Ridge operacional anterior al usar interacciones clinicas y regularizacion por segmento.
 - El segmento urgente presenta mayor error que el programado, lo que respalda tratar ambos grupos por separado.
 
 ## Web Demo

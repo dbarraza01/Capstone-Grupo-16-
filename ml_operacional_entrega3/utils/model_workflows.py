@@ -41,6 +41,20 @@ MODEL_DIR = {
     "rf": "RF",
 }
 
+LR_ALPHA_BY_SEGMENT = {
+    "urgente": 100.0,
+    "programado": 50.0,
+}
+
+LR_BASE_INTERACTIONS = [
+    "int_charlson_diag",
+    "int_charlson_proc",
+]
+
+LR_URGENTE_EXTRA_INTERACTIONS = [
+    "int_proc_diag",
+]
+
 
 def _model_folder(model_name: str) -> Path:
     return Path(__file__).resolve().parents[1] / MODEL_DIR[model_name]
@@ -155,26 +169,78 @@ def evaluate_two_stage_model(model_name: str) -> None:
     print(gap.to_string(index=False))
 
 
-def train_lr_model(alpha: float = 1.0) -> None:
-    print("Entrenamiento operacional baseline LR/Ridge")
+def _add_lr_interactions(df: pd.DataFrame) -> pd.DataFrame:
+    required_cols = ["charlson_index", "n_diag_total", "n_procedimientos"]
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas requeridas para Ridge con interacciones: {missing}")
+
+    out = df.copy()
+    out["int_charlson_diag"] = out["charlson_index"] * out["n_diag_total"]
+    out["int_charlson_proc"] = out["charlson_index"] * out["n_procedimientos"]
+    out["int_proc_diag"] = out["n_procedimientos"] * out["n_diag_total"]
+    return out
+
+
+def _lr_interactions_for_segment(segment: str) -> list[str]:
+    interactions = list(LR_BASE_INTERACTIONS)
+    if segment == "urgente":
+        interactions.extend(LR_URGENTE_EXTRA_INTERACTIONS)
+    return interactions
+
+
+def _prepare_lr_baseline_xy(df: pd.DataFrame, segment: str) -> tuple[pd.DataFrame, pd.Series]:
+    """Replica el Ridge base del equipo usando los splits operacionales actuales."""
+    model_df = _add_lr_interactions(df)
+    drop_cols = [ID_COL, TARGET_COL, URGENCY_COL, "prob_los_14"]
+    X = model_df.drop(columns=[col for col in drop_cols if col in model_df.columns]).copy()
+
+    if segment == "programado" and "int_proc_diag" in X.columns:
+        X = X.drop(columns=["int_proc_diag"])
+
+    bool_cols = X.select_dtypes(include="bool").columns
+    if len(bool_cols) > 0:
+        X[bool_cols] = X[bool_cols].astype(int)
+
+    non_numeric = X.select_dtypes(exclude=[np.number]).columns
+    if len(non_numeric) > 0:
+        raise ValueError(f"Columnas no numericas en features Ridge: {list(non_numeric)}")
+
+    return X, model_df[TARGET_COL].copy()
+
+
+def train_lr_model(alpha: float | None = None) -> None:
+    print("Entrenamiento operacional baseline Ridge con interacciones clinicas")
     for segment in SEGMENTS:
         print(f"\n[LR] Segmento: {segment}")
         train_df = load_segment_split(segment, "train")
-        X, y = prepare_xy(train_df)
-        model = make_lr_regressor(alpha=alpha)
+        X, y = _prepare_lr_baseline_xy(train_df, segment)
+        segment_alpha = float(alpha if alpha is not None else LR_ALPHA_BY_SEGMENT[segment])
+        model = make_lr_regressor(alpha=segment_alpha)
         model.fit(X, y)
         save_model_bundle(
             MODELS_DIR / f"reg_lr_{segment}.joblib",
             model,
             X.columns.tolist(),
-            {"model_name": "lr", "segment": segment, "stage": "baseline_ridge", "alpha": alpha},
+            {
+                "model_name": "lr",
+                "segment": segment,
+                "stage": "baseline_ridge_interactions",
+                "alpha": segment_alpha,
+                "interactions": _lr_interactions_for_segment(segment),
+                "drops_es_urgencia": True,
+                "threshold_los": 14,
+            },
         )
-        print(f"  Modelo LR guardado: reg_lr_{segment}.joblib")
+        print(
+            f"  Modelo Ridge guardado: reg_lr_{segment}.joblib | "
+            f"alpha={segment_alpha:g} | features={len(X.columns)}"
+        )
 
 
 def _predict_lr_split(segment: str, split: str) -> pd.DataFrame:
     df = load_segment_split(segment, split)
-    X, y = prepare_xy(df)
+    X, y = _prepare_lr_baseline_xy(df, segment)
     bundle = load_model_bundle(MODELS_DIR / f"reg_lr_{segment}.joblib")
     model = bundle["model"]
     features = bundle["features"]
@@ -192,7 +258,7 @@ def _predict_lr_split(segment: str, split: str) -> pd.DataFrame:
 
 
 def evaluate_lr_model() -> None:
-    print("Evaluacion train/holdout baseline LR/Ridge")
+    print("Evaluacion train/holdout baseline Ridge con interacciones clinicas")
     rows_by_split = {"train": [], "holdout": []}
     for segment in SEGMENTS:
         print(f"\n[LR] Segmento: {segment}")

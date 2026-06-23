@@ -8,7 +8,7 @@ PLOS se define como `LOS >= 14` dias.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | XGB | 2391 | 2.8600 | 7.1668 | 0.8359 | -0.9624 | 0.4471 | 4.7712 | 0.8000 | 0.5878 | 0.6777 |
 | RF | 2391 | 3.0966 | 8.2899 | 0.9118 | -1.3345 | 0.4550 | 5.3121 | 0.8197 | 0.5376 | 0.6494 |
-| LR | 2391 | 6.6764 | 69.5687 | 0.8486 | 2.7609 | 0.4969 | 8.6341 | 0.7754 | 0.5197 | 0.6223 |
+| LR | 2391 | 3.1666 | 8.8553 | 0.8637 | -0.9015 | 0.4693 | 5.2007 | 0.8625 | 0.4946 | 0.6287 |
 
 ## Holdout por Segmento
 
@@ -18,8 +18,8 @@ PLOS se define como `LOS >= 14` dias.
 | XGB | urgente | 698 | 5.3429 | 10.1270 | 2.4921 | -1.8225 | 0.5172 | 8.9255 | 0.7969 | 0.5667 | 0.6623 |
 | RF | programado | 1693 | 2.0470 | 6.1960 | 0.7103 | -0.8401 | 0.4347 | 3.4905 | 0.8082 | 0.5960 | 0.6860 |
 | RF | urgente | 698 | 5.6423 | 11.9287 | 2.5490 | -2.5336 | 0.5043 | 9.7303 | 0.8273 | 0.5056 | 0.6276 |
-| LR | programado | 1693 | 2.6008 | 11.0081 | 0.5608 | 0.0396 | 0.4885 | 3.8814 | 0.8000 | 0.5253 | 0.6341 |
-| LR | urgente | 698 | 16.5618 | 127.6121 | 2.8208 | 9.3614 | 0.5172 | 20.1619 | 0.7623 | 0.5167 | 0.6159 |
+| LR | programado | 1693 | 2.0873 | 7.2608 | 0.6044 | -0.6517 | 0.4536 | 3.4568 | 0.9400 | 0.4747 | 0.6309 |
+| LR | urgente | 698 | 5.7846 | 11.8637 | 2.4858 | -1.5074 | 0.5072 | 9.4306 | 0.8273 | 0.5056 | 0.6276 |
 
 ## Gap Train vs Holdout
 
@@ -79,30 +79,30 @@ PLOS se define como `LOS >= 14` dias.
 | RF | segmento | urgente | precision_plos_14 | 0.8992 | 0.8273 | -0.0719 | 0.9200 |
 | RF | segmento | urgente | recall_plos_14 | 0.6311 | 0.5056 | -0.1255 | 0.8011 |
 | RF | segmento | urgente | f1_plos_14 | 0.7416 | 0.6276 | -0.1141 | 0.8462 |
-| LR | global | todos | mae | 2.0979 | 6.6764 | 4.5785 | 3.1824 |
-| LR | global | todos | rmse | 6.2024 | 69.5687 | 63.3663 | 11.2165 |
-| LR | global | todos | medae | 0.6707 | 0.8486 | 0.1779 | 1.2653 |
-| LR | global | todos | me | -0.4841 | 2.7609 | 3.2450 | -5.7029 |
-| LR | global | todos | pup | 0.4933 | 0.4969 | 0.0036 | 1.0072 |
-| LR | global | todos | mae_asimetrico_alpha_2 | 3.3889 | 8.6341 | 5.2452 | 2.5477 |
-| LR | global | todos | precision_plos_14 | 0.9129 | 0.7754 | -0.1375 | 0.8494 |
-| LR | global | todos | recall_plos_14 | 0.7037 | 0.5197 | -0.1840 | 0.7386 |
-| LR | global | todos | f1_plos_14 | 0.7947 | 0.6223 | -0.1724 | 0.7830 |
-| LR | segmento | programado | mae | 1.3650 | 2.6008 | 1.2358 | 1.9053 |
-| LR | segmento | programado | rmse | 4.3695 | 11.0081 | 6.6385 | 2.5193 |
-| LR | segmento | programado | medae | 0.4814 | 0.5608 | 0.0794 | 1.1649 |
-| LR | segmento | programado | me | -0.3378 | 0.0396 | 0.3774 | -0.1173 |
-| LR | segmento | programado | pup | 0.4913 | 0.4885 | -0.0028 | 0.9943 |
-| LR | segmento | programado | mae_asimetrico_alpha_2 | 2.2164 | 3.8814 | 1.6649 | 1.7512 |
-| LR | segmento | programado | precision_plos_14 | 0.9317 | 0.8000 | -0.1317 | 0.8586 |
-| LR | segmento | programado | recall_plos_14 | 0.6894 | 0.5253 | -0.1641 | 0.7619 |
-| LR | segmento | programado | f1_plos_14 | 0.7925 | 0.6341 | -0.1583 | 0.8002 |
-| LR | segmento | urgente | mae | 3.8781 | 16.5618 | 12.6837 | 4.2706 |
-| LR | segmento | urgente | rmse | 9.2485 | 127.6121 | 118.3636 | 13.7982 |
-| LR | segmento | urgente | medae | 1.6614 | 2.8208 | 1.1594 | 1.6978 |
-| LR | segmento | urgente | me | -0.8395 | 9.3614 | 10.2009 | -11.1513 |
-| LR | segmento | urgente | pup | 0.4982 | 0.5172 | 0.0190 | 1.0381 |
-| LR | segmento | urgente | mae_asimetrico_alpha_2 | 6.2369 | 20.1619 | 13.9250 | 3.2327 |
-| LR | segmento | urgente | precision_plos_14 | 0.9032 | 0.7623 | -0.1409 | 0.8440 |
-| LR | segmento | urgente | recall_plos_14 | 0.7115 | 0.5167 | -0.1948 | 0.7262 |
-| LR | segmento | urgente | f1_plos_14 | 0.7960 | 0.6159 | -0.1801 | 0.7738 |
+| LR | global | todos | mae | 3.0010 | 3.1666 | 0.1656 | 1.0552 |
+| LR | global | todos | rmse | 9.6423 | 8.8553 | -0.7869 | 0.9184 |
+| LR | global | todos | medae | 0.8681 | 0.8637 | -0.0043 | 0.9950 |
+| LR | global | todos | me | -1.1858 | -0.9015 | 0.2842 | 0.7603 |
+| LR | global | todos | pup | 0.4769 | 0.4693 | -0.0076 | 0.9840 |
+| LR | global | todos | mae_asimetrico_alpha_2 | 5.0944 | 5.2007 | 0.1062 | 1.0209 |
+| LR | global | todos | precision_plos_14 | 0.8651 | 0.8625 | -0.0026 | 0.9970 |
+| LR | global | todos | recall_plos_14 | 0.5452 | 0.4946 | -0.0506 | 0.9072 |
+| LR | global | todos | f1_plos_14 | 0.6689 | 0.6287 | -0.0402 | 0.9400 |
+| LR | segmento | programado | mae | 1.9726 | 2.0873 | 0.1147 | 1.0581 |
+| LR | segmento | programado | rmse | 8.4226 | 7.2608 | -1.1618 | 0.8621 |
+| LR | segmento | programado | medae | 0.6168 | 0.6044 | -0.0123 | 0.9800 |
+| LR | segmento | programado | me | -0.6755 | -0.6517 | 0.0238 | 0.9648 |
+| LR | segmento | programado | pup | 0.4668 | 0.4536 | -0.0131 | 0.9718 |
+| LR | segmento | programado | mae_asimetrico_alpha_2 | 3.2966 | 3.4568 | 0.1602 | 1.0486 |
+| LR | segmento | programado | precision_plos_14 | 0.9064 | 0.9400 | 0.0336 | 1.0371 |
+| LR | segmento | programado | recall_plos_14 | 0.5379 | 0.4747 | -0.0631 | 0.8826 |
+| LR | segmento | programado | f1_plos_14 | 0.6751 | 0.6309 | -0.0442 | 0.9345 |
+| LR | segmento | urgente | mae | 5.4992 | 5.7846 | 0.2854 | 1.0519 |
+| LR | segmento | urgente | rmse | 12.1035 | 11.8637 | -0.2398 | 0.9802 |
+| LR | segmento | urgente | medae | 2.2337 | 2.4858 | 0.2521 | 1.1128 |
+| LR | segmento | urgente | me | -2.4251 | -1.5074 | 0.9177 | 0.6216 |
+| LR | segmento | urgente | pup | 0.5014 | 0.5072 | 0.0057 | 1.0114 |
+| LR | segmento | urgente | mae_asimetrico_alpha_2 | 9.4614 | 9.4306 | -0.0308 | 0.9967 |
+| LR | segmento | urgente | precision_plos_14 | 0.8443 | 0.8273 | -0.0171 | 0.9798 |
+| LR | segmento | urgente | recall_plos_14 | 0.5492 | 0.5056 | -0.0437 | 0.9205 |
+| LR | segmento | urgente | f1_plos_14 | 0.6655 | 0.6276 | -0.0380 | 0.9430 |
