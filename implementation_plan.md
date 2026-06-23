@@ -103,23 +103,52 @@ El proceso de tuning también es **secuencial**: primero encontramos los mejores
 
 ### 4.1 El Macroproceso Completo con Tuning Integrado
 
-El siguiente diagrama muestra el flujo completo desde la separación de datos hasta la evaluación final, incluyendo dónde encaja el tuning. **Todo este proceso se ejecuta de forma independiente para cada subpoblación** (urgentes y no urgentes):
+El siguiente diagrama muestra el flujo completo desde la separación de datos hasta la evaluación final, incluyendo dónde encaja el tuning. Hay dos niveles distintos de partición que no deben confundirse:
+
+1.  **Split operacional 80/20:** se hace una sola vez sobre toda la muestra, antes del tuning. Aquí la estratificación usa la combinación `es_urgencia + tramo_los`, para que el holdout conserve la proporción de pacientes urgentes/programados y de cada tramo de estancia.
+2.  **Folds internos del tuning:** se hacen después, solo dentro del 80% de entrenamiento de cada subpoblación. En el clasificador se usa `StratifiedKFold(5)` para conservar la proporción de la etiqueta binaria `LOS >= 14`; en el regresor se usa `KFold(5)` porque la variable objetivo es continua.
+
+Por lo tanto, el split no se hace "dentro del tuning". El tuning recibe los archivos ya separados en train/holdout y trabaja exclusivamente con el train.
 
 ```text
 ╔═══════════════════════════════════════════════════════════════════════════╗
-║  PARA CADA SUBPOBLACIÓN (Urgentes / No Urgentes):                       ║
+║  PASO 0 — SPLIT OPERACIONAL GLOBAL                                      ║
 ╠═══════════════════════════════════════════════════════════════════════════╣
 ║                                                                         ║
-║  PASO 0 — SEPARACIÓN DE DATOS                                          ║
-║  ├── Separar 80% Entrenamiento / 20% Holdout (test)                    ║
-║  └── El Holdout NO SE TOCA hasta el Paso 5                             ║
+║  0.1 Crear tramos de LOS:                                               ║
+║      0-2, 3-6, 7-13, 14+ (PLOS)                                        ║
+║                                                                         ║
+║  0.2 Crear estrato combinado para cada paciente:                        ║
+║      stratum = es_urgencia + "_" + tramo_los                            ║
+║                                                                         ║
+║      Ejemplos:                                                          ║
+║      urgente_0-2, urgente_3-6, urgente_7-13, urgente_14+                ║
+║      programado_0-2, programado_3-6, programado_7-13, programado_14+    ║
+║                                                                         ║
+║  0.3 Separar 80% Entrenamiento / 20% Holdout usando stratify=stratum    ║
+║                                                                         ║
+║  0.4 Exportar los archivos ya segmentados:                              ║
+║      datos_train_urgente.csv, datos_train_programado.csv                ║
+║      datos_holdout_urgente.csv, datos_holdout_programado.csv            ║
+║                                                                         ║
+║  0.5 El Holdout NO SE TOCA durante tuning ni entrenamiento              ║
+║                                                                         ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  PASOS 1 A 5 — SE EJECUTAN POR SUBPOBLACIÓN                             ║
+║  (Urgente y Programado se entrenan por separado usando sus propios CSV)  ║
+╠═══════════════════════════════════════════════════════════════════════════╣
 ║                                                                         ║
 ║  PASO 1 — TUNING DEL CLASIFICADOR (Etapa 2)                            ║
 ║  ├── Algoritmo: RandomizedSearchCV                                      ║
 ║  ├── Modelo: XGBClassifier o RandomForestClassifier                     ║
-║  ├── CV interna: StratifiedKFold(5) sobre el 80% de entrenamiento      ║
-║  ├── Scoring: ROC-AUC (mide qué tan bueno es separando los de          ║
-║  │   más de 14 días de los de menos)                                    ║
+║  ├── Dataset: solo el train de la subpoblación correspondiente           ║
+║  ├── Etiqueta interna: y_bin = 1 si LOS >= 14, 0 si LOS < 14            ║
+║  ├── CV interna: StratifiedKFold(5) sobre y_bin                         ║
+║  │   Cada fold mantiene una proporción similar de pacientes PLOS/no PLOS║
+║  ├── Scoring: ROC-AUC (mide qué tan bueno es separando los de           ║
+║  │   14+ días de los de menos de 14)                                    ║
 ║  ├── n_iter: 50 combinaciones aleatorias de hiperparámetros             ║
 ║  └── Salida: best_params_clf.json (mejores hiperparámetros              ║
 ║      del clasificador para cada algoritmo)                              ║
@@ -128,7 +157,7 @@ El siguiente diagrama muestra el flujo completo desde la separación de datos ha
 ║  ├── Usar los best_params_clf encontrados en el Paso 1                  ║
 ║  ├── Aplicar cross_val_predict con StratifiedKFold(5) para generar      ║
 ║  │   probabilidades "limpias" (sin leakage) para cada paciente          ║
-║  │   del 80% de entrenamiento                                          ║
+║  │   del 80% de entrenamiento de esa subpoblación                       ║
 ║  └── Salida: Columna 'prob_los_14' añadida al dataset de               ║
 ║      entrenamiento para cada algoritmo correspondiente                  ║
 ║                                                                         ║
@@ -138,7 +167,8 @@ El siguiente diagrama muestra el flujo completo desde la separación de datos ha
 ║  │   TransformedTargetRegressor (con log1p/expm1 para manejar la        ║
 ║  │   distribución asimétrica del LOS)                                   ║
 ║  ├── Dataset: Variables clínicas + columna prob_los_14 del Paso 2       ║
-║  ├── CV interna: KFold(5) sobre el 80% de entrenamiento                ║
+║  ├── CV interna: KFold(5) sobre el 80% de entrenamiento                 ║
+║  │   No es stratified porque el objetivo aquí es continuo: días de LOS  ║
 ║  ├── Scoring: MAE Asimétrico (penaliza 2x la subestimación,            ║
 ║  │   ver explicación abajo)                                             ║
 ║  ├── n_iter: 50 combinaciones aleatorias de hiperparámetros             ║
@@ -161,6 +191,65 @@ El siguiente diagrama muestra el flujo completo desde la separación de datos ha
 ║                                                                         ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 ```
+
+**Ejemplo real de la estratificación del split operacional 80/20**
+
+La estratificación hace que cada combinación `segmento + tramo_los` conserve aproximadamente un 20% de pacientes en holdout:
+
+| Segmento | Tramo LOS | Train | Holdout | % Holdout |
+|---|---:|---:|---:|---:|
+| programado | 0-2 | 3930 | 983 | 20.01% |
+| programado | 3-6 | 2006 | 501 | 19.98% |
+| programado | 7-13 | 440 | 110 | 20.00% |
+| programado | 14+ (PLOS) | 396 | 99 | 20.00% |
+| urgente | 0-2 | 799 | 200 | 20.02% |
+| urgente | 3-6 | 714 | 179 | 20.04% |
+| urgente | 7-13 | 554 | 139 | 20.06% |
+| urgente | 14+ (PLOS) | 721 | 180 | 19.98% |
+
+Esto evita que, por azar, el holdout quede con demasiados pocos pacientes de un tramo importante. Por ejemplo, sin estratificación podría ocurrir que el holdout urgente tenga muy pocos pacientes `14+`, haciendo que la evaluación de PLOS sea poco representativa. Con estratificación, la proporción de cada estrato se conserva casi exactamente.
+
+**Código conceptual del split operacional:**
+
+```python
+tramos = pd.cut(
+    df["los_dias"],
+    bins=[-1, 2, 6, 13, np.inf],
+    labels=["0-2", "3-6", "7-13", "14+ (PLOS)"],
+)
+
+strata = df["es_urgencia"].astype(str) + "_" + tramos.astype(str)
+
+train_df, holdout_df = train_test_split(
+    df,
+    test_size=0.20,
+    random_state=42,
+    stratify=strata,
+)
+```
+
+**Código conceptual del fold interno del clasificador:**
+
+```python
+y_bin = (y_train_los >= 14).astype(int)
+
+cv_clf = StratifiedKFold(
+    n_splits=5,
+    shuffle=True,
+    random_state=42,
+)
+
+search_clf = RandomizedSearchCV(
+    estimator=clasificador,
+    param_distributions=grid_clf,
+    scoring="roc_auc",
+    cv=cv_clf,
+)
+
+search_clf.fit(X_train_segmento, y_bin)
+```
+
+En resumen: el primer `stratify` protege la representatividad del holdout por `urgencia + tramo`. El segundo `StratifiedKFold` protege la representatividad de los folds internos del clasificador por `PLOS/no PLOS`.
 
 > [!IMPORTANT]
 > **¿Por qué el tuning es secuencial y no simultáneo?**
@@ -387,7 +476,24 @@ Para medir objetivamente el rendimiento clínico y de planificación de camas, i
 *   **Error Medio Firmado (ME):** Promedio de `Predicción - Real`. Si es negativo (ej. -2.5 días), indica subestimación sistemática.
 *   **Porcentaje de Pacientes Subestimados (PUP):** Qué porcentaje de pacientes tuvo una estancia real mayor que la predicha.
 *   **MAE Asimétrico:** Error absoluto medio con penalización α para subestimación (la función de scoring del tuning).
-*   **Métricas Segmentadas por Tramos:** Cálculo automático de MAE y MedAE para los tramos `0-2`, `3-6`, `7-13`, `14-26` y `27+` días de estancia real.
+*   **Métricas Segmentadas por Tramos:** Cálculo automático de MAE, RMSE, MedAE, ME, PUP y MAE Asimétrico para los tramos `0-2`, `3-6`, `7-13` y `14+ (PLOS)` días de estancia real.
+*   **Definición Operacional de PLOS:** Paciente con estancia prolongada si `LOS >= 14` días. Esta etiqueta se calcula tanto para el valor real como para la predicción:
+    - `plos_real_14 = 1` si `los_dias_reales >= 14`.
+    - `plos_pred_14 = 1` si `los_dias_predichos >= 14`.
+*   **Precision PLOS 14:** Entre los pacientes que el modelo marcó como PLOS, mide qué proporción realmente tuvo `LOS >= 14`. Responde: "cuando el modelo alerta estancia prolongada, ¿qué tan confiable es esa alerta?".
+    - Fórmula: `TP / (TP + FP)`.
+*   **Recall PLOS 14:** Entre los pacientes que realmente tuvieron `LOS >= 14`, mide qué proporción fue detectada por el modelo. Responde: "de todos los pacientes prolongados reales, ¿cuántos logramos capturar?".
+    - Fórmula: `TP / (TP + FN)`.
+*   **F1 PLOS 14:** Promedio armónico entre Precision y Recall PLOS. Resume el balance entre evitar falsas alarmas y detectar suficientes pacientes prolongados.
+    - Fórmula: `2 * precision * recall / (precision + recall)`.
+*   **Accuracy PLOS 14:** Proporción total de pacientes correctamente clasificados como PLOS o no PLOS.
+    - Fórmula: `(TP + TN) / N`.
+*   **Matriz de Confusión PLOS 14:** Conteo de casos usados para interpretar las métricas de clasificación:
+    - `TP`: PLOS real y PLOS predicho.
+    - `FP`: no PLOS real, pero PLOS predicho.
+    - `FN`: PLOS real, pero no PLOS predicho.
+    - `TN`: no PLOS real y no PLOS predicho.
+*   **Conteos PLOS:** `n_plos_real` y `n_plos_pred` permiten auditar cuántos pacientes prolongados existen realmente y cuántos pacientes fueron marcados por el modelo como prolongados.
 
 ---
 

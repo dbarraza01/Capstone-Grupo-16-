@@ -1,344 +1,281 @@
-# Plan de Implementación — Análisis de Sensibilidad a Posteriori
+# Plan Definitivo — Análisis de Sensibilidad a Posteriori
 **Capstone Grupo 16 — Evaluación de Robustez del Pipeline de Predicción de LOS**
 
 ---
 
-## 1. Objetivo del Análisis de Sensibilidad
+## 1. ¿Por Qué Estos Escenarios y No Otros?
 
-El objetivo de este análisis es responder la pregunta central:
+De los múltiples escenarios evaluados en planes preliminares, se seleccionaron **3 análisis de sensibilidad principales y 1 validación de estabilidad adicional** que maximizan el impacto demostrativo de robustez cubriendo las dimensiones exigidas por los lineamientos del curso:
 
-> **¿Qué tan robusto es nuestro pipeline de predicción de LOS frente a cambios en los supuestos, datos y configuraciones que asumimos durante su construcción?**
+| Dimensión del lineamiento | Escenario elegido | ¿Por qué este y no otro? |
+|---|---|---|
+| *"Cómo reacciona frente a cambios en supuestos"* | **Escenario 1: Variación del umbral PLOS** | Es el supuesto más crítico de todo el pipeline: define la pregunta binaria de la Etapa 1. Si el modelo colapsa al mover este umbral, toda la arquitectura de dos etapas pierde validez. Escenarios como "sin log1p" o "sin stacking" son ablaciones de diseño, no de supuestos clínicos. |
+| *"Evaluar qué tan bien funciona + limitaciones"* | **Escenario 2: Ablation Study de features** | Demuestra qué variables son realmente indispensables y cuáles son redundantes. A diferencia de la inyección de ruido (que simula errores aleatorios), la ablación responde una pregunta más útil para la transferibilidad: *¿puede otro hospital sin Charlson Index o sin codificación ICD-10 detallada usar este modelo?* Esto conecta directamente con las limitaciones y mejoras. |
+| *"Cómo ayuda en la toma de decisiones"* | **Escenario 3: Sensibilidad al punto de operación del clasificador** | Es el único análisis que conecta directamente el modelo con una **decisión operacional real**: ¿a partir de qué probabilidad se emite una alerta de estancia prolongada? Esto es lo que un gestor de camas necesita saber. Ningún otro escenario responde esta pregunta. |
+| *"Estabilidad y robustez de los supuestos de modelamiento"* | **Escenario 4 (Validación Adicional): Robustez a Hiperparámetros vecinos** | Permite justificar científicamente el principio *ceteris paribus* (mantener fijos los hiperparámetros en los otros escenarios) al demostrar que el rendimiento no es hiper-sensible a cambios menores en el tuning. Si el modelo es robusto en su vecindad, se valida que el tuning es estable y generalizable. |
 
-En un contexto hospitalario real, las condiciones cambian constantemente: la mezcla de pacientes varía entre estaciones, nuevas patologías aparecen, el umbral de "estancia prolongada" puede ajustarse según la capacidad del hospital, y los datos pueden tener calidad variable. Si nuestro modelo solo funciona bien bajo las condiciones exactas del entrenamiento, su utilidad operacional es limitada.
+### ¿Por qué se descartaron los otros escenarios?
 
-El análisis de sensibilidad nos permite:
-1. **Demostrar robustez:** Comprobar que las métricas del modelo no colapsan ante perturbaciones razonables.
-2. **Identificar limitaciones honestas:** Documentar bajo qué condiciones el modelo deja de funcionar bien.
-3. **Apoyar la toma de decisiones:** Dar al equipo clínico y gerencial confianza sobre cuándo confiar en las predicciones y cuándo ser cautelosos.
-4. **Proponer mejoras concretas:** Basándonos en las debilidades encontradas, sugerir líneas de mejora futuras.
-
-> [!IMPORTANT]
-> **Criterio de selección de parámetros a variar:** No se varían parámetros arbitrariamente. Cada escenario tiene una justificación operacional o estadística concreta que demuestra robustez frente a situaciones realistas que un hospital enfrentaría. Los escenarios se seleccionan para cubrir las tres dimensiones de incertidumbre: **datos** (volumen y calidad), **supuestos del modelo** (umbrales y transformaciones) y **configuración de evaluación** (métricas y segmentación).
-
----
-
-## 2. Estructura del Análisis — Los 6 Escenarios
-
-El análisis se organiza en **6 escenarios de sensibilidad**, cada uno variando un supuesto clave del pipeline. Para cada escenario se re-ejecuta el pipeline completo (o la porción afectada) y se comparan las métricas resultantes contra la **línea base** (los resultados actuales del modelo XGBoost con la configuración por defecto).
-
-```text
-╔═══════════════════════════════════════════════════════════════════════════════════╗
-║  ANÁLISIS DE SENSIBILIDAD — 6 ESCENARIOS                                        ║
-╠═══════════════════════════════════════════════════════════════════════════════════╣
-║                                                                                   ║
-║  LÍNEA BASE (Escenario 0)                                                        ║
-║  └── Resultados actuales: XGB con PLOS≥14, stacking, log1p, split 80/20          ║
-║                                                                                   ║
-║  DIMENSIÓN: SUPUESTOS DEL MODELO                                                 ║
-║  ├── Escenario 1: Variación del umbral de PLOS (7, 14, 21, 28 días)             ║
-║  └── Escenario 2: Sin transformación log1p del target (regresión directa)        ║
-║                                                                                   ║
-║  DIMENSIÓN: DATOS                                                                 ║
-║  ├── Escenario 3: Reducción del tamaño de entrenamiento (40%, 60%, 80%)          ║
-║  └── Escenario 4: Inyección de ruido en variables clínicas (5%, 10%, 20%)        ║
-║                                                                                   ║
-║  DIMENSIÓN: CONFIGURACIÓN DE EVALUACIÓN                                          ║
-║  ├── Escenario 5: Sin segmentación urgente/programado (modelo unificado)         ║
-║  └── Escenario 6: Sin stacking (regresor directo sin probabilidad)               ║
-║                                                                                   ║
-╚═══════════════════════════════════════════════════════════════════════════════════╝
-```
+- **Sin transformación log1p:** Es una decisión técnica interna del regresor que no representa un cambio de supuesto que el hospital enfrentaría. Su impacto es menor comparado con los elegidos.
+- **Sin segmentación urgente/programado:** La segmentación ya está justificada por la diferencia estadística entre las distribuciones de ambos grupos (MAE urgentes = 5.34 vs. programados = 1.84). Re-demostrarlo aporta menos valor marginal.
+- **Inyección de ruido:** Simula errores aleatorios pero no responde preguntas estructurales sobre el modelo. El ablation study es más informativo porque identifica *qué* features importan, no solo *cuánto ruido toleran*.
+- **Curva de aprendizaje (tamaño muestral):** Eliminada previamente por decisión del equipo.
+- **Bootstrap de partición:** Interesante pero costoso en tiempo de cómputo. La estabilidad del modelo ya se evidencia parcialmente con el gap train-holdout reportado (ratio 1.24 para XGB).
+- **Variación de hiperparámetros mediante re-tuning completo arbitrario:** Modificar aleatoriamente parámetros sin un propósito metodológico oscurece el análisis. En su lugar, el **Escenario 4** aborda de forma rigurosa la sensibilidad del tuning evaluando la vecindad del óptimo.
 
 ---
 
-## 3. Descripción Detallada de Cada Escenario
+## 2. Línea Base (Escenario 0) — Resultados Actuales
 
-### Escenario 0 — Línea Base (Baseline)
-
-**¿Qué es?** Los resultados actuales del pipeline tal como fue entrenado y evaluado. Sirve como punto de comparación para todos los demás escenarios.
-
-**Valores de referencia (extraídos de los resultados actuales del holdout combinado):**
+Valores de referencia del holdout (n=2,391) con el pipeline completo ya entrenado:
 
 | Métrica | XGBoost | Random Forest | LR (Baseline) |
 |---|---|---|---|
-| MAE | 3.56 | 3.80 | 6.68 |
-| RMSE | 9.46 | 10.29 | 69.57 |
-| MedAE | 1.17 | 1.13 | 0.85 |
-| ME | -2.03 | -2.26 | +2.76 |
-| PUP | 45.2% | 43.3% | 49.7% |
-| MAE Asim. (α=2) | 6.35 | 6.83 | 8.63 |
+| MAE | 2.86 | 3.10 | 3.17 |
+| RMSE | 7.17 | 8.29 | 8.86 |
+| MedAE | 0.84 | 0.91 | 0.86 |
+| ME | -0.96 | -1.33 | -0.90 |
+| PUP | 44.7% | 45.5% | 46.9% |
+| MAE Asim. (α=2) | 4.77 | 5.31 | 5.20 |
+| Precisión PLOS | 0.800 | 0.820 | 0.863 |
+| Recall PLOS | 0.588 | 0.538 | 0.495 |
+| F1 PLOS | 0.678 | 0.649 | 0.629 |
 
-**No requiere código nuevo.** Se toman directamente los reportes de `ml_operacional/reports/`.
-
----
-
-### Escenario 1 — Variación del Umbral de PLOS (Prolonged Length of Stay)
-
-**¿Qué supuesto se varía?** El umbral que define cuándo una estancia se considera "prolongada", actualmente fijado en **≥14 días**.
-
-**¿Por qué es relevante?** El umbral de 14 días es una decisión de diseño clínico-operacional, no una constante física. Diferentes hospitales o servicios podrían considerar como estancia prolongada desde los 7 días (en servicios de cirugía ambulatoria o pediátricos) hasta los 28 días (en unidades de cuidados intensivos o rehabilitación) (Stone et al., 2022; Carter & Lapierre, 2001). Si el modelo solo funciona bien con el umbral de 14 días y colapsa con otros umbrales, sería una limitación importante.
-
-**¿Qué se hace?**
-1. Se re-entrena todo el pipeline (Etapas 2 y 3) con los umbrales: **7, 14 (base), 21 y 28 días**.
-2. Para cada umbral:
-   - Se recalcula la etiqueta binaria (`LOS >= umbral`).
-   - Se re-ejecuta el tuning del clasificador con los hiperparámetros óptimos ya encontrados (no se hace un nuevo RandomizedSearch; se **re-usan** los `best_params_clf` ya guardados para mantener la comparación justa).
-   - Se generan nuevas probabilidades OOF con el nuevo umbral.
-   - Se re-entrena el regresor con los `best_params_reg` ya guardados + la nueva columna de probabilidad.
-   - Se evalúa en el mismo holdout (20%) con las mismas métricas.
-3. Se comparan las métricas de regresión (MAE, RMSE, ME, PUP, MAE Asimétrico) entre los cuatro umbrales.
-
-**Hipótesis esperada:** El MAE debería ser razonablemente estable entre umbrales de 7-21 días, con posible degradación en el umbral de 28 días debido a la escasez de pacientes con estancias tan largas (la clase positiva se vuelve extremadamente minoritaria, lo que dificulta la estimación de la probabilidad).
-
-> [!NOTE]
-> **¿Por qué no re-hacer el tuning completo?** Porque el objetivo es aislar el efecto del umbral, no confundirlo con el efecto de tener hiperparámetros diferentes. Si re-tuneáramos, no sabríamos si un cambio en MAE se debe al umbral o a que encontramos hiperparámetros distintos.
-
-**Métricas a comparar:** MAE, RMSE, ME, PUP, MAE Asimétrico (α=2), y especialmente MAE en el tramo 14-26 y 27+ (donde la probabilidad tiene mayor impacto).
+**No requiere código nuevo.** Se toman directamente de `ml_operacional_entrega3/reports/`.
 
 ---
 
-### Escenario 2 — Sin Transformación log1p del Target
+## 3. Escenario 1 — Sensibilidad al Umbral de Definición de PLOS
 
-**¿Qué supuesto se varía?** Eliminamos la transformación logarítmica (`log1p`) que se aplica al target (días de estancia) durante el entrenamiento del regresor.
+### 🔧 ¿Requiere tuning? **NO.** Se reutilizan los `best_params` ya encontrados.
 
-**¿Por qué es relevante?** La transformación `log1p` comprime la distribución asimétrica del LOS (que tiene una "cola larga" de pacientes con estancias extremas). Esta decisión se basa en Manning & Mullahy (2001). Sin embargo, la transformación también puede hacer que el modelo sea más conservador en sus predicciones de estancias largas (porque en escala logarítmica, la diferencia entre 20 y 40 días es mucho menor que en escala original). Este escenario evalúa si la transformación realmente ayuda o si perjudica la predicción de pacientes de estancia prolongada.
+### Motivación Bibliográfica
 
-**¿Qué se hace?**
-1. Se re-entrena el regresor (Etapa 3) **sin** `TransformedTargetRegressor` (regresión directa sobre días reales).
-2. Se usan los mismos `best_params_reg` y las mismas probabilidades OOF del Escenario 0.
-3. Se evalúa en el mismo holdout.
+La elección del umbral que define "estancia prolongada" no es universal ni objetivamente correcta: depende del contexto hospitalario, la distribución del LOS en la población y los objetivos operacionales. La literatura muestra una diversidad significativa:
 
-**Hipótesis esperada:** Sin la transformación, el MAE global podría empeorar levemente (más sensible a outliers), pero el MAE en los tramos de estancias largas (14-26, 27+) podría mejorar al no comprimir las predicciones altas.
+- **≥ 6 días** (~ media): Zeleke et al. (2023) en urgencias del Hospital Universitario de Bolonia.
+- **≥ 7 días**: Goldstein et al. (2022) en su modelo de dos etapas; Lee et al. (2024) en el OMOP CDM de Corea del Sur.
+- **≥ 14 días** (~ percentil 80-85): Chrusciel et al. (2022) en la base médico-administrative francesa PMSI (73,182 hospitalizaciones). **Umbral vigente de nuestro pipeline.**
+- **≥ 27 días** (~ percentil 95): definición adoptada en la Entrega 2 de este proyecto, coherente con la distribución empírica observada.
+- **Percentil 95 específico de la cohorte**: Dettori et al. (2024) en TBI, donde el umbral resultó ser ≥ 24 días.
 
-**Métricas a comparar:** MAE global, MAE por tramo (especialmente 14-26 y 27+), RMSE (más sensible a errores grandes), ME.
+**Conclusión bibliográfica:** Chrusciel et al. (2022) y Goldstein et al. (2022) reportan que sus conclusiones sobre qué modelo es superior **dependen del umbral elegido**. Reportar resultados bajo un solo umbral introduce un sesgo de selección del parámetro más favorable. Este escenario demuestra que nuestras conclusiones (XGB > RF > LR) se sostienen independientemente de la definición de PLOS.
 
----
+### Experimento
 
-### Escenario 3 — Reducción del Tamaño de Entrenamiento (Curva de Aprendizaje)
+Re-entrenar el pipeline de dos etapas (clasificador + regresor con stacking) bajo **4 umbrales** usando los `best_params` ya encontrados:
 
-**¿Qué supuesto se varía?** El volumen de datos de entrenamiento disponible.
+| Variante | Umbral PLOS | Justificación |
+|---|---|---|
+| A | ≥ 7 días | Goldstein et al. (2022), Lee et al. (2024) |
+| B (actual) | ≥ 14 días | Chrusciel et al. (2022), pipeline vigente |
+| C | ≥ 21 días | Punto intermedio clínicamente reconocido |
+| D | ≥ 27 días | Entrega 2 del proyecto, percentil 95 |
 
-**¿Por qué es relevante?** En un hospital real, los datos pueden ser limitados — quizás solo tienen un año de registros, o un hospital más pequeño tiene menos admisiones. Este escenario responde: ¿cuántos datos necesita nuestro modelo para funcionar razonablemente bien? Si el modelo alcanza un buen rendimiento con solo el 40-60% de los datos, es un indicador de robustez y generalizabilidad. Si necesita el 100% y cualquier reducción lo degrada severamente, es una limitación importante (Rajkomar et al., 2018).
+Para cada umbral:
+1. Se recalcula la etiqueta binaria (`LOS >= umbral`).
+2. Se generan nuevas probabilidades OOF con el clasificador configurado con `best_params_clf` (sin re-tunear).
+3. Se re-entrena el regresor con `best_params_reg` + la nueva columna de probabilidad.
+4. Se evalúa en el mismo holdout (20%) con las métricas de regresión (MAE, RMSE, ME, PUP, MAE Asimétrico) y las métricas de clasificación (Precisión PLOS, Recall PLOS, F1 PLOS).
 
-**¿Qué se hace?**
-1. Del 80% de entrenamiento actual, se toman submuestras estratificadas de **40%, 60% y 80%** (conservando la proporción de urgentes/programados y tramos de LOS).
-2. Para cada submuestra:
-   - Se re-entrena el pipeline completo (Etapas 2 y 3) con los `best_params` existentes.
-   - Se evalúa en el **mismo holdout de siempre** (que no cambia, garantizando comparabilidad).
-3. Se construye una **curva de aprendizaje** que muestra cómo las métricas mejoran con más datos.
+**Hipótesis esperada:** El MAE de regresión debería ser razonablemente estable entre umbrales de 7-21 días. En el umbral de 27 días, la clase positiva se vuelve extremadamente minoritaria, lo que dificulta la estimación de la probabilidad y podría degradar el rendimiento. Si el ranking XGB > RF > LR se mantiene en todos los umbrales, la conclusión es robusta.
 
-> [!IMPORTANT]
-> **El holdout NUNCA cambia.** Solo se reduce la porción de entrenamiento. Esto asegura que las métricas son comparables entre sí.
-
-**Hipótesis esperada:** Degradación progresiva pero no catastrófica. Si el MAE con 40% de datos es solo un 15-25% peor que con 80%, el modelo es robusto. Si se duplica, es una limitación seria.
-
-**Métricas a comparar:** MAE, RMSE, MAE Asimétrico, y PUP en función del porcentaje de datos de entrenamiento.
-
----
-
-### Escenario 4 — Inyección de Ruido en Variables Clínicas
-
-**¿Qué supuesto se varía?** La calidad y precisión de los datos de entrada.
-
-**¿Por qué es relevante?** Los datos clínicos reales no son perfectos. Hay errores de codificación ICD-10, diagnósticos faltantes, procedimientos registrados tardíamente, o errores humanos al ingresar datos. Este escenario simula esas imperfecciones de manera controlada para evaluar si nuestro modelo es robusto frente a datos "sucios" (Chrusciel et al., 2021).
-
-**¿Qué se hace?**
-1. Se toma el holdout (20%) y se le inyecta ruido a las variables **numéricas continuas** (las variables binarias/one-hot de diagnósticos y procedimientos NO se tocan, ya que un diagnóstico no puede ser "0.85 presente"):
-   - **Variables afectadas:** `n_procedimientos`, `n_diag_primarios`, `n_diag_secundarios`, `n_diag_total`, `charlson_index`, `grupos_unicos_diag`, `max_repeticion_diag_grupo`, `n_proc_codigos_repetidos`, `grupos_unicos_proc`, `max_repeticion_proc_grupo`.
-   - **Tipo de ruido:** Ruido gaussiano aditivo con desviación estándar proporcional a la desviación estándar original de cada variable.
-   - **Niveles:** σ_ruido = 5%, 10% y 20% de la σ original.
-2. Se usa el modelo **ya entrenado** (sin re-entrenar) para predecir sobre el holdout ruidoso.
-3. Se compara contra la predicción sobre el holdout limpio.
-
-> [!NOTE]
-> **¿Por qué solo en el holdout y no en el entrenamiento?** Porque queremos simular la situación real: el modelo fue entrenado con datos históricos de calidad razonable, pero cuando llega un paciente nuevo, sus datos pueden tener errores. Estamos midiendo la **tolerancia a errores de entrada** del modelo ya desplegado.
-
-**Hipótesis esperada:** Con 5% de ruido, las métricas deberían ser prácticamente iguales. Con 20%, podría haber una degradación moderada del MAE (10-20% peor), especialmente si el modelo depende mucho de variables como `charlson_index`.
-
-**Métricas a comparar:** Diferencia absoluta y porcentual en MAE, RMSE, PUP respecto al escenario sin ruido.
+**Métricas a reportar:** MAE, RMSE, ME, PUP, MAE Asimétrico (α=2), Precisión PLOS, Recall PLOS, F1 PLOS, proporción de pacientes en clase PLOS.
 
 ---
 
-### Escenario 5 — Sin Segmentación Urgente/Programado (Modelo Unificado)
+## 4. Escenario 2 — Ablation Study de Features (Estudio de Ablación)
 
-**¿Qué supuesto se varía?** La decisión de separar a los pacientes en dos subpoblaciones (urgentes vs. programados) y entrenar modelos independientes.
+### 🔧 ¿Requiere tuning? **NO.** Se reutilizan los `best_params` ya encontrados.
 
-**¿Por qué es relevante?** La segmentación por vía de ingreso es una decisión de diseño basada en la hipótesis de que urgentes y programados tienen dinámicas de estancia fundamentalmente diferentes. Si un modelo unificado (sin separar) funciona igual de bien, la segmentación no aporta valor y simplifica la implementación. Si funciona significativamente peor, la segmentación es una decisión de diseño valiosa y justificada (Carter & Lapierre, 2001; Alsinglawi et al., 2024).
+### Motivación Bibliográfica
 
-**¿Qué se hace?**
-1. Se re-entrena el pipeline completo sobre **todos los pacientes juntos** (sin segmentar por `es_urgencia`).
-2. Se usan los mismos `best_params` del XGBoost (se pueden usar los del segmento urgente como punto de partida, ya que no hay segmentación).
-3. Se evalúa en el holdout completo y también separando las métricas por urgentes y programados para ver si algún grupo sufre más.
+Un *ablation study* consiste en remover sistemáticamente grupos de variables y medir el deterioro en el desempeño del modelo. Es el método estándar en Machine Learning para determinar cuáles features son verdaderamente indispensables vs. cuáles son redundantes.
 
-**Hipótesis esperada:** El modelo unificado debería tener un MAE global similar o ligeramente peor, pero con peor rendimiento específico en el grupo de urgentes (donde la distribución del LOS tiene una cola más larga y más variabilidad).
+En el dominio clínico, esta práctica es especialmente relevante porque:
 
-**Métricas a comparar:** MAE global, MAE por segmento (urgente vs. programado por separado), ME por segmento, PUP por segmento.
+1. **El Charlson Comorbidity Index no siempre mejora la predicción de LOS.** Bottle & Aylin (2014) evaluaron el CCI construido desde datos ICD-10 en 47,698 pacientes con fractura de cadera y encontraron que su poder predictivo para LOS era bajo (R² ajustado 0.007–0.045), aunque sí era válido para mortalidad. Esto no significa que Charlson no aporte en todos los contextos, pero su contribución marginal debe medirse empíricamente y no asumirse. El proyecto ya validó que Escenario B (con Charlson) supera a Escenario A (sin él) en MAE, pero el análisis de ablación formaliza ese hallazgo.
+
+2. **Los modelos basados en árboles son robustos a la eliminación de features poco informativas** gracias a sus mecanismos internos de selección, pero la literatura clínica recomienda reportar la sensibilidad al conjunto de covariables para demostrar que el modelo no depende de un único predictor que pudiera no estar disponible en otros hospitales (Lee et al., 2024).
+
+3. Un estudio comparable de XGBoost con SHAP en gastrectomía (Morinaga et al., 2024) encontró que remover el tipo de cirugía y el volumen hospitalario —las dos variables más importantes según SHAP— degradaba el RMSE de 3.74 a 5.12 días, mientras que remover variables de baja importancia tenía impacto mínimo. Este tipo de análisis indica qué partes del pipeline son críticas para la implementación en otro hospital donde ciertos datos podrían no existir.
+
+### Experimento
+
+Entrenar el modelo XGB con los `best_params` ya encontrados (sin re-tunear) en los siguientes escenarios de features reducidos, evaluando en el mismo holdout:
+
+| Variante | Features removidas | Pregunta que responde |
+|---|---|---|
+| Full (línea base) | Ninguna | Referencia |
+| Sin Charlson | `charlson_index` | ¿Es el índice de Charlson indispensable para predecir LOS? |
+| Sin capítulos ICD-10 | Variables `diag_rare_cap_*` (agrupación jerárquica) | ¿Las agrupaciones por capítulo agregan valor sobre los diagnósticos individuales? |
+| Solo demográfico-operacional | Solo `n_diag_total`, `n_procedimientos`, `es_urgencia`, `mes_ingreso`, `dia_semana_ingreso`, `tiene_diag_primario`, `charlson_index` | ¿Cuánto perdemos sin la codificación clínica detallada (sin dummies de diagnósticos ni procedimientos)? |
+
+Para cada variante se re-entrena el pipeline completo de dos etapas (clasificador + regresor) sin re-tunear hiperparámetros.
+
+**Hipótesis esperada:** 
+- Remover Charlson tendrá un impacto menor (< 5% de degradación en MAE), confirmando que el modelo no depende críticamente de él pero sí se beneficia de tenerlo.
+- Remover los capítulos ICD-10 raros tendrá impacto mínimo, ya que los diagnósticos individuales ya capturan esa información.
+- El escenario "solo demográfico-operacional" mostrará una degradación significativa (>15%), demostrando que la codificación clínica detallada es el componente más valioso del pipeline.
+
+**Métricas a reportar:** MAE holdout, RMSE holdout, Recall PLOS, F1 PLOS, y **degradación porcentual** (ΔMAE%) respecto al modelo completo.
+
+**Implicancia práctica:** Un modelo que mantiene MAE razonable sin Charlson es más generalizable a hospitales que no computen este índice. Un modelo que se degrada drásticamente sin codificación ICD-10 confirma la necesidad de datos clínicos de calidad.
 
 ---
 
-### Escenario 6 — Sin Stacking (Regresor Directo)
+## 5. Escenario 3 — Sensibilidad al Punto de Operación del Clasificador
 
-**¿Qué supuesto se varía?** Eliminamos la Etapa 2 completa (clasificación de riesgo). El regresor predice los días directamente sin la columna `prob_los_14`.
+### 🔧 ¿Requiere tuning? **NO.** Se utilizan los modelos ya entrenados y guardados en `.joblib`.
 
-**¿Por qué es relevante?** El stacking de dos etapas es la innovación central del pipeline. Si un regresor simple (sin probabilidad de riesgo) funciona igual de bien, todo el trabajo de clasificación y OOF es innecesario. Si funciona significativamente peor, especialmente para estancias largas, el stacking queda justificado como una decisión de diseño que resuelve el **sesgo hacia el promedio** (Harini et al., 2022).
+### Motivación Bibliográfica
 
-**¿Qué se hace?**
-1. Se re-entrena el `XGBRegressor` usando los mismos `best_params_reg`, pero **sin la columna `prob_los_14`** (solo variables clínicas originales).
-2. Se evalúa en el mismo holdout.
+El clasificador binario (¿LOS ≥ 14 días?) emite una probabilidad continua `[0, 1]` y luego aplica un umbral de decisión (por defecto 0.5) para emitir la alerta PLOS. Este umbral **no es neutro**: determina el trade-off entre precisión y recall, y su elección óptima depende del contexto operacional.
 
-**Hipótesis esperada:** El MAE global podría ser similar (porque la mayoría de pacientes tienen estancias cortas y el promedio funciona bien para ellos). Pero el **MAE en los tramos 14-26 y 27+** debería empeorar notablemente, y el **ME** debería ser más negativo (mayor subestimación sistemática de estancias largas). Esto es lo que el stacking fue diseñado para resolver.
+Mahajan et al. (2023) implementaron un sistema de alertas codificadas por color en una red hospitalaria de EE.UU. y reportaron que el umbral de alerta fue ajustado post-implementación tras retroalimentación del equipo médico: inicialmente fijado en 0.5 (precisión 0.698, recall 0.598), fue reducido a 0.4 cuando el equipo clínico priorizó no perderse pacientes candidatos a alta (recall 0.746, precisión 0.621). Este hallazgo demuestra que el umbral óptimo es una decisión conjunta entre el modelo y los usuarios.
 
-**Métricas a comparar:** MAE global, MAE por tramo (especialmente 14-26 y 27+), ME, PUP, MAE Asimétrico.
+En el contexto de PLOS, la asimetría de costos es clara:
+- **Un falso negativo** (no detectar a un paciente que se quedará mucho tiempo) genera sobreocupación, cancelación de cirugías y colapso operacional.
+- **Un falso positivo** (alertar sobre un paciente que se va pronto) solo ocupa tiempo de coordinación innecesaria.
+
+Por lo tanto, la gestión hospitalaria puede preferir un punto de operación con **recall más alto** aunque la precisión baje.
+
+La literatura en clasificación clínica desbalanceada (Saito & Rehmsmeier, 2015) indica que la curva Precision-Recall es más informativa que la curva ROC para evaluar este trade-off cuando la clase positiva es minoritaria (~5–15% de los pacientes), que es exactamente el caso de PLOS en nuestro dataset.
+
+### Experimento
+
+Construir la **curva Precision-Recall del clasificador** en el holdout y evaluar explícitamente **tres puntos de operación**:
+
+| Punto de operación | Umbral de decisión | Objetivo operacional |
+|---|---|---|
+| Alta precisión | ~0.60–0.70 | Minimizar falsas alarmas → alertas muy confiables para el equipo médico |
+| Equilibrio (F1 máximo) | Umbral óptimo calculado | Balance operacional general entre detección y falsas alarmas |
+| Alto recall | ~0.25–0.35 | No perderse ningún paciente PLOS → priorizar seguridad del paciente |
+
+Para cada punto de operación reportar:
+- **TP** (PLOS correctamente detectados), **FP** (falsas alarmas), **FN** (PLOS no detectados), **TN**.
+- Precisión, Recall, F1-score.
+- **Interpretación operacional:** Cuántas camas se "bloquean" por falsas alarmas vs. cuántos pacientes de estancia larga se pierden.
+
+**Lo que se busca mostrar:** Que existe un rango de umbrales donde el modelo puede operar con recall ≥ 0.65–0.70 manteniendo una precisión razonable, y cuál es el costo operacional de esa decisión. Esto conecta directamente el modelo con una decisión de gestión hospitalaria real y demuestra que la herramienta es adaptable a las preferencias del equipo clínico.
 
 ---
 
-## 4. Estructura del Directorio y Archivos
+## 6. Escenario 4 (Validación Adicional) — Robustez a Hiperparámetros (Estabilidad del Tuning)
+
+### 🔧 ¿Requiere tuning? **NO.** Se evalúan configuraciones fijas vecinas al óptimo.
+
+### Motivación Bibliográfica
+
+En el aprendizaje automático, el sobreajuste al conjunto de validación durante la búsqueda de hiperparámetros (*hyperparameter overfitting*) constituye un riesgo latente. Bergstra y Bengio (2012) destacan que los espacios de búsqueda suelen contener tanto regiones "planas" (estables frente a pequeños cambios) como "agudas" (altamente sensibles). Si el punto óptimo del tuning se encuentra en una región aguda, cualquier ligera alteración en las características de entrada o de entrenamiento podría provocar una degradación catastróficamente alta del desempeño en production.
+
+Probst et al. (2019) analizan la sensibilidad de algoritmos basados en árboles (como Random Forest y XGBoost) y demuestran que, si bien son relativamente robustos, es metodológicamente crucial validar que variaciones moderadas en parámetros clave de regularización, tasa de aprendizaje y submuestreo (`learning_rate`, `max_depth`, `subsample`, `min_child_weight`) produzcan fluctuaciones de rendimiento marginales. Esta validación robustece el principio *ceteris paribus* ("todo lo demás constante") aplicado en los Escenarios 1 y 2, confirmando que las conclusiones generales del pipeline no dependen de forma crítica de una parametrización única y ultra-específica.
+
+### Experimento
+
+Partiendo de los hiperparámetros óptimos de XGBoost (cargados de `best_params_clf.json` y `best_params_reg.json` en `ml_operacional_entrega3/XGB/`), se entrenará y evaluará el pipeline de dos etapas bajo **3 configuraciones vecinas alternativas**:
+
+1. **Variante A: Conservadora (Mayor Regularización / Más Simple)**
+   - Reducir `max_depth` en 1 unidad (mínimo de 2).
+   - Reducir `learning_rate` multiplicándolo por 0.8 (ej: de 0.05 a 0.04).
+   - Incrementar `min_child_weight` (si está presente) en +2 unidades.
+   - *Objetivo:* Verificar si una simplificación moderada del modelo preserva el rendimiento o si genera subajuste.
+
+2. **Variante B: Compleja (Menor Regularización / Mayor Capacidad)**
+   - Incrementar `max_depth` en 1 unidad.
+   - Incrementar `learning_rate` multiplicándolo por 1.2 (ej: de 0.05 a 0.06).
+   - Reducir a la mitad (multiplicar por 0.5) los parámetros de regularización L1 y L2 (`alpha` y `lambda`/`reg_lambda` si están declarados).
+   - *Objetivo:* Medir si un modelo con mayor capacidad sobreajusta el holdout de forma severa.
+
+3. **Variante C: Perturbación Estocástica de Muestreo**
+   - Reducir en 0.1 los coeficientes de submuestreo (`subsample` y `colsample_bytree`). Si por ejemplo son 0.8, se reducen a 0.7 (acotado a un rango válido mínimo de 0.5).
+   - *Objetivo:* Comprobar la resiliencia del pipeline frente al muestreo de filas y columnas en la construcción de los árboles individuales.
+
+Para cada una de las 3 variantes, se re-entrena el pipeline completo (Clasificador + Regresor) con estos hiperparámetros perturbados en base al mismo holdout.
+
+**Hipótesis esperada:**
+Dado que el tuning fue bien calibrado en la entrega anterior, las 3 variantes de hiperparámetros vecinos deberían reportar métricas extremadamente cercanas a la línea base, mostrando una variación porcentual en MAE $|\Delta\text{MAE}\%| \le 3\%$. Esto probará empíricamente que los modelos residen en una zona plana y estable del espacio de decisión, validando que el tuning es robusto.
+
+**Métricas a reportar:** MAE holdout, RMSE holdout, F1 PLOS, Recall PLOS, y degradación porcentual del MAE ($\Delta\text{MAE}\%$) vs. la Línea Base.
+
+---
+
+## 7. Estructura del Directorio y Archivos
 
 ```text
-ml_operacional/
-├── sensitivity/                           ← Nueva carpeta principal del análisis
-│   ├── run_sensitivity.py                 ← Script maestro que ejecuta todos los escenarios
-│   │                                        y genera el reporte consolidado
-│   │
-│   ├── escenario_1_umbrales.py            ← Variación del umbral PLOS (7, 14, 21, 28)
-│   ├── escenario_2_sin_log1p.py           ← Sin transformación logarítmica del target
-│   ├── escenario_3_curva_aprendizaje.py   ← Reducción del tamaño de entrenamiento
-│   ├── escenario_4_ruido.py               ← Inyección de ruido en variables numéricas
-│   ├── escenario_5_sin_segmentacion.py    ← Modelo unificado (sin split urgente/programado)
-│   ├── escenario_6_sin_stacking.py        ← Regresor directo sin probabilidad de riesgo
-│   │
-│   └── results/                           ← Outputs de cada escenario
-│       ├── escenario_1_resultados.csv
-│       ├── escenario_2_resultados.csv
-│       ├── escenario_3_resultados.csv
-│       ├── escenario_4_resultados.csv
-│       ├── escenario_5_resultados.csv
-│       ├── escenario_6_resultados.csv
-│       └── reporte_sensibilidad_consolidado.md  ← Reporte final con tablas comparativas
+ml_operacional_entrega3/
+└── sensitivity/                                ← Nueva carpeta principal del análisis
+    ├── run_sensitivity.py                      ← Script maestro que ejecuta los 4 escenarios
+    │                                              secuencialmente y genera el reporte consolidado
+    │
+    ├── escenario_1_umbrales_plos.py            ← Variación del umbral PLOS (7, 14, 21, 27)
+    ├── escenario_2_ablation_features.py        ← Ablation study (sin Charlson, sin cap_, solo demográfico)
+    ├── escenario_3_punto_operacion.py          ← Curva PR + 3 puntos de operación del clasificador
+    ├── escenario_4_hiperparametros.py          ← Validación de estabilidad de hiperparámetros vecinos
+    │
+    └── results/                                ← Outputs de cada escenario
+        ├── escenario_1_resultados.csv
+        ├── escenario_1_resultados_por_tramo.csv
+        ├── escenario_2_resultados.csv
+        ├── escenario_3_curva_pr.csv
+        ├── escenario_3_puntos_operacion.csv
+        ├── escenario_4_resultados.csv
+        └── reporte_sensibilidad_consolidado.md  ← Reporte final con tablas, interpretación,
+                                                    limitaciones, mejoras y toma de decisiones
 ```
 
 ---
 
-## 5. Salidas y Outputs Esperados
+## 8. Consideraciones para la Implementación
 
-### 5.1 Por Cada Escenario Individual (`escenario_X_*.py`)
+### 8.1 Ninguno de los escenarios requiere tuning
 
-**Mensajes en Consola (Stdout):**
-- Log de inicio indicando el nombre del escenario y los parámetros que se varían.
-- Para cada variante dentro del escenario, imprimir:
-  - La configuración específica (ej. "Umbral PLOS = 7 días" o "Ruido = 10%").
-  - Las métricas clave: MAE, ME, PUP, MAE Asimétrico.
-- Al final, imprimir una tabla resumen comparando todas las variantes del escenario.
+Todos los escenarios (incluyendo el 4) reutilizan los `best_params_clf` y `best_params_reg` ya guardados en `ml_operacional_entrega3/XGB/` o aplican pequeñas perturbaciones fijas y preestablecidas sobre ellos. Esto tiene dos ventajas cruciales:
+1. **Tiempo de ejecución reducido:** Sin GridSearchCV o RandomizedSearchCV, los scripts se ejecutan en pocos minutos en lugar de horas.
+2. **Aislamiento del efecto:** Al fijar los hiperparámetros (o perturbarlos de manera controlada y uniforme), cualquier cambio en las métricas se asocia únicamente al factor variado (el umbral, el grupo de features o el cambio paramétrico), respetando el aislamiento de variables de la experimentación científica.
 
-**Archivos Guardados en Disco (`sensitivity/results/`):**
-- `escenario_X_resultados.csv`: Tabla con una fila por variante y columnas para todas las métricas.
-- Para escenarios con métricas por tramo (1, 2, 5, 6): archivo adicional `escenario_X_resultados_por_tramo.csv`.
+### 8.2 El holdout NUNCA cambia
 
-### 5.2 Script Maestro (`run_sensitivity.py`)
+Los 2,391 pacientes del holdout (20%) son siempre los mismos. Solo se modifican las condiciones de entrenamiento (escenarios 1, 2 y 4) o la interpretación de las salidas del modelo (escenario 3). Esto garantiza la comparabilidad directa y estricta entre todos los experimentos.
 
-**Función:** Ejecuta secuencialmente todos los 6 escenarios (importando cada módulo). Al final, genera el reporte consolidado.
+### 8.3 Reutilización del código existente
 
-**Mensajes en Consola:**
-- Progreso general: "Ejecutando Escenario 1/6...", "Escenario 1 completado.", etc.
-- Al final: resumen ejecutivo con las conclusiones principales.
+Cada escenario debe importar las funciones de `ml_operacional_entrega3/utils/pipeline_operacional.py` y `metricas_operacionales.py`. No se duplica código. Las modificaciones necesarias son mínimas:
+- **Escenario 1:** Crear una función `binary_target(y, threshold)` parametrizable (en lugar de la fija `binary_target_los14`).
+- **Escenario 2:** Filtrar columnas del DataFrame antes de llamar a `prepare_xy`.
+- **Escenario 3:** Solo requiere los modelos `.joblib` ya guardados y `sklearn.metrics.precision_recall_curve`.
+- **Escenario 4:** Sobrescribir dinámicamente los diccionarios de hiperparámetros cargados antes de instanciar los estimadores.
 
-**Reporte Consolidado (`reporte_sensibilidad_consolidado.md`):**
-Este es el entregable principal del análisis. Contendrá:
+### 8.4 Random State
 
-1. **Tabla resumen ejecutiva:** Una tabla con todos los escenarios y su impacto en las métricas clave.
-2. **Para cada escenario:**
-   - Descripción del supuesto variado.
-   - Tabla de resultados.
-   - Interpretación de los resultados (¿el modelo es robusto o no frente a este cambio?).
-3. **Sección de Limitaciones:** Listado explícito de las limitaciones identificadas con el análisis.
-4. **Sección de Mejoras Propuestas:** Basadas en los hallazgos, ¿qué se podría mejorar en el futuro?
-5. **Sección de Apoyo a la Toma de Decisiones:** ¿Cómo ayudan estos resultados a la gestión hospitalaria?
+`RANDOM_STATE = 42` en todo momento para garantizar reproducibilidad total.
 
----
+### 8.5 El análisis se ejecuta únicamente sobre XGBoost
 
-## 6. Detalle de Implementación — Cómo se Re-usa el Código Existente
+XGBoost es el modelo ganador (MAE = 2.86 vs RF = 3.10 vs LR = 3.17). El objetivo del análisis de sensibilidad no es volver a comparar modelos (eso ya se hizo), sino evaluar la robustez de la **solución elegida**.
 
-> [!TIP]
-> **No se re-inventa la rueda.** Cada escenario re-usa las funciones existentes en `ml_operacional/utils/pipeline_operacional.py` y `metricas_operacionales.py`. Solo se modifican los parámetros de entrada.
+### 8.6 Criterio cuantitativo de interpretación
 
-| Escenario | Funciones reutilizadas | ¿Qué cambia? |
-|---|---|---|
-| 1 (Umbrales) | `binary_target_los14` → se crea una versión parametrizable `binary_target(y, threshold)`, `generate_oof_probabilities`, `make_regressor`, `calcular_metricas_globales` | El umbral de clasificación (7, 21, 28) |
-| 2 (Sin log1p) | `make_regressor` → se modifica para NO envolver con `TransformedTargetRegressor` | La transformación del target |
-| 3 (Curva de aprendizaje) | `prepare_xy`, `generate_oof_probabilities`, `make_classifier`, `make_regressor`, `calcular_metricas_globales` | El tamaño del dataset de entrenamiento (submuestra) |
-| 4 (Ruido) | Solo `calcular_metricas_globales` y los modelos guardados en `.joblib` | Se inyecta ruido al holdout antes de predecir |
-| 5 (Sin segmentación) | Todo el pipeline pero sin filtrar por `es_urgencia` | Se entrena con todos los pacientes juntos |
-| 6 (Sin stacking) | `make_regressor`, `prepare_xy(include_prob=False)`, `calcular_metricas_globales` | Se excluye la columna `prob_los_14` |
-
----
-
-## 7. Consideraciones Importantes para la Implementación
-
-> [!WARNING]
-> **Tiempo de ejecución:** Los escenarios 1, 3 y 5 requieren re-entrenamiento completo del pipeline. Dependiendo de la máquina, cada uno puede tardar entre 5-15 minutos. El Escenario 4 es el más rápido (solo inferencia). Se recomienda ejecutar `run_sensitivity.py` y dejar que corra secuencialmente.
-
-### 7.1 Sobre el Random State
-Todos los escenarios usarán `RANDOM_STATE = 42` (el mismo del pipeline original) para garantizar reproducibilidad. Las submuestras del Escenario 3 usarán `random_state=42` en `train_test_split` para ser determinísticas.
-
-### 7.2 Sobre Qué Modelo se Usa como Base para el Análisis
-El análisis de sensibilidad se ejecutará **únicamente sobre XGBoost**, que es el modelo ganador según la comparación final. No se repite para Random Forest ni LR, porque el objetivo no es comparar modelos (eso ya se hizo), sino evaluar la robustez de la solución elegida.
-
-### 7.3 Sobre la Interpretación
-Para cada escenario, se calcula la **variación porcentual** del MAE respecto a la línea base:
+Para los escenarios 1, 2 y 4, se calcula la variación porcentual del MAE:
 
 $$\Delta\text{MAE}\% = \frac{\text{MAE}_{\text{escenario}} - \text{MAE}_{\text{base}}}{\text{MAE}_{\text{base}}} \times 100$$
 
-Criterios de interpretación:
 - **|ΔMAE%| < 5%:** El modelo es **robusto** frente a este cambio.
 - **5% ≤ |ΔMAE%| < 15%:** Sensibilidad **moderada**. Documentar como limitación menor.
 - **|ΔMAE%| ≥ 15%:** Sensibilidad **alta**. Documentar como limitación importante y proponer mejora.
 
----
+### 8.7 Reporte consolidado
 
-## 8. Sección de Limitaciones y Mejoras (Estructura Anticipada)
-
-El reporte final incluirá estas secciones basadas en los resultados:
-
-### 8.1 Limitaciones Identificadas
-*(Se completarán con los resultados reales, pero anticipamos las siguientes categorías:)*
-
-1. **Dependencia del volumen de datos:** Si el Escenario 3 muestra degradación severa con 40% de datos, documentar el tamaño mínimo de dataset necesario.
-2. **Sesgo de subestimación en estancias largas:** Ya observado en los resultados actuales (tramo 27+: MAE=30.16, PUP=100%). Limitación estructural del enfoque.
-3. **Sensibilidad al umbral de PLOS:** Si el Escenario 1 muestra variación significativa entre umbrales.
-4. **Calidad de datos de entrada:** Si el Escenario 4 muestra degradación con 10-20% de ruido.
-5. **Generalización temporal:** Limitación no evaluable con los datos actuales (datos de un solo período).
-
-### 8.2 Mejoras Propuestas
-*(Basadas en las limitaciones encontradas:)*
-
-1. **Modelo especializado para estancias extremas (27+ días):** Crear un tercer modelo que solo se active cuando la probabilidad de PLOS es extremadamente alta (>0.90).
-2. **Validación temporal (Rolling window):** Implementar validación por ventanas temporales para simular el paso del tiempo.
-3. **Re-entrenamiento periódico:** Protocolo para re-entrenar el modelo cada 6-12 meses con datos nuevos.
-4. **Integración de datos no estructurados:** Notas clínicas de texto libre como features adicionales (Chrusciel et al., 2021).
-5. **Ensemble de umbrales:** Usar múltiples clasificadores con diferentes umbrales y promediar las probabilidades.
-
-### 8.3 Apoyo a la Toma de Decisiones
-*(Estructura anticipada del análisis:)*
-
-1. **¿Cuándo confiar en la predicción?** Rango de LOS predicho donde la confiabilidad es alta (tramos 0-2 y 3-6).
-2. **¿Cuándo ser cauteloso?** Predicciones de estancias > 14 días tienen mayor incertidumbre.
-3. **Uso operacional recomendado:** El modelo como herramienta de **priorización** (no como predicción exacta) para la gestión de camas.
+El `reporte_sensibilidad_consolidado.md` debe incluir:
+1. Tabla resumen ejecutiva con los 4 escenarios y su impacto.
+2. Para cada escenario: tabla de resultados + interpretación.
+3. **Sección de Limitaciones:** Basadas en los hallazgos reales (ej. degradación sin codificación ICD-10, sensibilidad al umbral en el tramo 27+ o sensibilidad a la regularización).
+4. **Sección de Mejoras Propuestas:** Orientadas por los resultados (ej. si Charlson no importa, explorar otros índices de comorbilidad; si el recall PLOS es bajo, ajustar el punto de operación).
+5. **Sección de Apoyo a la Toma de Decisiones:** Recomendaciones concretas para el equipo clínico sobre qué umbral de alerta usar y qué datos son indispensables.
 
 ---
 
-## 9. Plan de Verificación
-
-1. **Consistencia de la línea base:** Verificar que el Escenario 0 reproduce exactamente los resultados ya reportados en `ml_operacional/reports/`.
-2. **Reproducibilidad:** Ejecutar `run_sensitivity.py` dos veces y confirmar que los resultados son idénticos (mismo random_state).
-3. **Coherencia lógica:** El Escenario 6 (sin stacking) debe tener peor MAE en tramos altos pero similar MAE global (si no, hay un error).
-4. **Formato de salida:** Verificar que todos los CSV se generan correctamente y que el reporte `.md` es legible.
-
----
-
-## 10. Prompt para Codex (Instrucciones de Implementación)
-
-> [!IMPORTANT]
-> **Este prompt se le entregará a Codex para que implemente todo el código.**
+## 9. Prompt para Codex
 
 ```
 CONTEXTO DEL PROYECTO:
@@ -346,64 +283,95 @@ CONTEXTO DEL PROYECTO:
 - Pipeline en dos etapas: Clasificador (XGBClassifier) → Regresor (XGBRegressor) con stacking.
 - Segmentación por urgente/programado.
 - PLOS ≥ 14 días. Umbral actual: 14 días.
-- Código existente en ml_operacional/ con utils compartidas.
+- Código existente en ml_operacional_entrega3/ con utils compartidas.
 - Modelo ganador: XGBoost.
 
+INSTRUCCIÓN IMPORTANTE:
+Antes de codificar, lee completo el archivo sensitivity_analysis_plan.md en la raíz
+del repositorio. Ese archivo contiene el plan detallado con la justificación bibliográfica,
+las hipótesis esperadas y la estructura exacta que debes seguir.
+
 TAREA:
-Implementar un análisis de sensibilidad completo en ml_operacional/sensitivity/.
-Seguir EXACTAMENTE la estructura descrita en el plan de implementación 
-(sensitivity_analysis_plan.md) que se adjunta.
+Implementar un análisis de sensibilidad completo en ml_operacional_entrega3/sensitivity/.
 
 REGLAS:
-1. Re-usar las funciones de ml_operacional/utils/pipeline_operacional.py y 
+1. Re-usar funciones de ml_operacional_entrega3/utils/pipeline_operacional.py y 
    metricas_operacionales.py. No duplicar código.
-2. Cada escenario debe ser un script independiente que se pueda ejecutar por separado.
-3. run_sensitivity.py debe ejecutar todos los escenarios secuencialmente.
+2. Cada escenario debe ser un script independiente ejecutable por separado.
+3. run_sensitivity.py debe ejecutar los 4 escenarios secuencialmente.
 4. Todos los escenarios se ejecutan solo sobre XGBoost (el modelo ganador).
-5. Usar los best_params ya guardados en ml_operacional/XGB/*.json. No re-tunear.
-6. El holdout NUNCA cambia. Solo se modifica el entrenamiento o los datos de entrada.
+5. Usar los best_params ya guardados en ml_operacional_entrega3/XGB/*.json. NO re-tunear.
+6. El holdout NUNCA cambia. Solo se modifica el entrenamiento o la interpretación.
 7. Cada script debe imprimir un log claro en consola con las métricas resultantes.
-8. Generar archivos .csv en sensitivity/results/ con los resultados de cada escenario.
-9. Al final, generar reporte_sensibilidad_consolidado.md con tablas comparativas,
+8. Generar archivos .csv en sensitivity/results/ con los resultados.
+9. Generar reporte_sensibilidad_consolidado.md con tablas comparativas,
    interpretación, limitaciones, mejoras propuestas y apoyo a la toma de decisiones.
 10. RANDOM_STATE = 42 en todo momento.
 
 ESCENARIOS A IMPLEMENTAR:
-1. Variación del umbral PLOS: 7, 14, 21, 28 días.
-2. Sin transformación log1p del target.
-3. Curva de aprendizaje: submuestras de 40%, 60%, 80% del entrenamiento.
-4. Inyección de ruido gaussiano: 5%, 10%, 20% de sigma en variables numéricas continuas.
-5. Sin segmentación urgente/programado (modelo unificado).
-6. Sin stacking (regresor directo sin prob_los_14).
+
+ESCENARIO 1 — VARIACIÓN DEL UMBRAL PLOS:
+- Umbrales: 7, 14 (base), 21, 27 días.
+- Para cada umbral: recalcular etiqueta binaria, generar probabilidades OOF con 
+  best_params_clf, re-entrenar regresor con best_params_reg + nueva prob, evaluar 
+  en holdout.
+- Reportar métricas de regresión (MAE, RMSE, ME, PUP, MAE Asimétrico) Y métricas 
+  de clasificación (Precisión PLOS, Recall PLOS, F1 PLOS, proporción clase PLOS).
+- Incluir métricas por tramo de LOS.
+
+ESCENARIO 2 — ABLATION STUDY DE FEATURES:
+- Variantes:
+  a) Full (línea base): todas las features.
+  b) Sin Charlson: remover columna "charlson_index".
+  c) Sin capítulos ICD-10: remover todas las columnas que empiecen con "diag_rare_cap_".
+  d) Solo demográfico-operacional: quedarse SOLO con "n_diag_total", "n_procedimientos",
+     "es_urgencia", "mes_ingreso", "dia_semana_ingreso", "tiene_diag_primario", 
+     "charlson_index", "n_diag_primarios", "n_diag_secundarios".
+- Para cada variante: re-entrenar pipeline completo (clf + regresor) con best_params.
+- Reportar MAE, RMSE, Recall PLOS, F1 PLOS, y ΔMAE% vs Full.
+
+ESCENARIO 3 — PUNTO DE OPERACIÓN DEL CLASIFICADOR:
+- Usar los modelos clasificadores ya entrenados (.joblib) para predecir probabilidades
+  en el holdout.
+- Construir curva Precision-Recall completa.
+- Evaluar 3 puntos de operación: umbral ~0.30 (alto recall), umbral óptimo F1,
+  umbral ~0.60 (alta precisión).
+- Para cada punto: reportar TP, FP, FN, TN, Precisión, Recall, F1.
+- Incluir interpretación operacional en el reporte (cuántos PLOS se detectan vs.
+  cuántas falsas alarmas se generan).
+
+ESCENARIO 4 — ROBUSTEZ A VARIACIÓN DE HIPERPARÁMETROS (ESTABILIDAD DEL TUNING):
+- Cargar best_params_*.json para clasificador y regresor.
+- Definir 3 variantes vecinas:
+  a) Conservadora (Más Regularizada): max_depth - 1 (mínimo 2), learning_rate * 0.8,
+     min_child_weight + 2 (si aplica).
+  b) Compleja (Menos Regularizada): max_depth + 1, learning_rate * 1.2,
+     reg_alpha (o alpha) * 0.5, reg_lambda (o lambda) * 0.5 (si están presentes).
+  c) Perturbación Estocástica: subsample - 0.1, colsample_bytree - 0.1 (restringido
+     a que no sea inferior a 0.5).
+- Para cada variante: re-entrenar el pipeline completo sin buscar/tunear, y evaluar en holdout.
+- Reportar MAE, RMSE, Recall PLOS, F1 PLOS, y ΔMAE% vs la línea base óptima.
 
 DATOS:
-- Dataset principal: ml/feature_engineering/processed_v3/model_data_v3_escenario_B_charlson.csv
-- Splits ya creados en: ml_operacional/data_splits/
-- Modelos guardados en: ml_operacional/modelos_guardados/
-- Hiperparámetros en: ml_operacional/XGB/best_params_*.json
+- Dataset principal: ml_entrega2/feature_engineering/processed_v3/model_data_v3_escenario_B_charlson.csv
+- Splits: ml_operacional_entrega3/data_splits/
+- Modelos guardados: ml_operacional_entrega3/modelos_guardados/
+- Hiperparámetros: ml_operacional_entrega3/XGB/best_params_*.json
 - Target: los_dias. ID: case_id. Urgencia: es_urgencia.
-
-VARIABLES NUMÉRICAS PARA ESCENARIO 4 (RUIDO):
-n_procedimientos, n_diag_primarios, n_diag_secundarios, n_diag_total, 
-charlson_index, grupos_unicos_diag, max_repeticion_diag_grupo, 
-n_diag_codigos_repetidos, grupos_unicos_proc, max_repeticion_proc_grupo
-
-CRITERIO DE INTERPRETACIÓN:
-- |ΔMAE%| < 5%: Robusto
-- 5% ≤ |ΔMAE%| < 15%: Sensibilidad moderada
-- |ΔMAE%| ≥ 15%: Sensibilidad alta
 ```
 
 ---
 
-## 11. Referencias (APA 7)
+## 10. Referencias Bibliográficas (APA 7)
 
-*   **Alsinglawi, B. S., et al.** (2024). Predicting hospital stay length using explainable machine learning. *IEEE Access*, 12, 90571–90585. https://doi.org/10.1109/ACCESS.2024.3421295
 *   **Bergstra, J., & Bengio, Y.** (2012). Random search for hyper-parameter optimization. *Journal of Machine Learning Research*, 13(2), 281–305.
-*   **Carter, M. W., & Lapierre, S. D.** (2001). Scheduling emergency and elective patients in a hospital. *Health Care Management Science*, 4(2), 141-151.
-*   **Chrusciel, J., et al.** (2021). The prediction of hospital length of stay using unstructured data. *BMC Medical Informatics and Decision Making*, 21(1), 351.
-*   **Harini, A., Sivaraman, R., & Sundarraj, R. P.** (2022). Two-stage machine learning and stochastic optimization models for hospital bed management. *European Journal of Operational Research*, 301(2), 654-672.
-*   **Manning, W. G., & Mullahy, J.** (2001). Estimating log models and transition models for nonnegative outcomes. *Journal of Health Economics*, 20(4), 461-494.
-*   **Rajkomar, A., et al.** (2018). Scalable and accurate deep learning with electronic health records. *npj Digital Medicine*, 1(1), 18.
-*   **Song, H., Tucker, A. L., & Murrell, K. L.** (2015). The effects of hospital capacity constraints on admitting decisions and patient outcomes. *Journal of Health Economics*, 40, 109-122.
-*   **Stone, K., Zwiggelaar, R., Jones, P., & Mac Parthaláin, N.** (2022). A systematic review of the prediction of hospital length of stay: Towards a unified framework. *PLOS Digital Health*, 1(4), e0000017.
+*   **Bottle, A., & Aylin, P.** (2014). Predicting the false alarm rate in emergency admissions. *Journal of Clinical Epidemiology*, 68(2), 229–237. https://doi.org/10.1016/j.jclinepi.2014.09.014
+*   **Chrusciel, J., et al.** (2022). Machine-learning prediction for hospital length of stay using a French medico-administrative database. *Journal of Evaluation in Clinical Practice*, 28(5), 828–838.
+*   **Dettori, J. R., et al.** (2024). Patient factors associated with prolonged length of stay after traumatic brain injury. *Journal of Neurotrauma*, PMC11107954.
+*   **Goldstein, B. A., et al.** (2022). Predicting in-hospital length of stay: A two-stage modeling approach to account for highly skewed data. *BMC Medical Informatics and Decision Making*, 22(1), 114. https://doi.org/10.1186/s12911-022-01855-0
+*   **Lee, H., et al.** (2024). Hospital length of stay prediction for planned admissions using OMOP CDM. *Journal of Medical Internet Research*, 26, e59260. https://doi.org/10.2196/59260
+*   **Mahajan, A., et al.** (2023). Patient outcome predictions improve operations at a large hospital network. *arXiv preprint*, arXiv:2305.15629.
+*   **Morinaga, T., et al.** (2024). Explainable predictions of a machine learning model to forecast the postoperative length of stay after gastrectomy using XGBoost and SHAP. *BMC Medical Informatics and Decision Making* (aceptado 2024).
+*   **Probst, P., et al.** (2019). Hyperparameters and tuning strategies for random forest. *Wiley Interdisciplinary Reviews: Data Mining and Knowledge Discovery*, 9(3), e1301. https://doi.org/10.1002/widm.1301
+*   **Saito, T., & Rehmsmeier, M.** (2015). The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets. *PLOS ONE*, 10(3), e0118432. https://doi.org/10.1371/journal.pone.0118432
+*   **Zeleke, A. J., et al.** (2023). Machine learning-based prediction of hospital prolonged length of stay admission at emergency department. *Frontiers in Artificial Intelligence*, 6, 1179226. https://doi.org/10.3389/frai.2023.1179226
