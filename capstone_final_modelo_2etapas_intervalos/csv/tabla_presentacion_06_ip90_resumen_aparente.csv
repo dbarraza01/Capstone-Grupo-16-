@@ -1,0 +1,7 @@
+Modelo,Calibración IP90,Cobertura global,Ancho global medio,Cobertura 14+,Ancho 14+ medio
+LR,global,90.0%,13.84,35.1%,16.65
+RF,global,90.0%,13.99,47.3%,15.46
+XGB,global,90.0%,12.82,43.0%,14.27
+LR,segmento_pred_tramo,89.8%,14.82,74.6%,50.35
+RF,segmento_pred_tramo,89.7%,12.56,80.6%,40.18
+XGB,segmento_pred_tramo,89.7%,11.67,77.8%,37.37

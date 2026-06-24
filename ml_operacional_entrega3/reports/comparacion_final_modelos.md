@@ -21,7 +21,76 @@ PLOS se define como `LOS >= 14` dias.
 | LR | programado | 1693 | 2.0873 | 7.2608 | 0.6044 | -0.6517 | 0.4536 | 3.4568 | 0.9400 | 0.4747 | 0.6309 |
 | LR | urgente | 698 | 5.7846 | 11.8637 | 2.4858 | -1.5074 | 0.5072 | 9.4306 | 0.8273 | 0.5056 | 0.6276 |
 
-## Gap Train vs Holdout
+## Holdout por Tramo LOS
+
+Los tramos `0-2`, `3-6` y `7-13` corresponden a LOS < 14 dias. Son clinicamente relevantes porque concentran la mayor parte de los casos.
+
+| modelo | tramo | n_casos | mae | rmse | medae | me | pup | mae_asimetrico_alpha_2 | pct_error_abs_le_1d | pct_error_abs_le_3d | pct_error_abs_le_7d | los_real_promedio | los_pred_promedio | n_plos_pred | recall_plos_14 | f1_plos_14 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| XGB | 0-2 | 1183 | 0.7935 | 1.6208 | 0.4754 | 0.7041 | 0.1716 | 0.8382 | 0.7946 | 0.9637 | 0.9924 | 1.2299 | 1.9341 | 4 | 0.0000 | 0.0000 |
+| XGB | 3-6 | 680 | 1.5665 | 2.6294 | 0.9859 | -0.2235 | 0.6868 | 2.4616 | 0.5044 | 0.8912 | 0.9721 | 4.0324 | 3.8089 | 12 | 0.0000 | 0.0000 |
+| XGB | 7-13 | 249 | 4.0996 | 4.9236 | 3.6032 | -1.7626 | 0.7189 | 7.0307 | 0.1004 | 0.4016 | 0.8755 | 9.0281 | 7.2655 | 25 | 0.0000 | 0.0000 |
+| XGB | 14+ (PLOS) | 279 | 13.6682 | 19.7624 | 10.4781 | -9.1154 | 0.7885 | 25.0600 | 0.0573 | 0.1649 | 0.3226 | 30.9821 | 21.8667 | 164 | 0.5878 | 0.7404 |
+| RF | 0-2 | 1183 | 0.8514 | 1.6334 | 0.4739 | 0.7701 | 0.1970 | 0.8921 | 0.7777 | 0.9459 | 0.9907 | 1.2299 | 2.0000 | 1 | 0.0000 | 0.0000 |
+| RF | 3-6 | 680 | 1.6466 | 2.7319 | 1.0873 | -0.1591 | 0.6529 | 2.5495 | 0.4691 | 0.8706 | 0.9750 | 4.0324 | 3.8733 | 9 | 0.0000 | 0.0000 |
+| RF | 7-13 | 249 | 4.2662 | 5.3186 | 3.9321 | -1.6443 | 0.7149 | 7.2214 | 0.1004 | 0.4096 | 0.8554 | 9.0281 | 7.3838 | 23 | 0.0000 | 0.0000 |
+| RF | 14+ (PLOS) | 279 | 15.1064 | 23.1127 | 10.4378 | -12.8466 | 0.8351 | 29.0830 | 0.0323 | 0.1219 | 0.3226 | 30.9821 | 18.1355 | 150 | 0.5376 | 0.6993 |
+| LR | 0-2 | 1183 | 0.8361 | 1.6868 | 0.4739 | 0.7383 | 0.2156 | 0.8850 | 0.7633 | 0.9577 | 0.9932 | 1.2299 | 1.9682 | 2 | 0.0000 | 0.0000 |
+| LR | 3-6 | 680 | 1.4116 | 2.2467 | 0.9937 | -0.2619 | 0.6574 | 2.2483 | 0.5029 | 0.9059 | 0.9868 | 4.0324 | 3.7704 | 5 | 0.0000 | 0.0000 |
+| LR | 7-13 | 249 | 3.7904 | 4.5775 | 3.5733 | -2.3083 | 0.7791 | 6.8397 | 0.1365 | 0.4177 | 0.9116 | 9.0281 | 6.7198 | 15 | 0.0000 | 0.0000 |
+| LR | 14+ (PLOS) | 279 | 16.7691 | 25.0790 | 11.4384 | -8.1581 | 0.8100 | 29.2327 | 0.0251 | 0.1004 | 0.2724 | 30.9821 | 22.8240 | 138 | 0.4946 | 0.6619 |
+
+## Sintesis LOS < 14
+
+Resumen ponderado por cantidad de casos en los tramos no PLOS (`0-2`, `3-6`, `7-13`).
+
+| modelo | n_casos_los_lt_14 | mae_los_lt_14 | rmse_los_lt_14 | me_los_lt_14 | pup_los_lt_14 | mae_asim_los_lt_14 | pct_le_1d_los_lt_14 | pct_le_3d_los_lt_14 | pct_le_7d_los_lt_14 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| LR | 2112 | 1.3697 | 2.3852 | 0.0571 | 0.4242 | 2.0260 | 0.6056 | 0.8774 | 0.9815 |
+| XGB | 2112 | 1.4322 | 2.5604 | 0.1147 | 0.4020 | 2.0909 | 0.6193 | 0.8741 | 0.9721 |
+| RF | 2112 | 1.5100 | 2.6893 | 0.1863 | 0.4048 | 2.1719 | 0.5985 | 0.8584 | 0.9697 |
+
+## Interpretacion Clinica Final
+
+- El mejor MAE global en holdout es XGB (2.8600).
+- Para LOS < 14 dias, que concentra la mayoria de los casos, el menor MAE ponderado es LR (1.3697).
+- En el tramo 0-2 dias gana XGB (MAE 0.7935); en 3-6 gana LR (MAE 1.4116); en 7-13 gana LR (MAE 3.7904).
+- En PLOS, el mejor recall lo obtiene XGB (0.5878), lo que reduce el riesgo de no anticipar estancias prolongadas.
+- Lectura clinica: LR/Ridge es el modelo mas fuerte si se prioriza estrictamente el desempeno en LOS < 14 dias. XGB es el mejor candidato operacional si se necesita un unico modelo balanceado, porque combina el mejor MAE global, buen rendimiento en el tramo mas frecuente 0-2 y mejor deteccion de PLOS.
+
+## Estabilidad del Modelo (K-Fold sobre Train)
+
+Este diagnostico reentrena la receta final de cada modelo en 5 folds del train operacional y evalua el fold restante. No vuelve a tunear hiperparametros y no usa el holdout final.
+
+| modelo | n_folds | n_casos_promedio_fold | mae | rmse | medae | me | pup | mae_asimetrico_alpha_2 | precision_plos_14 | recall_plos_14 | f1_plos_14 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| LR | 5 | 1912 | 3.5997 +/- 0.6743 | 16.8949 +/- 14.7682 | 0.9286 +/- 0.0327 | -0.9863 +/- 0.5266 | 0.4778 +/- 0.0216 | 5.8927 +/- 0.7831 | 0.8150 +/- 0.0269 | 0.4906 +/- 0.0316 | 0.6123 +/- 0.0311 |
+| RF | 5 | 1912 | 3.3173 +/- 0.1703 | 9.7119 +/- 0.5887 | 0.9197 +/- 0.0197 | -1.5666 +/- 0.1135 | 0.4823 +/- 0.0149 | 5.7593 +/- 0.3100 | 0.7919 +/- 0.0296 | 0.5290 +/- 0.0295 | 0.6338 +/- 0.0246 |
+| XGB | 5 | 1912 | 3.1007 +/- 0.1267 | 8.3368 +/- 0.6178 | 0.8867 +/- 0.0260 | -1.1778 +/- 0.1274 | 0.4584 +/- 0.0201 | 5.2399 +/- 0.2448 | 0.7730 +/- 0.0272 | 0.6132 +/- 0.0278 | 0.6835 +/- 0.0207 |
+
+## Diagnostico de Sobreajuste Train vs Holdout
+
+El gap compara el rendimiento del modelo final ya entrenado contra el holdout. Gaps grandes en MAE/RMSE o caidas fuertes de recall/F1 PLOS indican mayor riesgo de sobreajuste.
+
+| modelo | metrica | train | holdout | gap_holdout_minus_train | ratio_holdout_train |
+| --- | --- | --- | --- | --- | --- |
+| XGB | mae | 2.3023 | 2.8600 | 0.5576 | 1.2422 |
+| XGB | rmse | 5.8586 | 7.1668 | 1.3082 | 1.2233 |
+| XGB | mae_asimetrico_alpha_2 | 3.8562 | 4.7712 | 0.9150 | 1.2373 |
+| XGB | recall_plos_14 | 0.7081 | 0.5878 | -0.1203 | 0.8301 |
+| XGB | f1_plos_14 | 0.7966 | 0.6777 | -0.1189 | 0.8507 |
+| RF | mae | 2.7150 | 3.0966 | 0.3816 | 1.1405 |
+| RF | rmse | 8.1849 | 8.2899 | 0.1051 | 1.0128 |
+| RF | mae_asimetrico_alpha_2 | 4.7186 | 5.3121 | 0.5935 | 1.1258 |
+| RF | recall_plos_14 | 0.6705 | 0.5376 | -0.1329 | 0.8018 |
+| RF | f1_plos_14 | 0.7686 | 0.6494 | -0.1192 | 0.8448 |
+| LR | mae | 3.0010 | 3.1666 | 0.1656 | 1.0552 |
+| LR | rmse | 9.6423 | 8.8553 | -0.7869 | 0.9184 |
+| LR | mae_asimetrico_alpha_2 | 5.0944 | 5.2007 | 0.1062 | 1.0209 |
+| LR | recall_plos_14 | 0.5452 | 0.4946 | -0.0506 | 0.9072 |
+| LR | f1_plos_14 | 0.6689 | 0.6287 | -0.0402 | 0.9400 |
+
+## Gap Train vs Holdout Detalle
 
 | modelo | alcance | segmento | metrica | train | holdout | gap_holdout_minus_train | ratio_holdout_train |
 | --- | --- | --- | --- | --- | --- | --- | --- |

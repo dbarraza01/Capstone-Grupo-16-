@@ -10,7 +10,7 @@ De los múltiples escenarios evaluados en planes preliminares, se seleccionaron 
 | Dimensión del lineamiento | Escenario elegido | ¿Por qué este y no otro? |
 |---|---|---|
 | *"Cómo reacciona frente a cambios en supuestos"* | **Escenario 1: Variación del umbral PLOS** | Es el supuesto más crítico de todo el pipeline: define la pregunta binaria de la Etapa 1. Si el modelo colapsa al mover este umbral, toda la arquitectura de dos etapas pierde validez. Escenarios como "sin log1p" o "sin stacking" son ablaciones de diseño, no de supuestos clínicos. |
-| *"Evaluar qué tan bien funciona + limitaciones"* | **Escenario 2: Ablation Study de features** | Demuestra qué variables son realmente indispensables y cuáles son redundantes. A diferencia de la inyección de ruido (que simula errores aleatorios), la ablación responde una pregunta más útil para la transferibilidad: *¿puede otro hospital sin Charlson Index o sin codificación ICD-10 detallada usar este modelo?* Esto conecta directamente con las limitaciones y mejoras. |
+| *"Evaluar qué tan bien funciona + limitaciones"* | **Escenario 2: Ablation Study de features y componentes** | Demuestra qué variables y qué etapas del pipeline son realmente indispensables y cuáles son redundantes. Al incluir la eliminación de la probabilidad del clasificador, responde a la pregunta de si la arquitectura de 2 etapas es justificada frente a un modelo simple de 1 etapa. |
 | *"Cómo ayuda en la toma de decisiones"* | **Escenario 3: Sensibilidad al punto de operación del clasificador** | Es el único análisis que conecta directamente el modelo con una **decisión operacional real**: ¿a partir de qué probabilidad se emite una alerta de estancia prolongada? Esto es lo que un gestor de camas necesita saber. Ningún otro escenario responde esta pregunta. |
 | *"Estabilidad y robustez de los supuestos de modelamiento"* | **Escenario 4 (Validación Adicional): Robustez a Hiperparámetros vecinos** | Permite justificar científicamente el principio *ceteris paribus* (mantener fijos los hiperparámetros en los otros escenarios) al demostrar que el rendimiento no es hiper-sensible a cambios menores en el tuning. Si el modelo es robusto en su vecindad, se valida que el tuning es estable y generalizable. |
 
@@ -73,18 +73,18 @@ Re-entrenar el pipeline de dos etapas (clasificador + regresor con stacking) baj
 | D | ≥ 27 días | Entrega 2 del proyecto, percentil 95 |
 
 Para cada umbral:
-1. Se recalcula la etiqueta binaria (`LOS >= umbral`).
-2. Se generan nuevas probabilidades OOF con el clasificador configurado con `best_params_clf` (sin re-tunear).
-3. Se re-entrena el regresor con `best_params_reg` + la nueva columna de probabilidad.
-4. Se evalúa en el mismo holdout (20%) con las métricas de regresión (MAE, RMSE, ME, PUP, MAE Asimétrico) y las métricas de clasificación (Precisión PLOS, Recall PLOS, F1 PLOS).
+1. Se recalcula la etiqueta binaria (`LOS >= umbral`) para el entrenamiento y el holdout.
+2. Se generan nuevas probabilidades Out-Of-Fold (OOF) ejecutando la función de validación cruzada (`generate_oof_probabilities`) con el clasificador configurado con `best_params_clf`.
+3. Se re-entrena el regresor con `best_params_reg` + la nueva columna de probabilidad OOF (`prob_los_x`).
+4. Se evalúa en el mismo holdout (20%) con las métricas de regresión y clasificación.
 
 **Hipótesis esperada:** El MAE de regresión debería ser razonablemente estable entre umbrales de 7-21 días. En el umbral de 27 días, la clase positiva se vuelve extremadamente minoritaria, lo que dificulta la estimación de la probabilidad y podría degradar el rendimiento. Si el ranking XGB > RF > LR se mantiene en todos los umbrales, la conclusión es robusta.
 
-**Métricas a reportar:** MAE, RMSE, ME, PUP, MAE Asimétrico (α=2), Precisión PLOS, Recall PLOS, F1 PLOS, proporción de pacientes en clase PLOS.
+**Métricas a reportar (CSV):** `umbral_plos`, `mae`, `rmse`, `me`, `pup`, `mae_asimetrico`, `precision_plos`, `recall_plos`, `f1_plos`, `proporcion_plos`.
 
 ---
 
-## 4. Escenario 2 — Ablation Study de Features (Estudio de Ablación)
+## 4. Escenario 2 — Ablation Study de Features y Componentes
 
 ### 🔧 ¿Requiere tuning? **NO.** Se reutilizan los `best_params` ya encontrados.
 
@@ -104,33 +104,33 @@ En el dominio clínico, esta práctica es especialmente relevante porque:
 
 Entrenar el modelo XGB con los `best_params` ya encontrados (sin re-tunear) en los siguientes escenarios de features reducidos, evaluando en el mismo holdout:
 
-| Variante | Features removidas | Pregunta que responde |
+| Variante | Features/Componentes removidos | Pregunta que responde |
 |---|---|---|
 | Full (línea base) | Ninguna | Referencia |
-| Sin Charlson | `charlson_index` | ¿Es el índice de Charlson indispensable para predecir LOS? |
-| Sin capítulos ICD-10 | Variables `diag_rare_cap_*` (agrupación jerárquica) | ¿Las agrupaciones por capítulo agregan valor sobre los diagnósticos individuales? |
-| Solo demográfico-operacional | Solo `n_diag_total`, `n_procedimientos`, `es_urgencia`, `mes_ingreso`, `dia_semana_ingreso`, `tiene_diag_primario`, `charlson_index` | ¿Cuánto perdemos sin la codificación clínica detallada (sin dummies de diagnósticos ni procedimientos)? |
+| Sin Charlson | Columna `charlson_index` | ¿Es el índice de Charlson indispensable para predecir LOS? |
+| Sin capítulos ICD-10 | Columnas que empiezan con `diag_rare_cap_` y `proc_rare_sec_` | ¿Las agrupaciones por capítulo agregan valor sobre los diagnósticos individuales? |
+| Solo demográfico-operacional | Mantener SOLO `n_diag_total`, `n_procedimientos`, `es_urgencia`, `mes_ingreso`, `dia_semana_ingreso`, `tiene_diag_primario`, `charlson_index`, `n_diag_primarios`, `n_diag_secundarios`. Remover todas las dummies de diagnósticos (`diag_`) y procedimientos (`proc_`). | ¿Cuánto perdemos sin la codificación clínica detallada (sin dummies de diagnósticos ni procedimientos)? |
+| Sin Clasificador (1 Etapa) | Remover componente de la Etapa 1. Entrenar XGBRegressor de forma directa excluyendo la probabilidad del clasificador (`prob_los_14`). | ¿La arquitectura en 2 etapas con la probabilidad del clasificador realmente aporta valor neto frente a un regresor directo de 1 etapa? |
 
-Para cada variante se re-entrena el pipeline completo de dos etapas (clasificador + regresor) sin re-tunear hiperparámetros.
+Para cada variante se re-entrena el pipeline completo sin re-tunear hiperparámetros.
 
 **Hipótesis esperada:** 
 - Remover Charlson tendrá un impacto menor (< 5% de degradación en MAE), confirmando que el modelo no depende críticamente de él pero sí se beneficia de tenerlo.
 - Remover los capítulos ICD-10 raros tendrá impacto mínimo, ya que los diagnósticos individuales ya capturan esa información.
 - El escenario "solo demográfico-operacional" mostrará una degradación significativa (>15%), demostrando que la codificación clínica detallada es el componente más valioso del pipeline.
+- El escenario "sin clasificador" mostrará una degradación intermedia, demostrando el impacto que la probabilidad del clasificador de la primera etapa tiene al actuar como guía del regresor.
 
-**Métricas a reportar:** MAE holdout, RMSE holdout, Recall PLOS, F1 PLOS, y **degradación porcentual** (ΔMAE%) respecto al modelo completo.
-
-**Implicancia práctica:** Un modelo que mantiene MAE razonable sin Charlson es más generalizable a hospitales que no computen este índice. Un modelo que se degrada drásticamente sin codificación ICD-10 confirma la necesidad de datos clínicos de calidad.
+**Métricas a reportar (CSV):** `variante`, `mae`, `rmse`, `recall_plos`, `f1_plos`, `delta_mae_pct`.
 
 ---
 
-## 5. Escenario 3 — Sensibilidad al Punto de Operación del Clasificador
+## 5. Escenario 3 — Sensibilidad al Punto de Operación del Clasificador (Políticas Clínicas)
 
 ### 🔧 ¿Requiere tuning? **NO.** Se utilizan los modelos ya entrenados y guardados en `.joblib`.
 
 ### Motivación Bibliográfica
 
-El clasificador binario (¿LOS ≥ 14 días?) emite una probabilidad continua `[0, 1]` y luego aplica un umbral de decisión (por defecto 0.5) para emitir la alerta PLOS. Este umbral **no es neutro**: determina el trade-off entre precisión y recall, y su elección óptima depende del contexto operacional.
+El clasificador binario (¿LOS ≥ 14 días?) emite una probabilidad continua `[0, 1]` y luego aplica un umbral de decisión para emitir la alerta PLOS. Este umbral **no es neutro**: determina el trade-off entre precisión y recall, y su elección óptima depende del contexto operacional del hospital.
 
 Mahajan et al. (2023) implementaron un sistema de alertas codificadas por color en una red hospitalaria de EE.UU. y reportaron que el umbral de alerta fue ajustado post-implementación tras retroalimentación del equipo médico: inicialmente fijado en 0.5 (precisión 0.698, recall 0.598), fue reducido a 0.4 cuando el equipo clínico priorizó no perderse pacientes candidatos a alta (recall 0.746, precisión 0.621). Este hallazgo demuestra que el umbral óptimo es una decisión conjunta entre el modelo y los usuarios.
 
@@ -140,24 +140,23 @@ En el contexto de PLOS, la asimetría de costos es clara:
 
 Por lo tanto, la gestión hospitalaria puede preferir un punto de operación con **recall más alto** aunque la precisión baje.
 
-La literatura en clasificación clínica desbalanceada (Saito & Rehmsmeier, 2015) indica que la curva Precision-Recall es más informativa que la curva ROC para evaluar este trade-off cuando la clase positiva es minoritaria (~5–15% de los pacientes), que es exactamente el caso de PLOS en nuestro dataset.
+### Experimento (Sensibilidad de Políticas)
 
-### Experimento
+Para evitar sesgar el análisis hacia la optimización directa en el holdout, evaluamos el rendimiento operacional bajo **3 políticas clínicas predefinidas con supuestos operacionales fijos**:
 
-Construir la **curva Precision-Recall del clasificador** en el holdout y evaluar explícitamente **tres puntos de operación**:
-
-| Punto de operación | Umbral de decisión | Objetivo operacional |
+| Política Clínica | Umbral fijo | Supuesto Operacional del Hospital |
 |---|---|---|
-| Alta precisión | ~0.60–0.70 | Minimizar falsas alarmas → alertas muy confiables para el equipo médico |
-| Equilibrio (F1 máximo) | Umbral óptimo calculado | Balance operacional general entre detección y falsas alarmas |
-| Alto recall | ~0.25–0.35 | No perderse ningún paciente PLOS → priorizar seguridad del paciente |
+| **Política B: Alta Seguridad (Alto Recall)** | **0.35** | *"Prioridad absoluta de camas críticas"*. Tolera falsos positivos con tal de no perderse ningún paciente de estancia larga en riesgo de colapsar la unidad. |
+| **Política A: Base / Equilibrio (Default)** | **0.50** | *"Balance Operacional Standard"*. Punto neutro del clasificador. |
+| **Política C: Eficiencia (Alta Precisión)** | **0.65** | *"Alertas confiables para evitar fatiga"*. Evita alertar al personal innecesariamente, emitiendo notificaciones solo cuando el riesgo es muy evidente. |
 
-Para cada punto de operación reportar:
-- **TP** (PLOS correctamente detectados), **FP** (falsas alarmas), **FN** (PLOS no detectados), **TN**.
-- Precisión, Recall, F1-score.
-- **Interpretación operacional:** Cuántas camas se "bloquean" por falsas alarmas vs. cuántos pacientes de estancia larga se pierden.
+Para cada política, Codex calculará las métricas en el holdout utilizando las predicciones de probabilidad `prob_riesgo` brutas del clasificador ya entrenado.
 
-**Lo que se busca mostrar:** Que existe un rango de umbrales donde el modelo puede operar con recall ≥ 0.65–0.70 manteniendo una precisión razonable, y cuál es el costo operacional de esa decisión. Esto conecta directamente el modelo con una decisión de gestión hospitalaria real y demuestra que la herramienta es adaptable a las preferencias del equipo clínico.
+**Métricas a reportar (CSV):**
+- Archivo `escenario_3_puntos_operacion.csv`: `politica_clinica`, `umbral_probabilidad`, `tp`, `fp`, `fn`, `tn`, `precision`, `recall`, `f1`.
+- Archivo `escenario_3_curva_pr.csv`: `precision`, `recall`, `thresholds` (para graficar la curva PR completa).
+
+**Interpretación clínica:** Explicar el impacto de las falsas alarmas (camas "bloqueadas" por alertas erróneas) vs. pacientes de estancia larga no detectados bajo cada política.
 
 ---
 
@@ -167,7 +166,7 @@ Para cada punto de operación reportar:
 
 ### Motivación Bibliográfica
 
-En el aprendizaje automático, el sobreajuste al conjunto de validación durante la búsqueda de hiperparámetros (*hyperparameter overfitting*) constituye un riesgo latente. Bergstra y Bengio (2012) destacan que los espacios de búsqueda suelen contener tanto regiones "planas" (estables frente a pequeños cambios) como "agudas" (altamente sensibles). Si el punto óptimo del tuning se encuentra en una región aguda, cualquier ligera alteración en las características de entrada o de entrenamiento podría provocar una degradación catastróficamente alta del desempeño en production.
+En el aprendizaje automático, el sobreajuste al conjunto de validación durante la búsqueda de hiperparámetros (*hyperparameter overfitting*) constituye un riesgo latente. Bergstra y Bengio (2012) destacan que los espacios de búsqueda suelen contener tanto regiones "planas" (estables frente a pequeños cambios) como "agudas" (altamente sensibles). Si el punto óptimo del tuning se encuentra en una región aguda, cualquier ligera alteración en las características de entrada o de entrenamiento podría provocar una degradación catastróficamente alta del desempeño en producción.
 
 Probst et al. (2019) analizan la sensibilidad de algoritmos basados en árboles (como Random Forest y XGBoost) y demuestran que, si bien son relativamente robustos, es metodológicamente crucial validar que variaciones moderadas en parámetros clave de regularización, tasa de aprendizaje y submuestreo (`learning_rate`, `max_depth`, `subsample`, `min_child_weight`) produzcan fluctuaciones de rendimiento marginales. Esta validación robustece el principio *ceteris paribus* ("todo lo demás constante") aplicado en los Escenarios 1 y 2, confirmando que las conclusiones generales del pipeline no dependen de forma crítica de una parametrización única y ultra-específica.
 
@@ -178,25 +177,23 @@ Partiendo de los hiperparámetros óptimos de XGBoost (cargados de `best_params_
 1. **Variante A: Conservadora (Mayor Regularización / Más Simple)**
    - Reducir `max_depth` en 1 unidad (mínimo de 2).
    - Reducir `learning_rate` multiplicándolo por 0.8 (ej: de 0.05 a 0.04).
-   - Incrementar `min_child_weight` (si está presente) en +2 unidades.
+   - Incrementar `min_child_weight` (si está presente en el JSON) en +2 unidades.
    - *Objetivo:* Verificar si una simplificación moderada del modelo preserva el rendimiento o si genera subajuste.
 
 2. **Variante B: Compleja (Menor Regularización / Mayor Capacidad)**
    - Incrementar `max_depth` en 1 unidad.
    - Incrementar `learning_rate` multiplicándolo por 1.2 (ej: de 0.05 a 0.06).
-   - Reducir a la mitad (multiplicar por 0.5) los parámetros de regularización L1 y L2 (`alpha` y `lambda`/`reg_lambda` si están declarados).
+   - Reducir a la mitad (multiplicar por 0.5) los parámetros de regularización L1 y L2 (`reg_alpha` y `reg_lambda` si están declarados en el JSON).
    - *Objetivo:* Medir si un modelo con mayor capacidad sobreajusta el holdout de forma severa.
 
 3. **Variante C: Perturbación Estocástica de Muestreo**
-   - Reducir en 0.1 los coeficientes de submuestreo (`subsample` y `colsample_bytree`). Si por ejemplo son 0.8, se reducen a 0.7 (acotado a un rango válido mínimo de 0.5).
+   - Reducir en 0.1 los coeficientes de submuestreo (`subsample` y `colsample_bytree` si están declarados en el JSON). Si por ejemplo son 0.8, se reducen a 0.7 (acotado a un rango válido mínimo de 0.5).
    - *Objetivo:* Comprobar la resiliencia del pipeline frente al muestreo de filas y columnas en la construcción de los árboles individuales.
 
-Para cada una de las 3 variantes, se re-entrena el pipeline completo (Clasificador + Regresor) con estos hiperparámetros perturbados en base al mismo holdout.
+> [!IMPORTANT]
+> **Regla de Perturbación de Codex:** Si una de las llaves mencionadas arriba (ej. `min_child_weight` o `reg_alpha`) no está declarada de forma explícita en los archivos JSON de mejores parámetros, Codex **NO debe perturbarla** ni inyectarla. Se mantienen los valores por defecto del algoritmo. Solo se perturban aquellos hiperparámetros que el tuning previo encontró explícitamente.
 
-**Hipótesis esperada:**
-Dado que el tuning fue bien calibrado en la entrega anterior, las 3 variantes de hiperparámetros vecinos deberían reportar métricas extremadamente cercanas a la línea base, mostrando una variación porcentual en MAE $|\Delta\text{MAE}\%| \le 3\%$. Esto probará empíricamente que los modelos residen en una zona plana y estable del espacio de decisión, validando que el tuning es robusto.
-
-**Métricas a reportar:** MAE holdout, RMSE holdout, F1 PLOS, Recall PLOS, y degradación porcentual del MAE ($\Delta\text{MAE}\%$) vs. la Línea Base.
+**Métricas a reportar (CSV):** `variante_hiperparametros`, `mae`, `rmse`, `recall_plos`, `f1_plos`, `delta_mae_pct`.
 
 ---
 
@@ -209,19 +206,18 @@ ml_operacional_entrega3/
     │                                              secuencialmente y genera el reporte consolidado
     │
     ├── escenario_1_umbrales_plos.py            ← Variación del umbral PLOS (7, 14, 21, 27)
-    ├── escenario_2_ablation_features.py        ← Ablation study (sin Charlson, sin cap_, solo demográfico)
-    ├── escenario_3_punto_operacion.py          ← Curva PR + 3 puntos de operación del clasificador
+    ├── escenario_2_ablation_features.py        ← Ablation study (sin Charlson, sin cap_, solo demográfico, sin clasificador)
+    ├── escenario_3_punto_operacion.py          ← Curva PR + 3 políticas clínicas de umbrales
     ├── escenario_4_hiperparametros.py          ← Validación de estabilidad de hiperparámetros vecinos
     │
-    └── results/                                ← Outputs de cada escenario
+    └── results/                                ← Subcarpeta de resultados por escenario
         ├── escenario_1_resultados.csv
         ├── escenario_1_resultados_por_tramo.csv
         ├── escenario_2_resultados.csv
         ├── escenario_3_curva_pr.csv
         ├── escenario_3_puntos_operacion.csv
         ├── escenario_4_resultados.csv
-        └── reporte_sensibilidad_consolidado.md  ← Reporte final con tablas, interpretación,
-                                                    limitaciones, mejoras y toma de decisiones
+        └── reporte_sensibilidad_consolidado.md  ← Informe final académico consolidado
 ```
 
 ---
@@ -230,48 +226,29 @@ ml_operacional_entrega3/
 
 ### 8.1 Ninguno de los escenarios requiere tuning
 
-Todos los escenarios (incluyendo el 4) reutilizan los `best_params_clf` y `best_params_reg` ya guardados en `ml_operacional_entrega3/XGB/` o aplican pequeñas perturbaciones fijas y preestablecidas sobre ellos. Esto tiene dos ventajas cruciales:
-1. **Tiempo de ejecución reducido:** Sin GridSearchCV o RandomizedSearchCV, los scripts se ejecutan en pocos minutos en lugar de horas.
-2. **Aislamiento del efecto:** Al fijar los hiperparámetros (o perturbarlos de manera controlada y uniforme), cualquier cambio en las métricas se asocia únicamente al factor variado (el umbral, el grupo de features o el cambio paramétrico), respetando el aislamiento de variables de la experimentación científica.
+Todos los escenarios (incluyendo el 4) reutilizan los `best_params_clf` y `best_params_reg` ya guardados en `ml_operacional_entrega3/XGB/` o aplican pequeñas perturbaciones fijas y preestablecidas sobre ellos. Esto reduce el tiempo de ejecución a unos pocos minutos y garantiza el aislamiento de variables del experimento.
 
 ### 8.2 El holdout NUNCA cambia
 
-Los 2,391 pacientes del holdout (20%) son siempre los mismos. Solo se modifican las condiciones de entrenamiento (escenarios 1, 2 y 4) o la interpretación de las salidas del modelo (escenario 3). Esto garantiza la comparabilidad directa y estricta entre todos los experimentos.
+Los 2,391 pacientes del holdout (20%) son siempre los mismos. Esto garantiza la comparabilidad directa y estricta entre todos los experimentos.
 
 ### 8.3 Reutilización del código existente
 
-Cada escenario debe importar las funciones de `ml_operacional_entrega3/utils/pipeline_operacional.py` y `metricas_operacionales.py`. No se duplica código. Las modificaciones necesarias son mínimas:
-- **Escenario 1:** Crear una función `binary_target(y, threshold)` parametrizable (en lugar de la fija `binary_target_los14`).
-- **Escenario 2:** Filtrar columnas del DataFrame antes de llamar a `prepare_xy`.
-- **Escenario 3:** Solo requiere los modelos `.joblib` ya guardados y `sklearn.metrics.precision_recall_curve`.
-- **Escenario 4:** Sobrescribir dinámicamente los diccionarios de hiperparámetros cargados antes de instanciar los estimadores.
+Cada escenario debe importar las funciones de `ml_operacional_entrega3/utils/pipeline_operacional.py` y `metricas_operacionales.py`. No se duplica código.
 
 ### 8.4 Random State
 
 `RANDOM_STATE = 42` en todo momento para garantizar reproducibilidad total.
 
-### 8.5 El análisis se ejecuta únicamente sobre XGBoost
+### 8.5 Criterio cuantitativo de robustez (Veredicto de Desviación)
 
-XGBoost es el modelo ganador (MAE = 2.86 vs RF = 3.10 vs LR = 3.17). El objetivo del análisis de sensibilidad no es volver a comparar modelos (eso ya se hizo), sino evaluar la robustez de la **solución elegida**.
-
-### 8.6 Criterio cuantitativo de interpretación
-
-Para los escenarios 1, 2 y 4, se calcula la variación porcentual del MAE:
+Para determinar si la solución es robusta, se utiliza la variación porcentual del MAE respecto a la línea base:
 
 $$\Delta\text{MAE}\% = \frac{\text{MAE}_{\text{escenario}} - \text{MAE}_{\text{base}}}{\text{MAE}_{\text{base}}} \times 100$$
 
-- **|ΔMAE%| < 5%:** El modelo es **robusto** frente a este cambio.
-- **5% ≤ |ΔMAE%| < 15%:** Sensibilidad **moderada**. Documentar como limitación menor.
-- **|ΔMAE%| ≥ 15%:** Sensibilidad **alta**. Documentar como limitación importante y proponer mejora.
-
-### 8.7 Reporte consolidado
-
-El `reporte_sensibilidad_consolidado.md` debe incluir:
-1. Tabla resumen ejecutiva con los 4 escenarios y su impacto.
-2. Para cada escenario: tabla de resultados + interpretación.
-3. **Sección de Limitaciones:** Basadas en los hallazgos reales (ej. degradación sin codificación ICD-10, sensibilidad al umbral en el tramo 27+ o sensibilidad a la regularización).
-4. **Sección de Mejoras Propuestas:** Orientadas por los resultados (ej. si Charlson no importa, explorar otros índices de comorbilidad; si el recall PLOS es bajo, ajustar el punto de operación).
-5. **Sección de Apoyo a la Toma de Decisiones:** Recomendaciones concretas para el equipo clínico sobre qué umbral de alerta usar y qué datos son indispensables.
+*   **$|\Delta\text{MAE}\%| < 5\%$:** El modelo es **robusto** frente a este cambio (variabilidad aceptable).
+*   **$5\% \le |\Delta\text{MAE}\%| < 15\%$:** Sensibilidad **moderada**. Documentar como limitación menor.
+*   **$|\Delta\text{MAE}\%| \ge 15\%$:** Sensibilidad **alta**. El modelo no es robusto frente a este cambio (se documenta como limitación crítica).
 
 ---
 
@@ -294,63 +271,60 @@ las hipótesis esperadas y la estructura exacta que debes seguir.
 TAREA:
 Implementar un análisis de sensibilidad completo en ml_operacional_entrega3/sensitivity/.
 
-REGLAS:
-1. Re-usar funciones de ml_operacional_entrega3/utils/pipeline_operacional.py y 
+REGLAS DE PROGRAMACIÓN:
+1. Re-usar funciones de ml_operacional_entrega3/utils/pipeline_operacional.py and
    metricas_operacionales.py. No duplicar código.
-2. Cada escenario debe ser un script independiente ejecutable por separado.
-3. run_sensitivity.py debe ejecutar los 4 escenarios secuencialmente.
-4. Todos los escenarios se ejecutan solo sobre XGBoost (el modelo ganador).
-5. Usar los best_params ya guardados en ml_operacional_entrega3/XGB/*.json. NO re-tunear.
-6. El holdout NUNCA cambia. Solo se modifica el entrenamiento o la interpretación.
-7. Cada script debe imprimir un log claro en consola con las métricas resultantes.
-8. Generar archivos .csv en sensitivity/results/ con los resultados.
-9. Generar reporte_sensibilidad_consolidado.md con tablas comparativas,
-   interpretación, limitaciones, mejoras propuestas y apoyo a la toma de decisiones.
-10. RANDOM_STATE = 42 en todo momento.
+2. Cada escenario debe ser un script independiente (escenario_1_umbrales_plos.py, escenario_2_ablation_features.py, escenario_3_punto_operacion.py, escenario_4_hiperparametros.py).
+3. Cada script de escenario debe guardar sus propios archivos CSV en la subcarpeta sensitivity/results/.
+4. run_sensitivity.py debe actuar como el script maestro: ejecutará los 4 escenarios secuencialmente y luego leerá los CSVs generados para escribir el reporte final consolidado.
+5. Todos los escenarios se ejecutan solo sobre XGBoost.
+6. Usar los best_params ya guardados en ml_operacional_entrega3/XGB/*.json. NO re-tunear.
+7. El holdout NUNCA cambia. Solo se modifica el entrenamiento o la interpretación.
+8. Cada script debe imprimir un log claro en consola con las métricas resultantes.
+9. RANDOM_STATE = 42 en todo momento.
 
-ESCENARIOS A IMPLEMENTAR:
+ESCENARIOS A IMPLEMENTAR Y FORMATOS DE SALIDA:
 
 ESCENARIO 1 — VARIACIÓN DEL UMBRAL PLOS:
 - Umbrales: 7, 14 (base), 21, 27 días.
-- Para cada umbral: recalcular etiqueta binaria, generar probabilidades OOF con 
-  best_params_clf, re-entrenar regresor con best_params_reg + nueva prob, evaluar 
-  en holdout.
-- Reportar métricas de regresión (MAE, RMSE, ME, PUP, MAE Asimétrico) Y métricas 
-  de clasificación (Precisión PLOS, Recall PLOS, F1 PLOS, proporción clase PLOS).
-- Incluir métricas por tramo de LOS.
+- Para cada umbral: recalcular etiqueta binaria, generar probabilidades OOF mediante validación cruzada usando best_params_clf, re-entrenar regresor con best_params_reg + nueva prob OOF, evaluar en el holdout con el nuevo target de días.
+- Guardar resultados en: sensitivity/results/escenario_1_resultados.csv
+  Columnas requeridas: umbral_plos, mae, rmse, me, pup, mae_asimetrico, precision_plos, recall_plos, f1_plos, proporcion_plos
+- Guardar desglose por tramos en: sensitivity/results/escenario_1_resultados_por_tramo.csv
 
-ESCENARIO 2 — ABLATION STUDY DE FEATURES:
-- Variantes:
-  a) Full (línea base): todas las features.
+ESCENARIO 2 — ABLATION STUDY DE FEATURES Y COMPONENTES:
+- Variantes a evaluar:
+  a) Full (línea base): todas las features del pipeline base.
   b) Sin Charlson: remover columna "charlson_index".
-  c) Sin capítulos ICD-10: remover todas las columnas que empiecen con "diag_rare_cap_".
-  d) Solo demográfico-operacional: quedarse SOLO con "n_diag_total", "n_procedimientos",
-     "es_urgencia", "mes_ingreso", "dia_semana_ingreso", "tiene_diag_primario", 
-     "charlson_index", "n_diag_primarios", "n_diag_secundarios".
-- Para cada variante: re-entrenar pipeline completo (clf + regresor) con best_params.
-- Reportar MAE, RMSE, Recall PLOS, F1 PLOS, y ΔMAE% vs Full.
+  c) Sin capítulos ICD-10: remover todas las columnas que empiecen con "diag_rare_cap_" y "proc_rare_sec_".
+  d) Solo demográfico-operacional: conservar estrictamente las columnas "n_diag_total", "n_procedimientos", "es_urgencia", "mes_ingreso", "dia_semana_ingreso", "tiene_diag_primario", "charlson_index", "n_diag_primarios", "n_diag_secundarios". Remover el resto de dummies de diagnósticos ("diag_") y procedimientos ("proc_").
+  e) Sin Clasificador (1 Etapa): entrenar XGBRegressor de forma directa excluyendo la probabilidad de PLOS ("prob_los_14").
+- Para cada variante: re-entrenar pipeline completo con best_params sin re-tunear, y evaluar en holdout.
+- Guardar resultados en: sensitivity/results/escenario_2_resultados.csv
+  Columnas requeridas: variante, mae, rmse, recall_plos, f1_plos, delta_mae_pct
 
-ESCENARIO 3 — PUNTO DE OPERACIÓN DEL CLASIFICADOR:
-- Usar los modelos clasificadores ya entrenados (.joblib) para predecir probabilidades
-  en el holdout.
-- Construir curva Precision-Recall completa.
-- Evaluar 3 puntos de operación: umbral ~0.30 (alto recall), umbral óptimo F1,
-  umbral ~0.60 (alta precisión).
-- Para cada punto: reportar TP, FP, FN, TN, Precisión, Recall, F1.
-- Incluir interpretación operacional en el reporte (cuántos PLOS se detectan vs.
-  cuántas falsas alarmas se generan).
+ESCENARIO 3 — PUNTO DE OPERACIÓN DEL CLASIFICADOR (POLÍTICAS CLÍNICAS):
+- Usar las probabilidades brutas de PLOS ("prob_riesgo") ya generadas por el clasificador entrenado sobre el holdout.
+- Evaluar 3 políticas operacionales clínicas bajo umbrales fijos de probabilidad:
+  a) Política B (Alta Seguridad / Alto Recall): umbral = 0.35
+  b) Política A (Base / Equilibrio): umbral = 0.50
+  c) Política C (Eficiencia / Alertas Confiables): umbral = 0.65
+- Para cada política: calcular TP, FP, FN, TN, precisión, recall, F1 sobre la clasificación binaria de PLOS.
+- Guardar resultados de las políticas en: sensitivity/results/escenario_3_puntos_operacion.csv
+  Columnas requeridas: politica_clinica, umbral_probabilidad, tp, fp, fn, tn, precision, recall, f1
+- Guardar puntos para graficar la curva Precision-Recall completa en: sensitivity/results/escenario_3_curva_pr.csv
+  Columnas: precision, recall, thresholds
 
-ESCENARIO 4 — ROBUSTEZ A VARIACIÓN DE HIPERPARÁMETROS (ESTABILIDAD DEL TUNING):
+ESCENARIO 4 — ROBUSTEZ A VARIACIÓN DE HIPERPARAMETROS (ESTABILIDAD DEL TUNING):
 - Cargar best_params_*.json para clasificador y regresor.
 - Definir 3 variantes vecinas:
-  a) Conservadora (Más Regularizada): max_depth - 1 (mínimo 2), learning_rate * 0.8,
-     min_child_weight + 2 (si aplica).
-  b) Compleja (Menos Regularizada): max_depth + 1, learning_rate * 1.2,
-     reg_alpha (o alpha) * 0.5, reg_lambda (o lambda) * 0.5 (si están presentes).
-  c) Perturbación Estocástica: subsample - 0.1, colsample_bytree - 0.1 (restringido
-     a que no sea inferior a 0.5).
-- Para cada variante: re-entrenar el pipeline completo sin buscar/tunear, y evaluar en holdout.
-- Reportar MAE, RMSE, Recall PLOS, F1 PLOS, y ΔMAE% vs la línea base óptima.
+  a) Conservadora (Más Regularizada): max_depth - 1 (mínimo 2), learning_rate * 0.8, min_child_weight + 2 (si está en el JSON).
+  b) Compleja (Menos Regularizada): max_depth + 1, learning_rate * 1.2, reg_alpha * 0.5, reg_lambda * 0.5 (si están presentes en el JSON).
+  c) Perturbación Estocástica: subsample - 0.1, colsample_bytree - 0.1 (restringido a que no sea inferior a 0.5, si están en el JSON).
+  *Nota: Si un parámetro no está presente de forma explícita en el JSON, NO lo perturbes ni lo agregues.*
+- Para cada variante: re-entrenar el pipeline completo con los parámetros alterados y evaluar en holdout.
+- Guardar resultados en: sensitivity/results/escenario_4_resultados.csv
+  Columnas requeridas: variante_hiperparametros, mae, rmse, recall_plos, f1_plos, delta_mae_pct
 
 DATOS:
 - Dataset principal: ml_entrega2/feature_engineering/processed_v3/model_data_v3_escenario_B_charlson.csv
@@ -358,6 +332,19 @@ DATOS:
 - Modelos guardados: ml_operacional_entrega3/modelos_guardados/
 - Hiperparámetros: ml_operacional_entrega3/XGB/best_params_*.json
 - Target: los_dias. ID: case_id. Urgencia: es_urgencia.
+
+INFORME FINAL ACADÉMICO REQUERIDO:
+run_sensitivity.py debe generar un archivo consolidado en sensitivity/results/reporte_sensibilidad_consolidado.md.
+Este archivo debe ser un informe académico completo y riguroso con la siguiente estructura:
+1. Resumen Ejecutivo (Tabla de impacto global de los 4 escenarios).
+2. Justificación Bibliográfica (usando las referencias provistas en el plan de sensibilidad).
+3. Análisis de Resultados por Escenario (Tablas de métricas formateadas en Markdown e interpretación operacional detallada).
+4. Discusión de Limitaciones y Mejoras Propuestas (basándose en los hallazgos reales del análisis).
+5. Veredicto de Robustez y Toma de Decisiones Clínicas:
+   - Comparar las desviaciones contra el límite de tolerancia del 5% en MAE.
+   - Responder de forma explícita y fundamentada con la evidencia numérica: ¿El modelo es robusto o no frente a cambios operacionales y paramétricos?
+   - Recomendaciones detalladas para la gestión de camas sobre qué política de umbral clínico implementar en el hospital.
+6. responde a las preguntas que se buscan responder en cada escenario, por ejemplo las del escenario 2
 ```
 
 ---

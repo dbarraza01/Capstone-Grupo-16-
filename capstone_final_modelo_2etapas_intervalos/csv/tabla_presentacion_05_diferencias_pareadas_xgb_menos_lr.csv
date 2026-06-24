@@ -1,0 +1,9 @@
+Métrica,XGB - LR,Lectura
+MAE,-3.82 [-7.00; -1.65],Mejora XGB
+RMSE,-62.40 [-107.42; -14.50],Mejora XGB
+MedAE,-0.01 [-0.07; 0.04],No concluyente
+Subestimación,-5.0% [-6.9; -3.1],Mejora XGB
+MAE asim. α=2,-3.86 [-6.98; -1.74],Mejora XGB
+Precisión PLOS14,2.5% [-3.2; 8.8],No concluyente
+Recall PLOS14,6.8% [1.6; 12.5],Mejora XGB
+F1 PLOS14,5.5% [1.0; 10.6],Mejora XGB
