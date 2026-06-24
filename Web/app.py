@@ -289,7 +289,7 @@ def api_predict_bulk():
         return jsonify({'error': 'Nombre de archivo vacío.'}), 400
         
     model_name = request.form.get('model_name', 'xgboost')
-    threshold = float(request.form.get('threshold', 27.0))
+    threshold = float(request.form.get('threshold', 14.0))
     
     try:
         # Guardar archivo temporal
