@@ -18,8 +18,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ml_operacional_entrega3.utils.metricas_operacionales import (  # noqa: E402
-    TRAMOS_BINS,
-    TRAMOS_LABELS,
     error_medio,
     mae,
     mae_asimetrico,
@@ -49,6 +47,7 @@ MODEL_NAME = "xgb"
 MODEL_LABEL = "XGB"
 BASE_PLOS_THRESHOLD = 14
 RESULTS_DIR = ML_OPS_DIR / "sensitivity" / "results"
+SEGMENT_ORDER = ["global", "urgente", "programado"]
 
 
 @dataclass(frozen=True)
@@ -75,11 +74,12 @@ def plos_confusion_metrics(
     threshold: int | float,
     *,
     score_is_probability: bool = False,
+    true_threshold: int | float = BASE_PLOS_THRESHOLD,
 ) -> dict[str, float]:
     y_true_arr = np.asarray(y_true, dtype=float)
     score_arr = np.asarray(score_or_pred, dtype=float)
     if score_is_probability:
-        plos_real = y_true_arr >= BASE_PLOS_THRESHOLD
+        plos_real = y_true_arr >= float(true_threshold)
         plos_pred = score_arr >= float(threshold)
     else:
         plos_real = y_true_arr >= float(threshold)
@@ -142,23 +142,195 @@ def regression_metrics(
     }
 
 
+def bootstrap_mae_ci(
+    y_true: pd.Series | np.ndarray,
+    y_pred: pd.Series | np.ndarray,
+    *,
+    n_bootstrap: int = 1000,
+    confidence: float = 0.95,
+    random_state: int = RANDOM_STATE,
+) -> dict[str, float]:
+    """Intervalo de confianza percentil para MAE usando bootstrap del holdout."""
+    y_true_arr = np.asarray(y_true, dtype=float)
+    y_pred_arr = np.asarray(y_pred, dtype=float)
+    n = len(y_true_arr)
+    if n == 0:
+        return {"mae_ci_lower": np.nan, "mae_ci_upper": np.nan}
+
+    rng = np.random.default_rng(random_state)
+    abs_error = np.abs(y_pred_arr - y_true_arr)
+    boot_mae = np.empty(int(n_bootstrap), dtype=float)
+    for idx in range(int(n_bootstrap)):
+        sample_idx = rng.integers(0, n, size=n)
+        boot_mae[idx] = float(np.mean(abs_error[sample_idx]))
+
+    alpha = (1.0 - float(confidence)) / 2.0
+    return {
+        "mae_ci_lower": float(np.quantile(boot_mae, alpha)),
+        "mae_ci_upper": float(np.quantile(boot_mae, 1.0 - alpha)),
+    }
+
+
+def add_mae_ci(
+    metrics: dict[str, float],
+    y_true: pd.Series | np.ndarray,
+    y_pred: pd.Series | np.ndarray,
+    *,
+    random_state: int = RANDOM_STATE,
+) -> dict[str, float]:
+    out = dict(metrics)
+    out.update(bootstrap_mae_ci(y_true, y_pred, random_state=random_state))
+    return out
+
+
+def classifier_hospital_impact_metrics(
+    y_true: pd.Series | np.ndarray,
+    y_pred_los: pd.Series | np.ndarray,
+    probabilities: pd.Series | np.ndarray,
+    probability_threshold: float,
+    *,
+    true_threshold: int = BASE_PLOS_THRESHOLD,
+) -> dict[str, float]:
+    """Impacto en dias de FP/FN generados por la politica del clasificador."""
+    y_true_arr = np.asarray(y_true, dtype=float)
+    y_pred_arr = np.asarray(y_pred_los, dtype=float)
+    prob_arr = np.asarray(probabilities, dtype=float)
+    abs_error = np.abs(y_pred_arr - y_true_arr)
+
+    plos_real = y_true_arr >= float(true_threshold)
+    plos_alert = prob_arr >= float(probability_threshold)
+    fn_mask = plos_real & ~plos_alert
+    fp_mask = ~plos_real & plos_alert
+
+    return {
+        "promedio_dias_subestimados_fn": (
+            float(np.mean(abs_error[fn_mask])) if np.any(fn_mask) else np.nan
+        ),
+        "promedio_dias_sobrestimados_fp": (
+            float(np.mean(abs_error[fp_mask])) if np.any(fp_mask) else np.nan
+        ),
+    }
+
+
+def empty_regression_metrics(threshold: int = BASE_PLOS_THRESHOLD) -> dict[str, float]:
+    return {
+        "n_casos": 0,
+        "mae": np.nan,
+        "mae_ci_lower": np.nan,
+        "mae_ci_upper": np.nan,
+        "rmse": np.nan,
+        "medae": np.nan,
+        "me": np.nan,
+        "pup": np.nan,
+        "mae_asimetrico": np.nan,
+        "pct_error_abs_le_1d": np.nan,
+        "pct_error_abs_le_3d": np.nan,
+        "pct_error_abs_le_7d": np.nan,
+        "los_real_promedio": np.nan,
+        "los_pred_promedio": np.nan,
+        "umbral_plos": int(threshold),
+        "proporcion_plos": np.nan,
+        "n_plos_real": 0,
+        "n_plos_pred": 0,
+        "precision_plos": np.nan,
+        "recall_plos": np.nan,
+        "f1_plos": np.nan,
+        "accuracy_plos": np.nan,
+        "tp_plos": 0,
+        "fp_plos": 0,
+        "fn_plos": 0,
+        "tn_plos": 0,
+    }
+
+
+def tramo_definition(threshold: int) -> tuple[list[float], list[str]]:
+    """Retorna tramos adaptativos para el umbral PLOS analizado."""
+    definitions = {
+        7: ([-1, 2, 6, np.inf], ["0-2", "3-6", "7+ (PLOS)"]),
+        14: ([-1, 2, 6, 13, np.inf], ["0-2", "3-6", "7-13", "14+ (PLOS)"]),
+        21: ([-1, 5, 12, 20, np.inf], ["0-5", "6-12", "13-20", "21+ (PLOS)"]),
+        27: ([-1, 6, 15, 26, np.inf], ["0-6", "7-15", "16-26", "27+ (PLOS)"]),
+    }
+    if int(threshold) not in definitions:
+        raise ValueError(f"No hay tramos adaptativos definidos para umbral PLOS={threshold}")
+    return definitions[int(threshold)]
+
+
 def metrics_by_tramo(
     predictions: pd.DataFrame,
     threshold: int = BASE_PLOS_THRESHOLD,
 ) -> pd.DataFrame:
+    bins, labels = tramo_definition(threshold)
+    if predictions.empty:
+        rows = []
+        for tramo in labels:
+            row = {"tramo": tramo}
+            row.update(empty_regression_metrics(threshold))
+            rows.append(row)
+        return pd.DataFrame(rows)
+
     y_true = predictions["los_dias_reales"].to_numpy(dtype=float)
     y_pred = predictions["los_dias_predichos"].to_numpy(dtype=float)
-    tramos = pd.cut(y_true, bins=TRAMOS_BINS, labels=TRAMOS_LABELS)
+    tramos = pd.cut(y_true, bins=bins, labels=labels)
     rows: list[dict] = []
-    for tramo in TRAMOS_LABELS:
+    for tramo in labels:
         mask = np.asarray(tramos == tramo)
         if not mask.any():
-            rows.append({"tramo": tramo, "n_casos": 0, "umbral_plos": int(threshold)})
+            row = {"tramo": tramo}
+            row.update(empty_regression_metrics(threshold))
+            rows.append(row)
             continue
         row = {"tramo": tramo}
         row.update(regression_metrics(y_true[mask], y_pred[mask], threshold=threshold))
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def iter_segment_frames(predictions: pd.DataFrame):
+    if "segmento" not in predictions.columns:
+        raise ValueError("El dataframe de predicciones debe incluir columna 'segmento'")
+    yield "global", predictions
+    for segment in SEGMENTS:
+        yield segment, predictions[predictions["segmento"].astype(str) == segment]
+
+
+def summarize_predictions_by_segment(
+    predictions: pd.DataFrame,
+    *,
+    threshold: int = BASE_PLOS_THRESHOLD,
+    include_mae_ci: bool = False,
+) -> pd.DataFrame:
+    rows: list[dict] = []
+    for segment_idx, (segment, group) in enumerate(iter_segment_frames(predictions)):
+        row = {"segmento": segment}
+        if group.empty:
+            row.update(empty_regression_metrics(threshold))
+        else:
+            y_true = group["los_dias_reales"].to_numpy()
+            y_pred = group["los_dias_predichos"].to_numpy()
+            metrics = regression_metrics(y_true, y_pred, threshold=threshold)
+            if include_mae_ci:
+                metrics = add_mae_ci(
+                    metrics,
+                    y_true,
+                    y_pred,
+                    random_state=RANDOM_STATE + int(threshold) * 10 + segment_idx,
+                )
+            row.update(metrics)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def metrics_by_segment_and_tramo(
+    predictions: pd.DataFrame,
+    threshold: int = BASE_PLOS_THRESHOLD,
+) -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+    for segment, group in iter_segment_frames(predictions):
+        tramo_df = metrics_by_tramo(group, threshold=threshold)
+        tramo_df.insert(0, "segmento", segment)
+        frames.append(tramo_df)
+    return pd.concat(frames, ignore_index=True)
 
 
 def write_result(df: pd.DataFrame, filename: str) -> SensitivityOutput:
@@ -169,7 +341,22 @@ def write_result(df: pd.DataFrame, filename: str) -> SensitivityOutput:
     return SensitivityOutput(path=path, rows=len(df))
 
 
-def read_baseline_mae() -> float:
+def read_baseline_mae(segment: str = "global") -> float:
+    if segment != "global":
+        path = REPORTS_DIR / "metricas_por_segmento_holdout_xgb.csv"
+        if not path.exists():
+            raise FileNotFoundError(
+                "No existe metricas_por_segmento_holdout_xgb.csv; ejecuta primero la evaluacion base."
+            )
+        df = pd.read_csv(path)
+        row = df[
+            (df["modelo"].astype(str).str.upper() == MODEL_LABEL)
+            & (df["segmento"].astype(str) == segment)
+        ]
+        if row.empty:
+            raise ValueError(f"No se encontro fila XGB para segmento={segment} en {path}")
+        return float(row.iloc[0]["mae"])
+
     path = REPORTS_DIR / "comparacion_final_modelos.csv"
     if not path.exists():
         raise FileNotFoundError(
@@ -177,9 +364,17 @@ def read_baseline_mae() -> float:
         )
     df = pd.read_csv(path)
     row = df[df["modelo"].astype(str).str.upper() == MODEL_LABEL]
+    if "split" in row.columns:
+        holdout = row[row["split"].astype(str) == "holdout"]
+        if not holdout.empty:
+            row = holdout
     if row.empty:
         raise ValueError("No se encontro fila XGB en comparacion_final_modelos.csv")
     return float(row.iloc[0]["mae"])
+
+
+def read_baseline_mae_by_segment() -> dict[str, float]:
+    return {segment: read_baseline_mae(segment) for segment in SEGMENT_ORDER}
 
 
 def delta_mae_pct(mae_value: float, baseline_mae: float) -> float:
@@ -269,7 +464,7 @@ def select_feature_columns(
             for col in columns
             if not (col.startswith("diag_rare_cap_") or col.startswith("proc_rare_sec_"))
         ]
-    if variant == "solo_demografico_operacional":
+    if variant == "sin_codigos_clinicos":
         keep = {
             "n_diag_total",
             "n_procedimientos",
@@ -283,7 +478,7 @@ def select_feature_columns(
         }
         selected = [col for col in columns if col in keep]
         if not selected:
-            raise ValueError("La variante solo_demografico_operacional no encontro columnas validas")
+            raise ValueError("La variante sin_codigos_clinicos no encontro columnas validas")
         return selected
     raise ValueError(f"Variante de features desconocida: {variant}")
 
@@ -432,8 +627,12 @@ def summarize_predictions(
     )
 
 
-def pr_curve_dataframe(y_true_los: np.ndarray, probabilities: np.ndarray) -> pd.DataFrame:
-    y_binary = (np.asarray(y_true_los, dtype=float) >= BASE_PLOS_THRESHOLD).astype(int)
+def pr_curve_dataframe(
+    y_true_los: np.ndarray,
+    probabilities: np.ndarray,
+    threshold: int = BASE_PLOS_THRESHOLD,
+) -> pd.DataFrame:
+    y_binary = (np.asarray(y_true_los, dtype=float) >= float(threshold)).astype(int)
     precision, recall, thresholds = precision_recall_curve(y_binary, probabilities)
     rows = [{"precision": float(precision[0]), "recall": float(recall[0]), "thresholds": np.nan}]
     for idx, threshold in enumerate(thresholds):
@@ -453,7 +652,7 @@ def load_holdout_predictions_with_prob() -> pd.DataFrame:
         raise FileNotFoundError(
             f"No existe {path}. Ejecuta primero ml_operacional_entrega3/XGB/evaluar_xgb.py"
         )
-    required = {"los_dias_reales", "prob_riesgo"}
+    required = {"los_dias_reales", "los_dias_predichos", "prob_riesgo", "segmento"}
     df = pd.read_csv(path)
     missing = sorted(required - set(df.columns))
     if missing:
@@ -496,8 +695,11 @@ def require_all_result_csvs() -> list[Path]:
 
 REQUIRED_RESULT_COLUMNS = {
     "escenario_1_resultados.csv": {
+        "segmento",
         "umbral_plos",
         "mae",
+        "mae_ci_lower",
+        "mae_ci_upper",
         "rmse",
         "me",
         "pup",
@@ -508,6 +710,7 @@ REQUIRED_RESULT_COLUMNS = {
         "proporcion_plos",
     },
     "escenario_1_resultados_por_tramo.csv": {
+        "segmento",
         "umbral_plos_analizado",
         "tramo",
         "n_casos",
@@ -519,14 +722,18 @@ REQUIRED_RESULT_COLUMNS = {
         "mae_asimetrico",
     },
     "escenario_2_resultados.csv": {
+        "segmento",
         "variante",
         "mae",
+        "mae_ci_lower",
+        "mae_ci_upper",
         "rmse",
         "recall_plos",
         "f1_plos",
         "delta_mae_pct",
     },
     "escenario_3_puntos_operacion.csv": {
+        "segmento",
         "politica_clinica",
         "umbral_probabilidad",
         "tp",
@@ -536,21 +743,34 @@ REQUIRED_RESULT_COLUMNS = {
         "precision",
         "recall",
         "f1",
+        "promedio_dias_subestimados_fn",
+        "promedio_dias_sobrestimados_fp",
     },
     "escenario_3_curva_pr.csv": {
+        "segmento",
         "precision",
         "recall",
         "thresholds",
     },
     "escenario_4_resultados.csv": {
+        "segmento",
         "variante_hiperparametros",
         "mae",
+        "mae_ci_lower",
+        "mae_ci_upper",
         "rmse",
         "recall_plos",
         "f1_plos",
         "delta_mae_pct",
     },
 }
+
+
+def _missing_expected_segments(df: pd.DataFrame) -> list[str]:
+    if "segmento" not in df.columns:
+        return []
+    present = set(df["segmento"].dropna().astype(str))
+    return [segment for segment in SEGMENT_ORDER if segment not in present]
 
 
 def validate_result_contracts(require_report: bool = False) -> pd.DataFrame:
@@ -569,12 +789,18 @@ def validate_result_contracts(require_report: bool = False) -> pd.DataFrame:
         if path.exists():
             df = pd.read_csv(path)
             missing = sorted(required_columns - set(df.columns))
+            missing_segments = _missing_expected_segments(df) if "segmento" in required_columns else []
+            missing_text = ", ".join(missing)
+            if missing_segments:
+                missing_text = (
+                    f"{missing_text}; " if missing_text else ""
+                ) + f"segmentos faltantes: {', '.join(missing_segments)}"
             row.update(
                 {
                     "filas": len(df),
                     "columnas": len(df.columns),
-                    "estado": "ok" if len(df) > 0 and not missing else "invalid",
-                    "faltantes": ", ".join(missing),
+                    "estado": "ok" if len(df) > 0 and not missing and not missing_segments else "invalid",
+                    "faltantes": missing_text,
                 }
             )
         rows.append(row)
@@ -620,4 +846,9 @@ def result_files_are_valid(filenames: list[str]) -> tuple[bool, list[str]]:
         missing = sorted(REQUIRED_RESULT_COLUMNS[filename] - set(df.columns))
         if missing:
             issues.append(f"{filename}: faltan columnas {missing}")
+            continue
+        if "segmento" in REQUIRED_RESULT_COLUMNS[filename]:
+            missing_segments = _missing_expected_segments(df)
+            if missing_segments:
+                issues.append(f"{filename}: faltan segmentos {missing_segments}")
     return len(issues) == 0, issues

@@ -12,7 +12,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ml_operacional_entrega3.sensitivity.common import (  # noqa: E402
+    BASE_PLOS_THRESHOLD,
     SensitivityOutput,
+    classifier_hospital_impact_metrics,
+    iter_segment_frames,
     load_holdout_predictions_with_prob,
     plos_confusion_metrics,
     pr_curve_dataframe,
@@ -31,34 +34,54 @@ POLICIES = [
 def run() -> list[SensitivityOutput]:
     print("\n=== Escenario 3: Punto de operacion del clasificador ===")
     predictions = load_holdout_predictions_with_prob()
-    y_true = predictions["los_dias_reales"].to_numpy(dtype=float)
-    prob = predictions["prob_riesgo"].to_numpy(dtype=float)
 
     rows: list[dict] = []
-    for policy_name, threshold in POLICIES:
-        metrics = plos_confusion_metrics(
-            y_true,
-            prob,
-            threshold,
-            score_is_probability=True,
-        )
-        row = {
-            "politica_clinica": policy_name,
-            "umbral_probabilidad": threshold,
-            "tp": metrics["tp"],
-            "fp": metrics["fp"],
-            "fn": metrics["fn"],
-            "tn": metrics["tn"],
-            "precision": metrics["precision"],
-            "recall": metrics["recall"],
-            "f1": metrics["f1"],
-            "accuracy": metrics["accuracy"],
-        }
-        rows.append(row)
-        print_dataframe(pd.DataFrame([row]))
+    curve_frames: list[pd.DataFrame] = []
+    for segment, group in iter_segment_frames(predictions):
+        y_true = group["los_dias_reales"].to_numpy(dtype=float)
+        y_pred_los = group["los_dias_predichos"].to_numpy(dtype=float)
+        prob = group["prob_riesgo"].to_numpy(dtype=float)
+        for policy_name, threshold in POLICIES:
+            metrics = plos_confusion_metrics(
+                y_true,
+                prob,
+                threshold,
+                score_is_probability=True,
+                true_threshold=BASE_PLOS_THRESHOLD,
+            )
+            impact = classifier_hospital_impact_metrics(
+                y_true,
+                y_pred_los,
+                prob,
+                threshold,
+                true_threshold=BASE_PLOS_THRESHOLD,
+            )
+            row = {
+                "segmento": segment,
+                "politica_clinica": policy_name,
+                "umbral_probabilidad": threshold,
+                "tp": metrics["tp"],
+                "fp": metrics["fp"],
+                "fn": metrics["fn"],
+                "tn": metrics["tn"],
+                "precision": metrics["precision"],
+                "recall": metrics["recall"],
+                "f1": metrics["f1"],
+                "accuracy": metrics["accuracy"],
+                "camas_bloqueadas_fp": metrics["fp"],
+                "pacientes_plos_perdidos_fn": metrics["fn"],
+                "fp_por_fn": metrics["fp"] / metrics["fn"] if metrics["fn"] else float("inf"),
+                "promedio_dias_subestimados_fn": impact["promedio_dias_subestimados_fn"],
+                "promedio_dias_sobrestimados_fp": impact["promedio_dias_sobrestimados_fp"],
+            }
+            rows.append(row)
+        curve = pr_curve_dataframe(y_true, prob, threshold=BASE_PLOS_THRESHOLD)
+        curve.insert(0, "segmento", segment)
+        curve_frames.append(curve)
+        print_dataframe(pd.DataFrame(rows[-len(POLICIES):]))
 
     policy_df = pd.DataFrame(rows)
-    curve_df = pr_curve_dataframe(y_true, prob)
+    curve_df = pd.concat(curve_frames, ignore_index=True)
     outputs = [
         write_result(policy_df, "escenario_3_puntos_operacion.csv"),
         write_result(curve_df, "escenario_3_curva_pr.csv"),
@@ -71,4 +94,3 @@ def run() -> list[SensitivityOutput]:
 
 if __name__ == "__main__":
     run()
-

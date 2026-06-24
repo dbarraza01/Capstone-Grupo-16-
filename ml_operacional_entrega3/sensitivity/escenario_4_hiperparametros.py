@@ -18,8 +18,8 @@ from ml_operacional_entrega3.sensitivity.common import (  # noqa: E402
     fit_predict_two_stage,
     load_params_by_segment,
     print_dataframe,
-    read_baseline_mae,
-    regression_metrics,
+    read_baseline_mae_by_segment,
+    summarize_predictions_by_segment,
     write_result,
 )
 
@@ -30,6 +30,8 @@ def _clip_lower(value: float, lower: float) -> float:
 
 def perturb_params(params: dict, variant: str) -> dict:
     out = dict(params)
+    if variant == "Full (linea base)":
+        return out
     if variant == "Conservadora (mas regularizada)":
         if "max_depth" in out:
             out["max_depth"] = max(int(out["max_depth"]) - 1, 2)
@@ -57,6 +59,7 @@ def perturb_params(params: dict, variant: str) -> dict:
 
 
 VARIANTS = [
+    "Full (linea base)",
     "Conservadora (mas regularizada)",
     "Compleja (menos regularizada)",
     "Perturbacion estocastica de muestreo",
@@ -67,7 +70,7 @@ def run() -> list[SensitivityOutput]:
     print("\n=== Escenario 4: Robustez a hiperparametros vecinos ===")
     base_clf_params = load_params_by_segment("clf")
     base_reg_params = load_params_by_segment("reg")
-    baseline_mae = read_baseline_mae()
+    baseline_mae = read_baseline_mae_by_segment()
     rows: list[dict] = []
 
     for variant in VARIANTS:
@@ -83,24 +86,30 @@ def run() -> list[SensitivityOutput]:
             adapt_scale_pos_weight=False,
             log_prefix="[E4]",
         )
-        metrics = regression_metrics(
-            predictions["los_dias_reales"],
-            predictions["los_dias_predichos"],
+        metrics_df = summarize_predictions_by_segment(
+            predictions,
             threshold=BASE_PLOS_THRESHOLD,
+            include_mae_ci=True,
         )
-        row = {
-            "variante_hiperparametros": variant,
-            "n_casos": metrics["n_casos"],
-            "mae": metrics["mae"],
-            "rmse": metrics["rmse"],
-            "recall_plos": metrics["recall_plos"],
-            "f1_plos": metrics["f1_plos"],
-            "precision_plos": metrics["precision_plos"],
-            "mae_asimetrico": metrics["mae_asimetrico"],
-            "delta_mae_pct": delta_mae_pct(float(metrics["mae"]), baseline_mae),
-        }
-        rows.append(row)
-        print_dataframe(pd.DataFrame([row]))
+        for _, metrics in metrics_df.iterrows():
+            segment = str(metrics["segmento"])
+            rows.append(
+                {
+                    "segmento": segment,
+                    "variante_hiperparametros": variant,
+                    "n_casos": metrics["n_casos"],
+                    "mae": metrics["mae"],
+                    "mae_ci_lower": metrics["mae_ci_lower"],
+                    "mae_ci_upper": metrics["mae_ci_upper"],
+                    "rmse": metrics["rmse"],
+                    "recall_plos": metrics["recall_plos"],
+                    "f1_plos": metrics["f1_plos"],
+                    "precision_plos": metrics["precision_plos"],
+                    "mae_asimetrico": metrics["mae_asimetrico"],
+                    "delta_mae_pct": delta_mae_pct(float(metrics["mae"]), baseline_mae[segment]),
+                }
+            )
+        print_dataframe(pd.DataFrame(rows[-len(metrics_df):]))
 
     resultados = pd.DataFrame(rows)
     output = write_result(resultados, "escenario_4_resultados.csv")

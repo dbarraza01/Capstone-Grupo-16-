@@ -18,7 +18,7 @@ from ml_operacional_entrega3.sensitivity.common import (  # noqa: E402
     fit_predict_direct_regressor,
     fit_predict_two_stage,
     print_dataframe,
-    regression_metrics,
+    summarize_predictions_by_segment,
     write_result,
 )
 
@@ -43,10 +43,10 @@ VARIANTS = [
         "pregunta": "Mide el aporte marginal de agrupaciones raras por capitulo.",
     },
     {
-        "variante": "Solo demografico-operacional",
-        "feature_variant": "solo_demografico_operacional",
+        "variante": "Sin codigos clinicos",
+        "feature_variant": "sin_codigos_clinicos",
         "uses_classifier": True,
-        "pregunta": "Mide cuanto se pierde sin dummies clinicas detalladas.",
+        "pregunta": "Mide cuanto se pierde al remover codigos clinicos detallados.",
     },
     {
         "variante": "Sin Clasificador (1 Etapa)",
@@ -60,7 +60,6 @@ VARIANTS = [
 def run() -> list[SensitivityOutput]:
     print("\n=== Escenario 2: Ablation study de features y componentes ===")
     rows: list[dict] = []
-    baseline_mae: float | None = None
 
     for variant in VARIANTS:
         print(f"\n--- Variante: {variant['variante']} ---")
@@ -78,31 +77,36 @@ def run() -> list[SensitivityOutput]:
                 log_prefix="[E2]",
             )
 
-        metrics = regression_metrics(
-            predictions["los_dias_reales"],
-            predictions["los_dias_predichos"],
+        metrics_df = summarize_predictions_by_segment(
+            predictions,
             threshold=BASE_PLOS_THRESHOLD,
+            include_mae_ci=True,
         )
-        if baseline_mae is None:
-            baseline_mae = float(metrics["mae"])
-        delta = delta_mae_pct(float(metrics["mae"]), baseline_mae)
-
-        row = {
-            "variante": variant["variante"],
-            "pregunta": variant["pregunta"],
-            "n_casos": metrics["n_casos"],
-            "mae": metrics["mae"],
-            "rmse": metrics["rmse"],
-            "recall_plos": metrics["recall_plos"],
-            "f1_plos": metrics["f1_plos"],
-            "precision_plos": metrics["precision_plos"],
-            "mae_asimetrico": metrics["mae_asimetrico"],
-            "delta_mae_pct": delta,
-        }
-        rows.append(row)
-        print_dataframe(pd.DataFrame([row]))
+        for _, metrics in metrics_df.iterrows():
+            rows.append(
+                {
+                    "segmento": metrics["segmento"],
+                    "variante": variant["variante"],
+                    "pregunta": variant["pregunta"],
+                    "n_casos": metrics["n_casos"],
+                    "mae": metrics["mae"],
+                    "mae_ci_lower": metrics["mae_ci_lower"],
+                    "mae_ci_upper": metrics["mae_ci_upper"],
+                    "rmse": metrics["rmse"],
+                    "recall_plos": metrics["recall_plos"],
+                    "f1_plos": metrics["f1_plos"],
+                    "precision_plos": metrics["precision_plos"],
+                    "mae_asimetrico": metrics["mae_asimetrico"],
+                }
+            )
+        print_dataframe(pd.DataFrame(rows[-len(metrics_df):]))
 
     resultados = pd.DataFrame(rows)
+    baseline = resultados[resultados["variante"] == "Full (linea base)"].set_index("segmento")["mae"].to_dict()
+    resultados["delta_mae_pct"] = resultados.apply(
+        lambda row: delta_mae_pct(float(row["mae"]), float(baseline[row["segmento"]])),
+        axis=1,
+    )
     output = write_result(resultados, "escenario_2_resultados.csv")
     print("\nResumen Escenario 2:")
     print_dataframe(resultados)
@@ -111,4 +115,3 @@ def run() -> list[SensitivityOutput]:
 
 if __name__ == "__main__":
     run()
-

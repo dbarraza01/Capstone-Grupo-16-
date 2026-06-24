@@ -82,10 +82,10 @@ def run() -> None:
     )
     _print_metric_row("dos_etapas_umbral_27", pred_threshold, threshold=27)
 
-    print("\n[Smoke 2] Ablation solo demografico-operacional")
+    print("\n[Smoke 2] Ablation sin codigos clinicos")
     pred_ablation = fit_predict_two_stage(
         threshold=BASE_PLOS_THRESHOLD,
-        feature_variant="solo_demografico_operacional",
+        feature_variant="sin_codigos_clinicos",
         prob_column="prob_los_14",
         clf_params_by_segment=clf_params,
         reg_params_by_segment=reg_params,
@@ -93,7 +93,7 @@ def run() -> None:
         max_holdout_rows=SMOKE_HOLDOUT_ROWS,
         log_prefix="[SMOKE-E2]",
     )
-    _print_metric_row("ablation_solo_demografico", pred_ablation)
+    _print_metric_row("ablation_sin_codigos_clinicos", pred_ablation)
 
     print("\n[Smoke 3] Regresor directo sin clasificador")
     pred_direct = fit_predict_direct_regressor(
@@ -155,4 +155,3 @@ def run() -> None:
 
 if __name__ == "__main__":
     run()
-

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-23T22:21:32",
+  "generated_at": "2026-06-24T12:20:15",
   "selected_scenarios": [],
   "options": {
     "dry_run": false,
@@ -9,15 +9,15 @@
     "smoke_test": false,
     "skip_existing": false
   },
-  "elapsed_seconds": 0.023,
-  "elapsed_minutes": 0.0,
+  "elapsed_seconds": 0.04,
+  "elapsed_minutes": 0.001,
   "outputs_generated_this_run": 1,
-  "rows_or_lines_generated_this_run": 87,
+  "rows_or_lines_generated_this_run": 107,
   "outputs": [
     {
       "path": "/Users/mac/Desktop/Universidad /SEMESTRES/09 Noveno Semestre/Capstone/Capstone-Grupo-16-/ml_operacional_entrega3/sensitivity/results/reporte_sensibilidad_consolidado.md",
       "name": "reporte_sensibilidad_consolidado.md",
-      "rows_or_lines": 87
+      "rows_or_lines": 107
     }
   ]
 }
