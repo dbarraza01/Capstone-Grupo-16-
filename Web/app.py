@@ -2,6 +2,7 @@ import os
 import sys
 import uuid
 import pickle
+import joblib
 import numpy as np
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file
@@ -23,70 +24,21 @@ app = Flask(__name__)
 batch_store = {}
 
 # Carga de Modelos y Columnas en memoria al iniciar el servidor
-xgb_model = None
-rf_model = None
-lr_urg_model = None
-lr_nurg_model = None
-
-xgb_cols = []
-lr_urg_cols = []
-lr_nurg_cols = []
+models = {}
 
 def cargar_modelos():
-    global xgb_model, rf_model, lr_urg_model, lr_nurg_model
-    global xgb_cols, lr_urg_cols, lr_nurg_cols
+    global models
+    print("Cargando modelos clínicos finales y segmentados en memoria...")
     
-    print("Cargando modelos clínicos en memoria...")
-    
-    # 1. Rutas de archivos
-    xgb_path = BASE_DIR / "ml" / "modelos" / "XGB" / "final" / "xgboost_final.pkl"
-    rf_path = BASE_DIR / "ml" / "modelos" / "RF" / "final" / "random_forest_final.pkl"
-    lr_urg_path = BASE_DIR / "Modelo_Base_Ultima entrega" / "lr_base_Urgencias.pkl"
-    lr_nurg_path = BASE_DIR / "Modelo_Base_Ultima entrega" / "lr_base_No_Urgencias.pkl"
-    
-    xgb_cols_path = WEB_DIR / "columnas_modelo_final.pkl"
-    lr_urg_cols_path = BASE_DIR / "Modelo_Base_Ultima entrega" / "columnas_modelo_lr_Urgencias.pkl"
-    lr_nurg_cols_path = BASE_DIR / "Modelo_Base_Ultima entrega" / "columnas_modelo_lr_No_Urgencias.pkl"
+    MODELS_DIR = BASE_DIR / "ml_operacional_entrega3" / "modelos_guardados"
     
     try:
-        # Carga de XGBoost
-        if xgb_path.exists():
-            with open(xgb_path, "rb") as f:
-                xgb_model = pickle.load(f)
-            print("  [OK] XGBoost cargado con éxito.")
-        else:
-            print(f"  [ERROR]: No se encontró el modelo XGBoost en {xgb_path}")
-            
-        # Carga de Random Forest
-        if rf_path.exists():
-            with open(rf_path, "rb") as f:
-                rf_model = pickle.load(f)
-            print("  [OK] Random Forest cargado con éxito.")
-        else:
-            print(f"  [ERROR]: No se encontró el modelo Random Forest en {rf_path}")
-            
-        # Carga de Regresiones Ridge
-        if lr_urg_path.exists():
-            with open(lr_urg_path, "rb") as f:
-                lr_urg_model = pickle.load(f)
-            print("  [OK] Regresión Ridge Urgencias cargada.")
-        if lr_nurg_path.exists():
-            with open(lr_nurg_path, "rb") as f:
-                lr_nurg_model = pickle.load(f)
-            print("  [OK] Regresión Ridge No Urgencias cargada.")
-            
-        # Carga de columnas de features
-        if xgb_cols_path.exists():
-            with open(xgb_cols_path, "rb") as f:
-                xgb_cols = pickle.load(f)
-        if lr_urg_cols_path.exists():
-            with open(lr_urg_cols_path, "rb") as f:
-                lr_urg_cols = pickle.load(f)
-        if lr_nurg_cols_path.exists():
-            with open(lr_nurg_cols_path, "rb") as f:
-                lr_nurg_cols = pickle.load(f)
-                
-        print("Modelos inicializados correctamente en memoria.")
+        for segment in ["urgente", "programado"]:
+            models[f"clf_{segment}"] = joblib.load(MODELS_DIR / f"clf_xgb_{segment}.joblib")
+            models[f"reg_xgb_{segment}"] = joblib.load(MODELS_DIR / f"reg_xgb_{segment}.joblib")
+            models[f"reg_rf_{segment}"] = joblib.load(MODELS_DIR / f"reg_rf_{segment}.joblib")
+            models[f"reg_lr_{segment}"] = joblib.load(MODELS_DIR / f"reg_lr_{segment}.joblib")
+        print("Modelos clínicos finales inicializados correctamente en memoria.")
     except Exception as e:
         print(f"ERROR CRÍTICO al cargar modelos: {e}")
 
@@ -139,54 +91,65 @@ def api_predict():
     diag_primario = diagnosticos[0] if len(diagnosticos) > 0 else ""
     diags_secundarios = diagnosticos[1:] if len(diagnosticos) > 1 else []
     
+    segment = "urgente" if es_urgencia == 1 else "programado"
+    
     try:
-        # 1. Construir vectores de entrada
-        # Vector para XGBoost y Random Forest
+        # 1. Obtener features y bundles
+        clf_bundle = models[f"clf_{segment}"]
+        reg_xgb_bundle = models[f"reg_xgb_{segment}"]
+        reg_rf_bundle = models[f"reg_rf_{segment}"]
+        reg_lr_bundle = models[f"reg_lr_{segment}"]
+        
+        # 2. Construir vector de entrada para la Etapa 1
         df_vector_ml = preprocessing_helper.construir_vector_paciente(
             diag_primario=diag_primario,
             diags_secundarios=diags_secundarios,
             procedimientos=procedimientos,
             es_urgencia=es_urgencia,
             fecha_ingreso=fecha_ingreso,
-            columnas_modelo=xgb_cols
+            columnas_modelo=clf_bundle["features"]
         )
         
-        # Vector para Regresión Ridge correspondiente
-        lr_cols = lr_urg_cols if es_urgencia == 1 else lr_nurg_cols
+        # Asegurar tipo de datos int para booleanos
+        bool_cols = df_vector_ml.select_dtypes(include="bool").columns
+        if len(bool_cols) > 0:
+            df_vector_ml[bool_cols] = df_vector_ml[bool_cols].astype(int)
+            
+        # 3. Predicción Etapa 1 (Clasificador de Riesgo)
+        clf_model = clf_bundle["model"]
+        prob_plos_14 = float(clf_model.predict_proba(df_vector_ml)[:, 1][0])
+        
+        # 4. Preparar vectores para Regresores de Etapa 2
+        # XGBoost
+        df_vector_reg_xgb = df_vector_ml.copy()
+        df_vector_reg_xgb["prob_los_14"] = prob_plos_14
+        df_vector_reg_xgb = df_vector_reg_xgb[reg_xgb_bundle["features"]]
+        
+        # Random Forest
+        df_vector_reg_rf = df_vector_ml.copy()
+        df_vector_reg_rf["prob_los_14"] = prob_plos_14
+        df_vector_reg_rf = df_vector_reg_rf[reg_rf_bundle["features"]]
+        
+        # Ridge
         df_vector_lr = preprocessing_helper.construir_vector_paciente_lr(
             diag_primario=diag_primario,
             diags_secundarios=diags_secundarios,
             procedimientos=procedimientos,
             es_urgencia=es_urgencia,
             fecha_ingreso=fecha_ingreso,
-            columnas_modelo=lr_cols,
+            columnas_modelo=reg_lr_bundle["features"],
             es_urgente_modelo=(es_urgencia == 1)
         )
         
-        # 2. Ejecutar predicciones (aplicando la exponencial expm1 a la predicción logarítmica)
-        pred_xgb = 0.0
-        pred_rf = 0.0
-        pred_ridge = 0.0
+        # 5. Ejecutar inferencia de días (TransformedTargetRegressor revierte automáticamente el log1p)
+        pred_xgb = float(reg_xgb_bundle["model"].predict(df_vector_reg_xgb)[0])
+        pred_rf = float(reg_rf_bundle["model"].predict(df_vector_reg_rf)[0])
+        pred_ridge = float(reg_lr_bundle["model"].predict(df_vector_lr)[0])
         
-        # Inferencia XGBoost
-        if xgb_model is not None:
-            pred_xgb_log = xgb_model.predict(df_vector_ml)[0]
-            pred_xgb = np.expm1(pred_xgb_log)
-            pred_xgb = max(0.0, float(pred_xgb))
-            
-        # Inferencia Random Forest
-        if rf_model is not None:
-            pred_rf_log = rf_model.predict(df_vector_ml)[0]
-            pred_rf = np.expm1(pred_rf_log)
-            pred_rf = max(0.0, float(pred_rf))
-            
-        # Inferencia Ridge (según urgencia)
-        lr_active_model = lr_urg_model if es_urgencia == 1 else lr_nurg_model
-        if lr_active_model is not None:
-            pred_ridge_log = lr_active_model.predict(df_vector_lr)[0]
-            pred_ridge = np.expm1(pred_ridge_log)
-            pred_ridge = max(0.0, float(pred_ridge))
-            
+        pred_xgb = max(0.0, pred_xgb)
+        pred_rf = max(0.0, pred_rf)
+        pred_ridge = max(0.0, pred_ridge)
+        
         # Seleccionar la predicción del modelo activo
         selected_pred = pred_xgb
         if model_name == 'random_forest':
@@ -194,21 +157,18 @@ def api_predict():
         elif model_name == 'ridge':
             selected_pred = pred_ridge
             
-        # 3. Determinar riesgo y labels de negocio
+        # 6. Determinar riesgo y labels de negocio a partir de la probabilidad de Etapa 1
         risk_level = 'low'
         risk_label = f"Riesgo Bajo (Mediana: {selected_pred:.1f} días)"
-        if selected_pred >= 14.0:
+        if prob_plos_14 >= 0.50:
             risk_level = 'high'
             risk_label = f"Riesgo Elevado / Estancia Prolongada ({selected_pred:.1f} días)"
-        elif selected_pred >= 6.0:
+        elif prob_plos_14 >= 0.35:
             risk_level = 'medium'
             risk_label = f"Riesgo Moderado ({selected_pred:.1f} días)"
             
-        # 4. Calcular factores de decisión dinámicos usando coeficientes Ridge
-        driving_factors = []
-        if lr_active_model is not None:
-            driving_factors = calcular_driving_factors(df_vector_lr, es_urgencia == 1)
-            
+        # 7. Calcular factores de decisión dinámicos usando coeficientes Ridge
+        driving_factors = calcular_driving_factors(df_vector_lr, es_urgencia == 1)
         charlson_calc = int(df_vector_ml['charlson_index'].iloc[0])
         
         return jsonify({
@@ -231,8 +191,14 @@ def api_predict():
 
 def calcular_driving_factors(df_vector, es_urgente):
     """Calcula los aportes lineales de cada variable clínica activa a partir de los coeficientes de Ridge."""
-    model = lr_urg_model if es_urgente else lr_nurg_model
-    cols = lr_urg_cols if es_urgente else lr_nurg_cols
+    segment = "urgente" if es_urgente else "programado"
+    reg_lr_bundle = models.get(f"reg_lr_{segment}")
+    if reg_lr_bundle is None:
+        return []
+        
+    transformed_model = reg_lr_bundle["model"]
+    model = transformed_model.regressor_ # Ridge real dentro del TransformedTargetRegressor
+    cols = reg_lr_bundle["features"]
     
     if model is None or not hasattr(model, 'coef_'):
         return []
@@ -379,34 +345,62 @@ def api_predict_bulk():
             c_index = preprocessing_helper.calcular_charlson(todos_diags)
             charlson_list.append(c_index)
             
-            # 2. Inferencia
+            # 2. Inferencia en dos etapas
             pred_days = 0.0
+            segment = "urgente" if es_urg == 1 else "programado"
+            
+            clf_bundle = models[f"clf_{segment}"]
+            clf_features = clf_bundle["features"]
+            
+            # Vector ML base para Etapa 1
+            df_vec = preprocessing_helper.construir_vector_paciente(
+                diag_primario=diag_prim,
+                diags_secundarios=diag_sec,
+                procedimientos=procs,
+                es_urgencia=es_urg,
+                fecha_ingreso=fecha_ing,
+                columnas_modelo=clf_features
+            )
+            
+            # Asegurar tipo de datos int para booleanos
+            bool_cols = df_vec.select_dtypes(include="bool").columns
+            if len(bool_cols) > 0:
+                df_vec[bool_cols] = df_vec[bool_cols].astype(int)
+                
+            # Clasificador Etapa 1
+            clf_model = clf_bundle["model"]
+            prob_plos_14 = float(clf_model.predict_proba(df_vec)[:, 1][0])
+            
             if model_name == 'ridge':
-                lr_cols = lr_urg_cols if es_urg == 1 else lr_nurg_cols
-                df_vec = preprocessing_helper.construir_vector_paciente_lr(
+                reg_lr_bundle = models[f"reg_lr_{segment}"]
+                df_vec_lr = preprocessing_helper.construir_vector_paciente_lr(
                     diag_primario=diag_prim,
                     diags_secundarios=diag_sec,
                     procedimientos=procs,
                     es_urgencia=es_urg,
                     fecha_ingreso=fecha_ing,
-                    columnas_modelo=lr_cols,
+                    columnas_modelo=reg_lr_bundle["features"],
                     es_urgente_modelo=(es_urg == 1)
                 )
-                active_model = lr_urg_model if es_urg == 1 else lr_nurg_model
+                active_model = reg_lr_bundle["model"]
                 if active_model is not None:
-                    pred_days = np.expm1(active_model.predict(df_vec)[0])
-            else:
-                df_vec = preprocessing_helper.construir_vector_paciente(
-                    diag_primario=diag_prim,
-                    diags_secundarios=diag_sec,
-                    procedimientos=procs,
-                    es_urgencia=es_urg,
-                    fecha_ingreso=fecha_ing,
-                    columnas_modelo=xgb_cols
-                )
-                active_model = xgb_model if model_name == 'xgboost' else rf_model
+                    pred_days = float(active_model.predict(df_vec_lr)[0])
+            elif model_name == 'random_forest':
+                reg_rf_bundle = models[f"reg_rf_{segment}"]
+                df_vec_reg_rf = df_vec.copy()
+                df_vec_reg_rf["prob_los_14"] = prob_plos_14
+                df_vec_reg_rf = df_vec_reg_rf[reg_rf_bundle["features"]]
+                active_model = reg_rf_bundle["model"]
                 if active_model is not None:
-                    pred_days = np.expm1(active_model.predict(df_vec)[0])
+                    pred_days = float(active_model.predict(df_vec_reg_rf)[0])
+            else: # xgboost
+                reg_xgb_bundle = models[f"reg_xgb_{segment}"]
+                df_vec_reg_xgb = df_vec.copy()
+                df_vec_reg_xgb["prob_los_14"] = prob_plos_14
+                df_vec_reg_xgb = df_vec_reg_xgb[reg_xgb_bundle["features"]]
+                active_model = reg_xgb_bundle["model"]
+                if active_model is not None:
+                    pred_days = float(active_model.predict(df_vec_reg_xgb)[0])
                     
             pred_days = max(0.0, float(pred_days))
             pred_los_list.append(pred_days)
