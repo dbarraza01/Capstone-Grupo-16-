@@ -1,0 +1,49 @@
+modelo,metodo_ip90,alcance,segmento,tramo_real,n,coverage,width_mean
+LR,global,global,todos,todos,698,0.7335243553008596,13.72231917521614
+LR,segmento,global,todos,todos,698,0.7335243553008596,13.72231917521614
+LR,pred_tramo,global,todos,todos,698,0.6289398280802292,14.32068471912514
+LR,segmento_pred_tramo,global,todos,todos,698,0.6289398280802292,14.32068471912514
+XGB,global,global,todos,todos,698,0.8409742120343839,17.13094145064472
+XGB,segmento,global,todos,todos,698,0.8409742120343839,17.13094145064472
+XGB,pred_tramo,global,todos,todos,698,0.7979942693409742,16.58346385824498
+XGB,segmento_pred_tramo,global,todos,todos,698,0.7979942693409742,16.58346385824498
+LR,global,tramo_real,todos,3-6,179,0.888268156424581,13.431050960243578
+LR,segmento,tramo_real,todos,3-6,179,0.888268156424581,13.431050960243578
+LR,pred_tramo,tramo_real,todos,3-6,179,0.7039106145251397,10.607213478090017
+LR,segmento_pred_tramo,tramo_real,todos,3-6,179,0.7039106145251397,10.607213478090017
+LR,global,tramo_real,todos,0-2,200,0.93,11.962962289901048
+LR,segmento,tramo_real,todos,0-2,200,0.93,11.962962289901048
+LR,pred_tramo,tramo_real,todos,0-2,200,0.755,6.691968624203236
+LR,segmento_pred_tramo,tramo_real,todos,0-2,200,0.755,6.691968624203236
+LR,global,tramo_real,todos,14+ (PLOS),180,0.2611111111111111,15.307292463319222
+LR,segmento,tramo_real,todos,14+ (PLOS),180,0.2611111111111111,15.307292463319222
+LR,pred_tramo,tramo_real,todos,14+ (PLOS),180,0.35555555555555557,25.47721865656811
+LR,segmento_pred_tramo,tramo_real,todos,14+ (PLOS),180,0.35555555555555557,25.47721865656811
+LR,global,tramo_real,todos,7-13,139,0.8633093525179856,14.576370942730916
+LR,segmento,tramo_real,todos,7-13,139,0.8633093525179856,14.576370942730916
+LR,pred_tramo,tramo_real,todos,7-13,139,0.7050359712230215,15.63204056365704
+LR,segmento_pred_tramo,tramo_real,todos,7-13,139,0.7050359712230215,15.63204056365704
+XGB,global,tramo_real,todos,3-6,179,0.9050279329608939,16.91625423829611
+XGB,segmento,tramo_real,todos,3-6,179,0.9050279329608939,16.91625423829611
+XGB,pred_tramo,tramo_real,todos,3-6,179,0.8715083798882681,11.856768873324015
+XGB,segmento_pred_tramo,tramo_real,todos,3-6,179,0.8715083798882681,11.856768873324015
+XGB,global,tramo_real,todos,0-2,200,0.935,15.76063182725002
+XGB,segmento,tramo_real,todos,0-2,200,0.935,15.76063182725002
+XGB,pred_tramo,tramo_real,todos,0-2,200,0.815,7.762955396574994
+XGB,segmento_pred_tramo,tramo_real,todos,0-2,200,0.815,7.762955396574994
+XGB,global,tramo_real,todos,14+ (PLOS),180,0.6055555555555555,18.286923967222243
+XGB,segmento,tramo_real,todos,14+ (PLOS),180,0.6055555555555555,18.286923967222243
+XGB,pred_tramo,tramo_real,todos,14+ (PLOS),180,0.6388888888888888,31.01149751888888
+XGB,segmento_pred_tramo,tramo_real,todos,14+ (PLOS),180,0.6388888888888888,31.01149751888888
+XGB,global,tramo_real,todos,7-13,139,0.9280575539568345,17.882121901762613
+XGB,segmento,tramo_real,todos,7-13,139,0.9280575539568345,17.882121901762613
+XGB,pred_tramo,tramo_real,todos,7-13,139,0.8848920863309353,16.67795332384891
+XGB,segmento_pred_tramo,tramo_real,todos,7-13,139,0.8848920863309353,16.67795332384891
+LR,global,segmento,urgente,todos,698,0.7335243553008596,13.72231917521614
+LR,segmento,segmento,urgente,todos,698,0.7335243553008596,13.72231917521614
+LR,pred_tramo,segmento,urgente,todos,698,0.6289398280802292,14.32068471912514
+LR,segmento_pred_tramo,segmento,urgente,todos,698,0.6289398280802292,14.32068471912514
+XGB,global,segmento,urgente,todos,698,0.8409742120343839,17.13094145064472
+XGB,segmento,segmento,urgente,todos,698,0.8409742120343839,17.13094145064472
+XGB,pred_tramo,segmento,urgente,todos,698,0.7979942693409742,16.58346385824498
+XGB,segmento_pred_tramo,segmento,urgente,todos,698,0.7979942693409742,16.58346385824498

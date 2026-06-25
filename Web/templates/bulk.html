@@ -178,7 +178,7 @@
                             <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
                             Descargar Plantilla CSV
                         </a>
-                        <button id="run-batch-btn" class="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-label-md font-label-md flex items-center gap-2 shadow-sm hover:bg-on-secondary-container transition-colors group">
+                        <button id="run-batch-btn" type="button" class="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-label-md font-label-md flex items-center gap-2 shadow-sm hover:bg-on-secondary-container transition-colors group">
                             <span class="material-symbols-outlined" style="font-size: 18px;">auto_awesome</span>
                             Ejecutar Inferencia Masiva
                         </button>
@@ -197,7 +197,7 @@
                             </div>
                             <h3 class="text-label-md font-label-md font-bold mb-1" id="upload-title">Arrastre o seleccione su archivo</h3>
                             <p class="text-label-sm font-label-sm text-outline mb-4" id="upload-subtitle">Soporta archivos CSV de pacientes (.csv)</p>
-                            <button class="text-primary text-label-sm font-label-sm font-semibold hover:underline" id="browse-btn">Examinar archivos</button>
+                            <button type="button" class="text-primary text-label-sm font-label-sm font-semibold hover:underline" id="browse-btn">Examinar archivos</button>
                         </div>
 
                         <!-- Configuration Card -->
@@ -212,14 +212,14 @@
                                     <select id="batch-model-select" class="w-full bg-surface border border-outline-variant/50 rounded-lg py-2 px-3 text-label-md font-label-md focus:border-primary focus:ring-1 focus:ring-primary">
                                         <option value="xgboost">XGBoost (Recomendado)</option>
                                         <option value="random_forest">Random Forest</option>
-                                        <option value="ridge">Regresión Lineal Base (Ridge)</option>
+                                        <option value="ridge">Regresión Lineal Base</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-label-sm font-label-sm text-on-surface-variant mb-1">Umbral de Estancia Larga (Días)</label>
                                     <div class="flex items-center gap-3">
-                                        <input id="threshold-range" class="w-full accent-primary" max="40" min="5" type="range" value="27"/>
-                                        <span id="threshold-val" class="text-label-sm font-label-sm text-on-surface font-mono w-8">27d</span>
+                                        <input id="threshold-range" class="w-full accent-primary" max="40" min="5" type="range" value="14"/>
+                                        <span id="threshold-val" class="text-label-sm font-label-sm text-on-surface font-mono w-8">14d</span>
                                     </div>
                                 </div>
                             </div>
@@ -290,10 +290,15 @@
         const browseBtn = document.getElementById('browse-btn');
 
         browseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
+            fileInput.value = '';
             fileInput.click();
         });
-        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('click', () => {
+            fileInput.value = '';
+            fileInput.click();
+        });
 
         dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -319,7 +324,7 @@
         });
 
         function handleFileSelect(file) {
-            if (!file.name.endsWith('.csv')) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
                 alert("Por favor suba únicamente archivos con extensión .csv");
                 return;
             }

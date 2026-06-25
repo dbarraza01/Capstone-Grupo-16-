@@ -1,0 +1,37 @@
+modelo,alcance,segmento,tramo_real,metrica,valor,ic95_inf,ic95_sup,n_boot,n,segmento_folder,segmento_key,segmento_label
+LR,global,todos,todos,mae,3.336523304926834,2.6887425922477415,4.088969697338036,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,rmse,15.261880746572505,10.88099959017786,19.993553180604778,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,medae,0.5771935071970784,0.5196595806100062,0.6350506690135056,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,me,0.743942025280716,0.0479845465045821,1.4928156490951254,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,pup,0.4896633195510927,0.4654459539279386,0.5132900177200236,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,mae_asimetrico_alpha_2,4.632813944749894,3.796634826522558,5.5160075053344215,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,precision_plos_14,0.7605633802816901,0.6575342465753424,0.8571428571428571,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,recall_plos_14,0.5454545454545454,0.4468033464160297,0.6413043478260869,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,f1_plos_14,0.6352941176470589,0.5465820453560596,0.7106659128635696,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,mae,1.836319181148257,1.613714816776078,2.089251467939929,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,rmse,5.500659312923694,4.122959430065501,6.931690775119372,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,medae,0.5848431999999999,0.5502578,0.6492172,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,me,-0.6077601811246308,-0.8821165945018311,-0.3565391299147669,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,pup,0.4181925575900768,0.3933845245126993,0.4412285883047844,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,mae_asimetrico_alpha_2,3.0583588622847016,2.6180093474616064,3.571330357366213,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,precision_plos_14,0.8051948051948052,0.7027027027027027,0.8904398415580127,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,recall_plos_14,0.6262626262626263,0.5282663826333942,0.7216494845360825,2000,1693,no_urgencia,programado,No urgencia
+XGB,global,todos,todos,f1_plos_14,0.7045454545454545,0.6235255920550037,0.7767101248266296,2000,1693,no_urgencia,programado,No urgencia
+LR,global,todos,todos,mae,36.68477001044838,15.838594363486903,64.57713648951751,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,rmse,334.5180728051533,91.56557403860538,511.22021716545936,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,medae,3.0954417614502683,2.6645107479578325,3.5505875858587688,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,me,28.928144944569127,8.676031143537424,57.41408982753054,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,pup,0.5286532951289399,0.491404011461318,0.5644699140401146,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,mae_asimetrico_alpha_2,40.56308254338801,19.32818749612796,68.11475611397479,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,precision_plos_14,0.6642335766423357,0.583318345323741,0.7426588640043172,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,recall_plos_14,0.5055555555555555,0.4342802197802197,0.5795683124346916,2000,698,urgente,urgente,Urgencia
+LR,global,todos,todos,f1_plos_14,0.5741324921135647,0.5068096611391493,0.6353643509495353,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,mae,5.342858944054441,4.713556172401504,5.967038327915471,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,rmse,10.126998004837096,8.182359574771683,12.086453948266335,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,medae,2.4921251499999997,2.2356824,2.7005531,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,me,-1.822486116833811,-2.572855022315544,-1.082273641146133,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,pup,0.5171919770773639,0.4799426934097421,0.5544412607449857,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,mae_asimetrico_alpha_2,8.925531474498568,7.795816999609598,10.172906914570202,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,precision_plos_14,0.796875,0.7249852362204724,0.8650793650793651,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,recall_plos_14,0.5666666666666667,0.4971743341404359,0.6354272037572254,2000,698,urgente,urgente,Urgencia
+XGB,global,todos,todos,f1_plos_14,0.6623376623376623,0.598004932013563,0.7176125593624523,2000,698,urgente,urgente,Urgencia

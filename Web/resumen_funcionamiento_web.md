@@ -16,7 +16,7 @@ graph TD
     C -->|3. Mapeo Clínico y Frecuencias| D[caso_diagnostico.csv / caso_procedimiento.csv]
     C -->|4. Score de Comorbilidad| E[comorbidipy / polars]
     B -->|5. Carga de Modelos y Features| F[Pickles de Modelos y Columnas]
-    B -->|6. Genera Inferencia y Factores| G[Modelos Ridge, XGBoost, RF]
+    B -->|6. Genera Inferencia y Factores| G[Modelos Regresion Lineal, XGBoost, RF]
     B -->|7. Respuesta JSON / Descarga CSV| A
 ```
 
@@ -27,7 +27,7 @@ graph TD
 El entorno del sistema está definido en el archivo [`requirements.txt`](file:///C:/Users/tomas/Downloads/E3_Capstone/Capstone-Grupo-16--main/Web/requirements.txt) y emplea las siguientes herramientas:
 
 *   **Flask (v3.0.x):** Micro-framework web síncrono encargado del enrutamiento HTTP, la gestión de sesiones de archivos, el procesamiento de archivos subidos y la publicación de los endpoints de la API.
-*   **scikit-learn (v1.7.1/1.8.0):** Biblioteca utilizada para la carga e inferencia de los modelos de regresión lineal regularizada (Ridge) y ensambles (Random Forest) mediante la deserialización de archivos pickle (`.pkl`).
+*   **scikit-learn:** Biblioteca utilizada para la carga e inferencia de los modelos de regresión lineal básica y ensambles (Random Forest) mediante la deserialización de archivos pickle (`.pkl`).
 *   **xgboost (v2.0.x):** Framework de gradiente incrementado (Gradient Boosting) que ejecuta la inferencia del modelo clasificado como ganador general (XGBoost Regressor).
 *   **pandas y numpy:** Librerías para el procesamiento de datos científicos, manipulación de dataframes y alineación de vectores multidimensionales en tiempo de ejecución.
 *   **comorbidipy (v0.8.0) y polars:** Utilizados para el cálculo eficiente del Índice de Comorbilidad de Charlson. `comorbidipy` realiza la identificación de patologías crónicas mapeadas a ICD-10-CM basándose en la velocidad de ejecución en memoria de `polars`.
@@ -51,7 +51,7 @@ Al arrancar el servidor web, se ejecuta la función `cargar_modelos()`, la cual 
     *   `lr_nurg_model`: Cargado desde `Modelo_Base_Ultima entrega/lr_base_No_Urgencias.pkl`.
 3.  **Listas de Variables Clínicas (Features):**
     *   `xgb_cols`: Columnas de entrada de XGBoost/RF (desde `Web/columnas_modelo_final.pkl`).
-    *   `lr_urg_cols` / `lr_nurg_cols`: Columnas de regresión Ridge de Urgencias y No Urgencias, respectivamente.
+    *   `lr_urg_cols` / `lr_nurg_cols`: Columnas de regresión lineal base de Urgencias y No Urgencias, respectivamente.
 
 ### 3.2 Rutas de Navegación (HTML Vistas)
 *   `GET /`: Sirve el template `individual.html` correspondiente al censo de inferencia individual.
@@ -60,7 +60,7 @@ Al arrancar el servidor web, se ejecuta la función `cargar_modelos()`, la cual 
 
 ### 3.3 Endpoints expuestos de la API JSON
 *   `POST /charlson`: Recibe una lista de diagnósticos en formato JSON y devuelve el índice de Charlson acumulado.
-*   `POST /predict`: Recibe el perfil clínico de un paciente en JSON, genera los vectores correspondientes, predice a través de los modelos disponibles ( Ridge, XGBoost, Random Forest ), mapea los coeficientes para la explicabilidad y devuelve el diagnóstico completo de estancia.
+*   `POST /predict`: Recibe el perfil clínico de un paciente en JSON, genera los vectores correspondientes, predice a través de los modelos disponibles (Regresión Lineal, XGBoost, Random Forest), mapea los coeficientes para la explicabilidad y devuelve el diagnóstico completo de estancia.
 *   `POST /predict-bulk`: Recibe un archivo CSV subido por el usuario, procesa y predice la estancia de cada fila y guarda el resultado en el disco, devolviendo las primeras 50 predicciones en JSON para visualización inmediata en pantalla.
 *   `GET /export-bulk/<batch_id>`: Envía al cliente el archivo CSV final almacenado temporalmente con las predicciones del modelo y el índice de Charlson calculado anexados.
 *   `GET /download-template`: Genera y descarga un archivo CSV plantilla con la estructura correcta de cabeceras clínicas requerida por el preprocesamiento del lote.
@@ -91,19 +91,19 @@ Utiliza la biblioteca `comorbidipy` configurada con la variante de Quan (`varian
 
 ### 4.4 Construcción y Alineación de Vectores de Entrada
 1.  **Vectores para XGBoost/RF:** La función `construir_vector_paciente` crea un dataframe de una sola fila inicializado en ceros. Extrae variables estructurales (`n_procedimientos`, `n_diag_total`, `tiene_diag_primario`, `mes_ingreso`, `dia_semana_ingreso`, `charlson_index` y `es_urgencia`). Posteriormente, mapea jerárquicamente cada diagnóstico y procedimiento ingresado, marcando las columnas resultantes con valor $1$. Finalmente, reordena y alinea las columnas del dataframe para que coincidan exactamente con la estructura de variables guardada en `xgb_cols`.
-2.  **Vectores para Regresión Ridge:** La función `construir_vector_paciente_lr` replica la lógica anterior pero introduce de forma explícita los **términos de interacción clínica** de segundo orden calculados:
+2.  **Vectores para Regresión Lineal Base:** La función `construir_vector_paciente_lr` replica la lógica anterior y alinea el vector con las columnas esperadas por el bundle lineal activo:
     *   `int_charlson_diag = charlson_index * n_diag_total`
     *   `int_charlson_proc = charlson_index * n_procedimientos`
     *   `int_proc_diag = n_procedimientos * n_diag_total` *(Este término solo se añade si el paciente es clasificado en el segmento de Urgencias, eliminándose en No Urgencias para evitar ruido).*
-    *   Alinea las columnas resultantes con las esperadas por el modelo Ridge activo.
+    *   Alinea las columnas resultantes con las esperadas por el modelo lineal activo.
 
 ---
 
 ## 5. Algoritmo de Explicabilidad Clínica (Driving Factors)
 
-En el endpoint `/predict`, cuando se utiliza el modelo de Regresión Ridge, el servidor calcula de manera dinámica los factores de decisión clínica. Esta funcionalidad actúa como un modelo explicativo local:
+En el endpoint `/predict`, cuando se utiliza el modelo de Regresión Lineal Base, el servidor calcula de manera dinámica los factores de decisión clínica. Esta funcionalidad actúa como un modelo explicativo local:
 
-1.  **Extracción de Coeficientes:** El servidor extrae el vector de pesos del modelo Ridge correspondiente: $\mathbf{w}$ (los coeficientes beta).
+1.  **Extracción de Coeficientes:** El servidor extrae el vector de pesos del modelo lineal correspondiente: $\mathbf{w}$ (los coeficientes beta).
 2.  **Cálculo de Aportes:** Multiplica cada valor de característica del paciente ($x_i$, que puede ser binaria $0/1$ o variables continuas de conteo e interacción) por su coeficiente correspondiente ($w_i$). El aporte de la variable $i$ a la predicción final en el espacio logarítmico es:
     $$\text{Contribución}_i = x_i \times w_i$$
 3.  **Ordenamiento:** Se filtran las variables activas ($x_i \ne 0$) y se ordenan de forma descendente según su valor absoluto de contribución ($|\text{Contribución}_i|$).
@@ -122,7 +122,7 @@ En el endpoint `/predict`, cuando se utiliza el modelo de Regresión Ridge, el s
 La interfaz de usuario implementa tres flujos operativos definidos de trabajo:
 
 ### 6.1 Módulo de Predicción Individual (`individual.html`)
-*   **Formulario Dinámico:** Permite ingresar la fecha de ingreso, seleccionar el tipo de admisión (Urgencias / Programado) y definir el modelo predictivo que controlará el resultado (XGBoost, Random Forest o Ridge).
+*   **Formulario Dinámico:** Permite ingresar la fecha de ingreso, seleccionar el tipo de admisión (Urgencias / Programado) y definir el modelo predictivo que controlará el resultado (XGBoost, Random Forest o Regresión Lineal).
 *   **Buscador y Listas Dinámicas:** Permite añadir múltiples diagnósticos y procedimientos clínicos mediante un campo interactivo.
 *   **Inferencia en Tiempo Real de Charlson:** Lanza solicitudes en segundo plano a la API de Charlson cada vez que se modifica la lista de diagnósticos, actualizando un indicador visual de comorbilidad en la interfaz.
 *   **Panel de Resultados e Impacto:** Presenta la estancia estimada del paciente y la clasifica visualmente con un semáforo clínico de nivel de riesgo (Bajo $<6$ días, Moderado $6-14$ días, Elevado $\ge 14$ días). Adicionalmente, muestra un gráfico de barras horizontales animado con los factores clínicos explicativos calculados.

@@ -39,7 +39,7 @@ El sistema utiliza una arquitectura de **dos etapas**:
 2. **Etapa 2 (Predicción de Días):** Dependiendo del perfil del paciente, se ejecutan en paralelo tres algoritmos distintos para estimar el número exacto de días de estancia:
    * **XGBoost (Modelo Ganador):** El modelo principal optimizado para patrones complejos no lineales.
    * **Random Forest:** Modelo alternativo basado en ensambles de árboles de decisión.
-   * **Regresión Ridge:** Un modelo lineal regularizado usado como línea base científica.
+   * **Regresión Lineal Base:** Un modelo lineal sin regularización usado como línea base científica simple.
 
 ### Características Clínicas Clave en la Interfaz:
 * **Intervalo de Predicción Empírico al 90% (IP90):** La medicina no es exacta. En lugar de dar solo un número fijo, el sistema calcula un rango seguro (ej. *"se estima una estancia de 5 días, pero con un 90% de confianza real estará entre 3 y 8 días"*).
@@ -78,7 +78,7 @@ Weights & Biases (W&B) actúa como la **caja negra de un avión** para el ciclo 
 Cada vez que se realiza una auditoría formal del rendimiento de los modelos en el conjunto de prueba (holdout) a través de la aplicación, el script `registro_wandb.py` envía la siguiente telemetría a la nube de W&B:
 
 1. **Curvas de Aprendizaje Iterativas (Epoch Logging):**
-   * Registra el proceso de entrenamiento de la regresión lineal Ridge paso a paso (MAE y Pérdida por cada época). Esto genera bonitas curvas continuas en la nube para asegurar que el modelo convergió de forma estable sin sobreajustarse.
+   * Registra el comportamiento de la regresión lineal base con fracciones crecientes del train (MAE y pérdida por iteración). Esto permite visualizar si el baseline lineal mejora al recibir más datos o si mantiene señales de sobreajuste.
 2. **Tablas Comparativas de Modelos (`wandb.Table`):**
    * En lugar de registrar métricas de evaluación final como números sueltos (lo cual crea gráficos de líneas vacíos de un solo punto), las agrupa en tablas interactivas.
    * Puedes ver y ordenar en la nube el MAE, RMSE y métricas de clasificación (Recall, Precision, F1-Score) de los 3 modelos para compararlos de un vistazo.

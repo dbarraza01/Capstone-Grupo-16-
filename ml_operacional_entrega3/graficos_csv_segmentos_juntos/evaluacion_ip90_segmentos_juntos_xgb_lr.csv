@@ -1,0 +1,97 @@
+modelo,metodo_ip90,alcance,segmento,tramo_real,n,coverage,width_mean,segmento_folder,segmento_key,segmento_label
+LR,global,global,todos,todos,1693,0.8139397519196693,4.58335861714234,no_urgencia,programado,No urgencia
+LR,segmento,global,todos,todos,1693,0.8139397519196693,4.58335861714234,no_urgencia,programado,No urgencia
+LR,pred_tramo,global,todos,todos,1693,0.7944477259303012,5.533692670026912,no_urgencia,programado,No urgencia
+LR,segmento_pred_tramo,global,todos,todos,1693,0.7944477259303012,5.533692670026912,no_urgencia,programado,No urgencia
+XGB,global,global,todos,todos,1693,0.8854105138806851,5.996399071621971,no_urgencia,programado,No urgencia
+XGB,segmento,global,todos,todos,1693,0.8854105138806851,5.996399071621971,no_urgencia,programado,No urgencia
+XGB,pred_tramo,global,todos,todos,1693,0.8789131718842291,6.856222944829295,no_urgencia,programado,No urgencia
+XGB,segmento_pred_tramo,global,todos,todos,1693,0.8789131718842291,6.856222944829295,no_urgencia,programado,No urgencia
+LR,global,tramo_real,todos,0-2,983,0.9186164801627672,4.41585549804973,no_urgencia,programado,No urgencia
+LR,segmento,tramo_real,todos,0-2,983,0.9186164801627672,4.41585549804973,no_urgencia,programado,No urgencia
+LR,pred_tramo,tramo_real,todos,0-2,983,0.866734486266531,2.6663915629074912,no_urgencia,programado,No urgencia
+LR,segmento_pred_tramo,tramo_real,todos,0-2,983,0.866734486266531,2.6663915629074912,no_urgencia,programado,No urgencia
+LR,global,tramo_real,todos,3-6,501,0.8562874251497006,4.819128912652617,no_urgencia,programado,No urgencia
+LR,segmento,tramo_real,todos,3-6,501,0.8562874251497006,4.819128912652617,no_urgencia,programado,No urgencia
+LR,pred_tramo,tramo_real,todos,3-6,501,0.7904191616766467,5.446919090791014,no_urgencia,programado,No urgencia
+LR,segmento_pred_tramo,tramo_real,todos,3-6,501,0.7904191616766467,5.446919090791014,no_urgencia,programado,No urgencia
+LR,global,tramo_real,todos,7-13,110,0.3454545454545454,4.820860078770485,no_urgencia,programado,No urgencia
+LR,segmento,tramo_real,todos,7-13,110,0.3454545454545454,4.820860078770485,no_urgencia,programado,No urgencia
+LR,pred_tramo,tramo_real,todos,7-13,110,0.509090909090909,10.790325283586622,no_urgencia,programado,No urgencia
+LR,segmento_pred_tramo,tramo_real,todos,7-13,110,0.509090909090909,10.790325283586622,no_urgencia,programado,No urgencia
+LR,global,tramo_real,todos,14+ (PLOS),99,0.0808080808080808,4.789515053892774,no_urgencia,programado,No urgencia
+LR,segmento,tramo_real,todos,14+ (PLOS),99,0.0808080808080808,4.789515053892774,no_urgencia,programado,No urgencia
+LR,pred_tramo,tramo_real,todos,14+ (PLOS),99,0.4141414141414141,28.60238927612799,no_urgencia,programado,No urgencia
+LR,segmento_pred_tramo,tramo_real,todos,14+ (PLOS),99,0.4141414141414141,28.60238927612799,no_urgencia,programado,No urgencia
+XGB,global,tramo_real,todos,0-2,983,0.9623601220752798,5.835788219782297,no_urgencia,programado,No urgencia
+XGB,segmento,tramo_real,todos,0-2,983,0.9623601220752798,5.835788219782297,no_urgencia,programado,No urgencia
+XGB,pred_tramo,tramo_real,todos,0-2,983,0.9186164801627672,3.26248612766124,no_urgencia,programado,No urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,0-2,983,0.9186164801627672,3.26248612766124,no_urgencia,programado,No urgencia
+XGB,global,tramo_real,todos,3-6,501,0.9500998003992016,6.210172556726544,no_urgencia,programado,No urgencia
+XGB,segmento,tramo_real,todos,3-6,501,0.9500998003992016,6.210172556726544,no_urgencia,programado,No urgencia
+XGB,pred_tramo,tramo_real,todos,3-6,501,0.8942115768463074,6.210571668003989,no_urgencia,programado,No urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,3-6,501,0.8942115768463074,6.210571668003989,no_urgencia,programado,No urgencia
+XGB,global,tramo_real,todos,7-13,110,0.5545454545454546,6.236950894181817,no_urgencia,programado,No urgencia
+XGB,segmento,tramo_real,todos,7-13,110,0.5545454545454546,6.236950894181817,no_urgencia,programado,No urgencia
+XGB,pred_tramo,tramo_real,todos,7-13,110,0.6090909090909091,14.094261173863629,no_urgencia,programado,No urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,7-13,110,0.6090909090909091,14.094261173863629,no_urgencia,programado,No urgencia
+XGB,global,tramo_real,todos,14+ (PLOS),99,0.1616161616161616,6.242048069999998,no_urgencia,programado,No urgencia
+XGB,segmento,tramo_real,todos,14+ (PLOS),99,0.1616161616161616,6.242048069999998,no_urgencia,programado,No urgencia
+XGB,pred_tramo,tramo_real,todos,14+ (PLOS),99,0.7070707070707071,37.76461057888888,no_urgencia,programado,No urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,14+ (PLOS),99,0.7070707070707071,37.76461057888888,no_urgencia,programado,No urgencia
+LR,global,segmento,programado,todos,1693,0.8139397519196693,4.58335861714234,no_urgencia,programado,No urgencia
+LR,segmento,segmento,programado,todos,1693,0.8139397519196693,4.58335861714234,no_urgencia,programado,No urgencia
+LR,pred_tramo,segmento,programado,todos,1693,0.7944477259303012,5.533692670026912,no_urgencia,programado,No urgencia
+LR,segmento_pred_tramo,segmento,programado,todos,1693,0.7944477259303012,5.533692670026912,no_urgencia,programado,No urgencia
+XGB,global,segmento,programado,todos,1693,0.8854105138806851,5.996399071621971,no_urgencia,programado,No urgencia
+XGB,segmento,segmento,programado,todos,1693,0.8854105138806851,5.996399071621971,no_urgencia,programado,No urgencia
+XGB,pred_tramo,segmento,programado,todos,1693,0.8789131718842291,6.856222944829295,no_urgencia,programado,No urgencia
+XGB,segmento_pred_tramo,segmento,programado,todos,1693,0.8789131718842291,6.856222944829295,no_urgencia,programado,No urgencia
+LR,global,global,todos,todos,698,0.7335243553008596,13.72231917521614,urgente,urgente,Urgencia
+LR,segmento,global,todos,todos,698,0.7335243553008596,13.72231917521614,urgente,urgente,Urgencia
+LR,pred_tramo,global,todos,todos,698,0.6289398280802292,14.32068471912514,urgente,urgente,Urgencia
+LR,segmento_pred_tramo,global,todos,todos,698,0.6289398280802292,14.32068471912514,urgente,urgente,Urgencia
+XGB,global,global,todos,todos,698,0.8409742120343839,17.13094145064472,urgente,urgente,Urgencia
+XGB,segmento,global,todos,todos,698,0.8409742120343839,17.13094145064472,urgente,urgente,Urgencia
+XGB,pred_tramo,global,todos,todos,698,0.7979942693409742,16.58346385824498,urgente,urgente,Urgencia
+XGB,segmento_pred_tramo,global,todos,todos,698,0.7979942693409742,16.58346385824498,urgente,urgente,Urgencia
+LR,global,tramo_real,todos,3-6,179,0.888268156424581,13.431050960243578,urgente,urgente,Urgencia
+LR,segmento,tramo_real,todos,3-6,179,0.888268156424581,13.431050960243578,urgente,urgente,Urgencia
+LR,pred_tramo,tramo_real,todos,3-6,179,0.7039106145251397,10.607213478090015,urgente,urgente,Urgencia
+LR,segmento_pred_tramo,tramo_real,todos,3-6,179,0.7039106145251397,10.607213478090015,urgente,urgente,Urgencia
+LR,global,tramo_real,todos,0-2,200,0.93,11.962962289901048,urgente,urgente,Urgencia
+LR,segmento,tramo_real,todos,0-2,200,0.93,11.962962289901048,urgente,urgente,Urgencia
+LR,pred_tramo,tramo_real,todos,0-2,200,0.755,6.691968624203236,urgente,urgente,Urgencia
+LR,segmento_pred_tramo,tramo_real,todos,0-2,200,0.755,6.691968624203236,urgente,urgente,Urgencia
+LR,global,tramo_real,todos,14+ (PLOS),180,0.2611111111111111,15.307292463319222,urgente,urgente,Urgencia
+LR,segmento,tramo_real,todos,14+ (PLOS),180,0.2611111111111111,15.307292463319222,urgente,urgente,Urgencia
+LR,pred_tramo,tramo_real,todos,14+ (PLOS),180,0.3555555555555555,25.47721865656811,urgente,urgente,Urgencia
+LR,segmento_pred_tramo,tramo_real,todos,14+ (PLOS),180,0.3555555555555555,25.47721865656811,urgente,urgente,Urgencia
+LR,global,tramo_real,todos,7-13,139,0.8633093525179856,14.576370942730916,urgente,urgente,Urgencia
+LR,segmento,tramo_real,todos,7-13,139,0.8633093525179856,14.576370942730916,urgente,urgente,Urgencia
+LR,pred_tramo,tramo_real,todos,7-13,139,0.7050359712230215,15.63204056365704,urgente,urgente,Urgencia
+LR,segmento_pred_tramo,tramo_real,todos,7-13,139,0.7050359712230215,15.63204056365704,urgente,urgente,Urgencia
+XGB,global,tramo_real,todos,3-6,179,0.905027932960894,16.91625423829611,urgente,urgente,Urgencia
+XGB,segmento,tramo_real,todos,3-6,179,0.905027932960894,16.91625423829611,urgente,urgente,Urgencia
+XGB,pred_tramo,tramo_real,todos,3-6,179,0.8715083798882681,11.856768873324016,urgente,urgente,Urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,3-6,179,0.8715083798882681,11.856768873324016,urgente,urgente,Urgencia
+XGB,global,tramo_real,todos,0-2,200,0.935,15.76063182725002,urgente,urgente,Urgencia
+XGB,segmento,tramo_real,todos,0-2,200,0.935,15.76063182725002,urgente,urgente,Urgencia
+XGB,pred_tramo,tramo_real,todos,0-2,200,0.815,7.762955396574994,urgente,urgente,Urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,0-2,200,0.815,7.762955396574994,urgente,urgente,Urgencia
+XGB,global,tramo_real,todos,14+ (PLOS),180,0.6055555555555555,18.286923967222243,urgente,urgente,Urgencia
+XGB,segmento,tramo_real,todos,14+ (PLOS),180,0.6055555555555555,18.286923967222243,urgente,urgente,Urgencia
+XGB,pred_tramo,tramo_real,todos,14+ (PLOS),180,0.6388888888888888,31.01149751888888,urgente,urgente,Urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,14+ (PLOS),180,0.6388888888888888,31.01149751888888,urgente,urgente,Urgencia
+XGB,global,tramo_real,todos,7-13,139,0.9280575539568344,17.882121901762613,urgente,urgente,Urgencia
+XGB,segmento,tramo_real,todos,7-13,139,0.9280575539568344,17.882121901762613,urgente,urgente,Urgencia
+XGB,pred_tramo,tramo_real,todos,7-13,139,0.8848920863309353,16.67795332384891,urgente,urgente,Urgencia
+XGB,segmento_pred_tramo,tramo_real,todos,7-13,139,0.8848920863309353,16.67795332384891,urgente,urgente,Urgencia
+LR,global,segmento,urgente,todos,698,0.7335243553008596,13.72231917521614,urgente,urgente,Urgencia
+LR,segmento,segmento,urgente,todos,698,0.7335243553008596,13.72231917521614,urgente,urgente,Urgencia
+LR,pred_tramo,segmento,urgente,todos,698,0.6289398280802292,14.32068471912514,urgente,urgente,Urgencia
+LR,segmento_pred_tramo,segmento,urgente,todos,698,0.6289398280802292,14.32068471912514,urgente,urgente,Urgencia
+XGB,global,segmento,urgente,todos,698,0.8409742120343839,17.13094145064472,urgente,urgente,Urgencia
+XGB,segmento,segmento,urgente,todos,698,0.8409742120343839,17.13094145064472,urgente,urgente,Urgencia
+XGB,pred_tramo,segmento,urgente,todos,698,0.7979942693409742,16.58346385824498,urgente,urgente,Urgencia
+XGB,segmento_pred_tramo,segmento,urgente,todos,698,0.7979942693409742,16.58346385824498,urgente,urgente,Urgencia

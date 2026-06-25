@@ -13,6 +13,7 @@ WEB_DIR = Path(__file__).resolve().parent
 BASE_DIR = WEB_DIR.parent
 UPLOAD_DIR = WEB_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+REPORTS_DIR = BASE_DIR / "ml_operacional_entrega3" / "reports"
 
 # Importar helper de preprocesamiento
 sys.path.append(str(WEB_DIR))
@@ -22,6 +23,115 @@ app = Flask(__name__)
 
 # Almacenamiento en memoria para resultados de lotes (bulk predictions)
 batch_store = {}
+
+
+def _percent(value):
+    return round(float(value) * 100, 1)
+
+
+def _metric_row(df, model):
+    row = df[df["modelo"].astype(str).str.upper() == model.upper()]
+    if row.empty:
+        raise ValueError(f"No se encontro modelo {model} en metricas")
+    return row.iloc[0]
+
+
+def _segment_row(df, model, segment):
+    row = df[
+        (df["modelo"].astype(str).str.upper() == model.upper())
+        & (df["segmento"].astype(str) == segment)
+    ]
+    if row.empty:
+        raise ValueError(f"No se encontro modelo {model} segmento {segment}")
+    return row.iloc[0]
+
+
+def load_analytics_context():
+    """Carga metricas actuales desde los reportes operacionales."""
+    comparison = pd.read_csv(REPORTS_DIR / "comparacion_final_modelos.csv")
+    by_segment = pd.read_csv(REPORTS_DIR / "comparacion_final_por_segmento.csv")
+    xgb_tramos = pd.read_csv(REPORTS_DIR / "metricas_por_tramo_holdout_xgb.csv")
+    rf_tramos = pd.read_csv(REPORTS_DIR / "metricas_por_tramo_holdout_rf.csv")
+
+    xgb = _metric_row(comparison, "XGB")
+    rf = _metric_row(comparison, "RF")
+    lr_programado = _segment_row(by_segment, "LR", "programado")
+    lr_urgente = _segment_row(by_segment, "LR", "urgente")
+
+    error_bands = [
+        {
+            "label": "Error Abs <= 1 Dia",
+            "xgb": _percent(xgb["pct_error_abs_le_1d"]),
+            "rf": _percent(rf["pct_error_abs_le_1d"]),
+        },
+        {
+            "label": "Error Abs <= 3 Dias",
+            "xgb": _percent(xgb["pct_error_abs_le_3d"]),
+            "rf": _percent(rf["pct_error_abs_le_3d"]),
+        },
+        {
+            "label": "Error Abs <= 7 Dias",
+            "xgb": _percent(xgb["pct_error_abs_le_7d"]),
+            "rf": _percent(rf["pct_error_abs_le_7d"]),
+        },
+    ]
+
+    tramo_labels = {
+        "0-2": "Tramo 0-2 dias (Corto)",
+        "3-6": "Tramo 3-6 dias (Medio)",
+        "7-13": "Tramo 7-13 dias (Pre-PLOS)",
+        "14+ (PLOS)": "Tramo 14+ dias (PLOS)",
+    }
+    subestimacion = []
+    for _, row in xgb_tramos.iterrows():
+        tramo = str(row["tramo"])
+        subestimacion.append(
+            {
+                "label": tramo_labels.get(tramo, tramo),
+                "value": _percent(row["pup"]),
+                "bar_class": (
+                    "bg-[#2e7d32]"
+                    if tramo == "0-2"
+                    else "bg-primary/50"
+                    if tramo in {"3-6", "7-13"}
+                    else "bg-error"
+                ),
+                "text_class": (
+                    "text-[#2e7d32]"
+                    if tramo == "0-2"
+                    else "text-outline-variant"
+                    if tramo in {"3-6", "7-13"}
+                    else "text-error"
+                ),
+            }
+        )
+
+    return {
+        "kpis": {
+            "xgb_mae": round(float(xgb["mae"]), 2),
+            "xgb_f1_plos": _percent(xgb["f1_plos_14"]),
+            "lr_programado_mae": round(float(lr_programado["mae"]), 2),
+            "lr_urgente_mae": round(float(lr_urgente["mae"]), 2),
+        },
+        "error_bands": error_bands,
+        "subestimacion": subestimacion,
+        "table": {
+            "xgb": {
+                "mae": round(float(xgb["mae"]), 3),
+                "rmse": round(float(xgb["rmse"]), 3),
+                "medae": round(float(xgb["medae"]), 3),
+                "precision": _percent(xgb["precision_plos_14"]),
+                "recall": _percent(xgb["recall_plos_14"]),
+            },
+            "rf": {
+                "mae": round(float(rf["mae"]), 3),
+                "rmse": round(float(rf["rmse"]), 3),
+                "medae": round(float(rf["medae"]), 3),
+                "precision": _percent(rf["precision_plos_14"]),
+                "recall": _percent(rf["recall_plos_14"]),
+            },
+        },
+    }
 
 # Carga de Modelos y Columnas en memoria al iniciar el servidor
 models = {}
@@ -62,7 +172,7 @@ def route_bulk():
 @app.route('/analytics')
 def route_analytics():
     """Ruta: Dashboard de Analytics."""
-    return render_template('analytics.html')
+    return render_template('analytics.html', analytics=load_analytics_context())
 
 # ============================================================================
 # Rutas de API
@@ -130,7 +240,7 @@ def api_predict():
         df_vector_reg_rf["prob_los_14"] = prob_plos_14
         df_vector_reg_rf = df_vector_reg_rf[reg_rf_bundle["features"]]
         
-        # Ridge
+        # Regresion lineal base
         df_vector_lr = preprocessing_helper.construir_vector_paciente_lr(
             diag_primario=diag_primario,
             diags_secundarios=diags_secundarios,
@@ -167,7 +277,7 @@ def api_predict():
             risk_level = 'medium'
             risk_label = f"Riesgo Moderado ({selected_pred:.1f} días)"
             
-        # 7. Calcular factores de decisión dinámicos usando coeficientes Ridge
+        # 7. Calcular factores de decision dinamicos usando coeficientes lineales
         driving_factors = calcular_driving_factors(df_vector_lr, es_urgencia == 1)
         charlson_calc = int(df_vector_ml['charlson_index'].iloc[0])
         
@@ -190,14 +300,14 @@ def api_predict():
         return jsonify({'error': str(e)}), 500
 
 def calcular_driving_factors(df_vector, es_urgente):
-    """Calcula los aportes lineales de cada variable clínica activa a partir de los coeficientes de Ridge."""
+    """Calcula los aportes de cada variable clinica activa a partir de los coeficientes lineales."""
     segment = "urgente" if es_urgente else "programado"
     reg_lr_bundle = models.get(f"reg_lr_{segment}")
     if reg_lr_bundle is None:
         return []
         
     transformed_model = reg_lr_bundle["model"]
-    model = transformed_model.regressor_ # Ridge real dentro del TransformedTargetRegressor
+    model = transformed_model.regressor_  # LinearRegression dentro del TransformedTargetRegressor
     cols = reg_lr_bundle["features"]
     
     if model is None or not hasattr(model, 'coef_'):
@@ -289,7 +399,7 @@ def api_predict_bulk():
         return jsonify({'error': 'Nombre de archivo vacío.'}), 400
         
     model_name = request.form.get('model_name', 'xgboost')
-    threshold = float(request.form.get('threshold', 27.0))
+    threshold = float(request.form.get('threshold', 14.0))
     
     try:
         # Guardar archivo temporal

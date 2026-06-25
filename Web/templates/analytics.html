@@ -173,7 +173,7 @@
             </div>
             <div class="flex items-center gap-2 bg-[#00B8A9]/10 text-[#006f66] px-3 py-1.5 rounded-full border border-[#00B8A9]/30">
                 <span class="material-symbols-outlined text-[16px] text-[#00B8A9]">auto_awesome</span>
-                <span class="text-label-md font-label-md font-semibold">[Modelos V2 Regularizados] Activos</span>
+                <span class="text-label-md font-label-md font-semibold">[Entrega 3 | PLOS >= 14 dias] Activos</span>
             </div>
         </header>
 
@@ -198,28 +198,28 @@
                             <span class="material-symbols-outlined text-outline-variant text-[20px]">trending_down</span>
                         </div>
                         <div class="flex items-baseline gap-2 relative z-10">
-                            <span class="text-display-lg font-display-lg text-on-surface">3.06</span>
+                            <span class="text-display-lg font-display-lg text-on-surface">{{ analytics.kpis.xgb_mae }}</span>
                             <span class="text-body-md font-body-md text-on-surface-variant">Días</span>
                         </div>
                         <div class="text-label-sm font-label-sm text-secondary flex items-center gap-1 relative z-10">
                             <span class="material-symbols-outlined text-[14px]">check_circle</span>
-                            Error más bajo de desarrollo
+                            Error global en holdout
                         </div>
                     </div>
                     <!-- KPI 2 -->
                     <div class="bg-surface-container-lowest rounded-xl p-stack-md border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col justify-between h-32 relative overflow-hidden group">
                         <div class="absolute -right-4 -top-4 w-24 h-24 bg-error/5 rounded-full blur-xl group-hover:bg-error/10 transition-colors duration-500"></div>
                         <div class="flex justify-between items-start relative z-10">
-                            <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Detector PLOS (F1-score)</span>
+                            <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Detector PLOS 14 (F1-score)</span>
                             <span class="material-symbols-outlined text-outline-variant text-[20px]">warning</span>
                         </div>
                         <div class="flex items-baseline gap-2 relative z-10">
-                            <span class="text-display-lg font-display-lg text-on-surface">59.9</span>
+                            <span class="text-display-lg font-display-lg text-on-surface">{{ analytics.kpis.xgb_f1_plos }}</span>
                             <span class="text-body-md font-body-md text-on-surface-variant">%</span>
                         </div>
                         <div class="text-label-sm font-label-sm text-error flex items-center gap-1 relative z-10">
                             <span class="material-symbols-outlined text-[14px]">arrow_upward</span>
-                            Estancias prolongadas detectadas
+                            Balance precision/recall
                         </div>
                     </div>
                     <!-- KPI 3 -->
@@ -230,11 +230,11 @@
                             <span class="material-symbols-outlined text-[#00B8A9] text-[20px]">auto_awesome</span>
                         </div>
                         <div class="flex items-baseline gap-2 relative z-10">
-                            <span class="text-display-lg font-display-lg text-on-surface">2.08</span>
+                            <span class="text-display-lg font-display-lg text-on-surface">{{ analytics.kpis.lr_programado_mae }}</span>
                             <span class="text-body-md font-body-md text-on-surface-variant">Días</span>
                         </div>
                         <div class="text-label-sm font-label-sm text-outline flex items-center gap-1 relative z-10">
-                            Ridge Regularizado (alpha=50.0)
+                            Regresion lineal basica
                         </div>
                     </div>
                     <!-- KPI 4 -->
@@ -245,12 +245,12 @@
                             <span class="material-symbols-outlined text-outline-variant text-[20px]">medical_services</span>
                         </div>
                         <div class="flex items-baseline gap-2 relative z-10">
-                            <span class="text-display-lg font-display-lg text-on-surface">5.75</span>
+                            <span class="text-display-lg font-display-lg text-on-surface">{{ analytics.kpis.lr_urgente_mae }}</span>
                             <span class="text-body-md font-body-md text-on-surface-variant">Días</span>
                         </div>
                         <div class="text-label-sm font-label-sm text-secondary flex items-center gap-1 relative z-10">
                             <span class="material-symbols-outlined text-[14px]">check_circle</span>
-                            Ridge Regularizado (alpha=100.0)
+                            Regresion lineal basica
                         </div>
                     </div>
                 </div>
@@ -283,31 +283,20 @@
                                 <span>25%</span>
                                 <span>0%</span>
                             </div>
-                            <!-- Error <= 1d -->
+                            {% for band in analytics.error_bands %}
                             <div class="flex gap-2 w-full h-full items-end justify-center group relative cursor-pointer">
-                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant h-[61%] rounded-t-sm"></div>
-                                <div class="w-8 bg-primary/40 border border-primary h-[65%] rounded-t-sm"></div>
-                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">Error &le; 1 Día: RF 61%, XGB 65%</div>
+                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant rounded-t-sm" style="height: {{ band.rf }}%"></div>
+                                <div class="w-8 bg-primary/40 border border-primary rounded-t-sm" style="height: {{ band.xgb }}%"></div>
+                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">{{ band.label }}: RF {{ band.rf }}%, XGB {{ band.xgb }}%</div>
                             </div>
-                            <!-- Error <= 3d -->
-                            <div class="flex gap-2 w-full h-full items-end justify-center group relative cursor-pointer">
-                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant h-[84%] rounded-t-sm"></div>
-                                <div class="w-8 bg-primary/40 border border-primary h-[88%] rounded-t-sm"></div>
-                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">Error &le; 3 Días: RF 84%, XGB 88%</div>
-                            </div>
-                            <!-- Error <= 7d -->
-                            <div class="flex gap-2 w-full h-full items-end justify-center group relative cursor-pointer">
-                                <div class="w-8 bg-[#cfdaf1] border border-outline-variant h-[92%] rounded-t-sm"></div>
-                                <div class="w-8 bg-primary/40 border border-primary h-[95%] rounded-t-sm"></div>
-                                <div class="absolute -top-10 opacity-0 group-hover:opacity-100 bg-inverse-surface text-inverse-on-surface text-label-sm px-2 py-1 rounded transition-opacity whitespace-nowrap pointer-events-none z-10">Error &le; 7 Días: RF 92%, XGB 95%</div>
-                            </div>
+                            {% endfor %}
                             
                             <!-- X-axis line & labels -->
                             <div class="absolute bottom-8 left-12 right-4 h-px bg-outline-variant"></div>
                             <div class="absolute bottom-2 left-12 right-4 flex justify-between text-label-sm font-label-sm text-outline px-6">
-                                <span class="flex-1 text-center">Error Abs &le; 1 Día</span>
-                                <span class="flex-1 text-center">Error Abs &le; 3 Días</span>
-                                <span class="flex-1 text-center">Error Abs &le; 7 Días</span>
+                                {% for band in analytics.error_bands %}
+                                <span class="flex-1 text-center">{{ band.label }}</span>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -320,46 +309,17 @@
                         </div>
                         <div class="flex-1 p-stack-md flex flex-col justify-center gap-6">
                             <div class="space-y-4 w-full">
-                                <!-- 0-2 días -->
+                                {% for row in analytics.subestimacion %}
                                 <div>
                                     <div class="flex justify-between text-label-md font-label-md mb-1">
-                                        <span class="text-on-surface">Tramo 0–2 días (Corto)</span>
-                                        <span class="text-[#2e7d32] font-mono">21.5% Subestimación</span>
+                                        <span class="text-on-surface">{{ row.label }}</span>
+                                        <span class="{{ row.text_class }} font-mono">{{ row.value }}% Subestimacion</span>
                                     </div>
                                     <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                                        <div class="bg-[#2e7d32] h-full" style="width: 21.5%"></div>
+                                        <div class="{{ row.bar_class }} h-full" style="width: {{ row.value }}%"></div>
                                     </div>
                                 </div>
-                                <!-- 3-6 días -->
-                                <div>
-                                    <div class="flex justify-between text-label-md font-label-md mb-1">
-                                        <span class="text-on-surface">Tramo 3–6 días (Medio)</span>
-                                        <span class="text-outline-variant font-mono">75.3% Subestimación</span>
-                                    </div>
-                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                                        <div class="bg-primary/50 h-full" style="width: 75.3%"></div>
-                                    </div>
-                                </div>
-                                <!-- 14-26 días -->
-                                <div>
-                                    <div class="flex justify-between text-label-md font-label-md mb-1">
-                                        <span class="text-on-surface">Tramo 14–26 días (Prolongado)</span>
-                                        <span class="text-error-container text-error font-mono">79.0% Subestimación</span>
-                                    </div>
-                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                                        <div class="bg-error h-full" style="width: 79%"></div>
-                                    </div>
-                                </div>
-                                <!-- 27+ días -->
-                                <div>
-                                    <div class="flex justify-between text-label-md font-label-md mb-1">
-                                        <span class="text-on-surface">Tramo 27+ días (Crítico / PLOS)</span>
-                                        <span class="text-error font-mono">81.1% Subestimación</span>
-                                    </div>
-                                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                                        <div class="bg-[#93000a] h-full" style="width: 81.1%"></div>
-                                    </div>
-                                </div>
+                                {% endfor %}
                             </div>
                             <div class="text-[11px] text-on-surface-variant border-t border-outline-variant/30 pt-4 mt-2">
                                 <span class="font-bold text-primary">Nota Metodológica:</span> Todos los modelos sufren de <strong>regresión a la media</strong> en estancias muy largas, debido a la falta de variables clínicas evolutivas intrahospitalarias al momento del ingreso.
@@ -435,7 +395,7 @@
                     <!-- Model Performance Comparison - Span 5 -->
                     <div class="lg:col-span-5 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
                         <div class="p-stack-md border-b border-outline-variant/50 bg-surface-bright/50">
-                            <h3 class="text-headline-md font-headline-md text-on-surface text-[18px]">Métricas Oficiales de Validación (Escenario B)</h3>
+                            <h3 class="text-headline-md font-headline-md text-on-surface text-[18px]">Métricas Oficiales de Validación (Entrega 3)</h3>
                             <p class="text-label-sm font-label-sm text-outline mt-1">Evaluación final sobre el set de prueba Holdout (Pacientes nuevos)</p>
                         </div>
                         <div class="flex-1 overflow-auto p-0">
@@ -450,28 +410,28 @@
                                 <tbody class="text-body-md font-body-md text-on-surface divide-y divide-outline-variant/20">
                                     <tr class="hover:bg-surface-container-lowest transition-colors group">
                                         <td class="py-3 px-4 font-medium">MAE (Días)</td>
-                                        <td class="py-3 px-4 font-mono text-primary font-semibold">3.057</td>
-                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">3.268</td>
+                                        <td class="py-3 px-4 font-mono text-primary font-semibold">{{ analytics.table.xgb.mae }}</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">{{ analytics.table.rf.mae }}</td>
                                     </tr>
                                     <tr class="hover:bg-surface-container-lowest transition-colors group bg-surface-bright/30">
                                         <td class="py-3 px-4 font-medium">RMSE (Días)</td>
-                                        <td class="py-3 px-4 font-mono text-primary font-semibold">8.290</td>
-                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">8.959</td>
+                                        <td class="py-3 px-4 font-mono text-primary font-semibold">{{ analytics.table.xgb.rmse }}</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">{{ analytics.table.rf.rmse }}</td>
                                     </tr>
                                     <tr class="hover:bg-surface-container-lowest transition-colors group">
                                         <td class="py-3 px-4 font-medium">MedAE (Días)</td>
-                                        <td class="py-3 px-4 font-mono text-primary font-semibold">0.902</td>
-                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">0.972</td>
+                                        <td class="py-3 px-4 font-mono text-primary font-semibold">{{ analytics.table.xgb.medae }}</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">{{ analytics.table.rf.medae }}</td>
                                     </tr>
                                     <tr class="hover:bg-surface-container-lowest transition-colors group bg-surface-bright/30">
-                                        <td class="py-3 px-4 font-medium">Precisión PLOS (27d)</td>
-                                        <td class="py-3 px-4 font-mono text-on-surface">78.67%</td>
-                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">80.85%</td>
+                                        <td class="py-3 px-4 font-medium">Precisión PLOS (14d)</td>
+                                        <td class="py-3 px-4 font-mono text-on-surface">{{ analytics.table.xgb.precision }}%</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">{{ analytics.table.rf.precision }}%</td>
                                     </tr>
                                     <tr class="hover:bg-surface-container-lowest transition-colors group">
-                                        <td class="py-3 px-4 font-medium">Recall PLOS (27d)</td>
-                                        <td class="py-3 px-4 font-mono text-on-surface font-semibold">48.36%</td>
-                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">31.15%</td>
+                                        <td class="py-3 px-4 font-medium">Recall PLOS (14d)</td>
+                                        <td class="py-3 px-4 font-mono text-on-surface font-semibold">{{ analytics.table.xgb.recall }}%</td>
+                                        <td class="py-3 px-4 font-mono text-outline-variant text-right">{{ analytics.table.rf.recall }}%</td>
                                     </tr>
                                 </tbody>
                             </table>

@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from xgboost import XGBClassifier, XGBRegressor
 
@@ -233,8 +233,8 @@ def make_regressor(model_name: str, params: dict) -> object:
     return TransformedTargetRegressor(regressor=base, func=np.log1p, inverse_func=np.expm1)
 
 
-def make_lr_regressor(alpha: float = 1.0) -> object:
-    base = Ridge(alpha=alpha, random_state=RANDOM_STATE)
+def make_lr_regressor() -> object:
+    base = LinearRegression()
     return TransformedTargetRegressor(regressor=base, func=np.log1p, inverse_func=np.expm1)
 
 

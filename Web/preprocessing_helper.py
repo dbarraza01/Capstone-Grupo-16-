@@ -91,35 +91,69 @@ def mapear_codigo_procedimiento(code):
 inicializar_frecuencias()
 
 def calcular_charlson(codigos_diag):
-    """Calcula el índice de Charlson usando comorbidipy >= 0.8.0 (Polars)."""
+    """Calcula el indice de Charlson usando comorbidipy.
+
+    comorbidipy 0.8+ usa Polars y requiere Python 3.13. Para desarrollo local
+    con Python 3.11 usamos la rama 0.5.x, que trabaja con pandas. La funcion
+    soporta ambos formatos para que la app no dependa de una version unica.
+    """
     if not codigos_diag:
         return 0
     try:
-        import polars as pl
+        # Compatibilidad: comorbidipy 0.5.x importa SettingWithCopyWarning desde
+        # pandas.core.common, ruta eliminada en pandas 3.
+        try:
+            import pandas.core.common as pandas_common
+
+            if not hasattr(pandas_common, "SettingWithCopyWarning"):
+                class SettingWithCopyWarning(Warning):
+                    pass
+
+                pandas_common.SettingWithCopyWarning = SettingWithCopyWarning
+        except Exception:
+            pass
+
         from comorbidipy import comorbidity
         
         # Limpiar códigos
         codigos_limpios = list(set([str(c).strip().upper().replace(".", "") for c in codigos_diag if str(c).strip()]))
         if not codigos_limpios:
             return 0
-            
-        # Crear DataFrame de Polars
-        df_pl = pl.DataFrame({
+
+        df_codes = pd.DataFrame({
             "id": ["P_TEMP"] * len(codigos_limpios),
-            "code": codigos_limpios
+            "code": codigos_limpios,
         })
-        
-        df_res = comorbidity(
-            df_pl,
-            id_col='id',
-            code_col='code',
-            age_col=None,
-            score='charlson',
-            icd='icd10',
-            variant='quan'
-        )
-        if df_res.height > 0 and 'comorbidity_score' in df_res.columns:
-            return int(df_res['comorbidity_score'][0])
+
+        try:
+            df_res = comorbidity(
+                df_codes,
+                id="id",
+                code="code",
+                age=None,
+                score="charlson",
+                icd="icd10",
+                variant="quan",
+                weighting="quan",
+            )
+        except TypeError:
+            import polars as pl
+
+            df_res = comorbidity(
+                pl.from_pandas(df_codes),
+                id_col="id",
+                code_col="code",
+                age_col=None,
+                score="charlson",
+                icd="icd10",
+                variant="quan",
+            )
+
+        if hasattr(df_res, "height"):
+            if df_res.height > 0 and "comorbidity_score" in df_res.columns:
+                return int(df_res["comorbidity_score"][0])
+        elif not df_res.empty and "comorbidity_score" in df_res.columns:
+            return int(df_res["comorbidity_score"].iloc[0])
         return 0
     except Exception as e:
         print(f"Error al calcular Charlson index: {e}. Usando fallback a 0.")
@@ -235,8 +269,8 @@ def construir_vector_paciente(diag_primario, diags_secundarios, procedimientos, 
 
 def construir_vector_paciente_lr(diag_primario, diags_secundarios, procedimientos, es_urgencia, fecha_ingreso=None, columnas_modelo=None, es_urgente_modelo=True):
     """
-    Construye el DataFrame con las variables y transformaciones requeridas para los Modelos Base Lineales (Ridge).
-    Calcula además las interacciones continuas y remueve 'es_urgencia' y las interacciones no significativas según corresponda.
+    Construye el DataFrame con las variables requeridas para el modelo base de regresion lineal.
+    Si un bundle antiguo pidiera interacciones, tambien puede calcularlas por compatibilidad.
     """
     if columnas_modelo is None:
         raise ValueError("Se debe proporcionar la lista de columnas esperadas del modelo base.")

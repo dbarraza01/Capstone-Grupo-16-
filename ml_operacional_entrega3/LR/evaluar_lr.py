@@ -1,4 +1,4 @@
-"""Evaluacion train/holdout baseline Ridge con interacciones clinicas."""
+"""Evaluacion train/holdout baseline de regresion lineal basica."""
 
 from __future__ import annotations
 

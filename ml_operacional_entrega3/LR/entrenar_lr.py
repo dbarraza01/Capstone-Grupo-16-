@@ -1,4 +1,4 @@
-"""Entrenamiento baseline Ridge con interacciones clinicas por subpoblacion."""
+"""Entrenamiento baseline de regresion lineal basica por subpoblacion."""
 
 from __future__ import annotations
 

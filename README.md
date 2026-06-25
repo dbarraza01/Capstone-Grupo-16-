@@ -196,10 +196,11 @@ python3 ml_operacional_entrega3/RF/entrenar_rf.py
 python3 ml_operacional_entrega3/LR/entrenar_lr.py
 ```
 
-El baseline `LR` corresponde a una Regresion Ridge segmentada con interacciones clinicas:
+El baseline `LR` corresponde a una Regresion Lineal basica segmentada:
 
-- `urgente`: `alpha=100`, con `charlson_index * n_diag_total`, `charlson_index * n_procedimientos` y `n_procedimientos * n_diag_total`.
-- `programado`: `alpha=50`, con `charlson_index * n_diag_total` y `charlson_index * n_procedimientos`.
+- Se entrena un modelo independiente para `urgente` y otro para `programado`.
+- No usa penalizacion ni hiperparametro `alpha`, y no incorpora interacciones manuales.
+- Usa los mismos splits operacionales y el mismo conjunto base de features para que la comparacion contra XGB/RF sea directa.
 
 Salidas principales:
 
@@ -244,10 +245,10 @@ Salidas principales:
 | --- | --- |
 | `ml_operacional_entrega3/reports/reporte_evaluacion_xgb_holdout.md` | Evaluacion holdout detallada de XGB. |
 | `ml_operacional_entrega3/reports/reporte_evaluacion_rf_holdout.md` | Evaluacion holdout detallada de RF. |
-| `ml_operacional_entrega3/reports/reporte_evaluacion_lr_holdout.md` | Evaluacion holdout detallada de LR/Ridge. |
+| `ml_operacional_entrega3/reports/reporte_evaluacion_lr_holdout.md` | Evaluacion holdout detallada de LR basica. |
 | `ml_operacional_entrega3/reports/reporte_evaluacion_xgb_train.md` | Evaluacion train de XGB para revisar sobreajuste. |
 | `ml_operacional_entrega3/reports/reporte_evaluacion_rf_train.md` | Evaluacion train de RF para revisar sobreajuste. |
-| `ml_operacional_entrega3/reports/reporte_evaluacion_lr_train.md` | Evaluacion train de LR/Ridge para revisar sobreajuste. |
+| `ml_operacional_entrega3/reports/reporte_evaluacion_lr_train.md` | Evaluacion train de LR basica para revisar sobreajuste. |
 | `ml_operacional_entrega3/reports/comparacion_final_modelos.md` | Comparacion global XGB vs RF vs LR. |
 | `ml_operacional_entrega3/reports/comparacion_final_train_vs_holdout.csv` | Gaps train-holdout por modelo y segmento. |
 
@@ -259,7 +260,7 @@ Holdout global con `PLOS = LOS >= 14`:
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | XGB | 2391 | 2.8600 | 7.1668 | 0.8359 | 0.8000 | 0.5878 | 0.6777 |
 | RF | 2391 | 3.0966 | 8.2899 | 0.9118 | 0.8197 | 0.5376 | 0.6494 |
-| LR/Ridge | 2391 | 3.1666 | 8.8553 | 0.8637 | 0.8625 | 0.4946 | 0.6287 |
+| LR basica | 2391 | 13.0718 | 181.1970 | 0.8983 | 0.6971 | 0.5197 | 0.5955 |
 
 Holdout por segmento:
 
@@ -269,14 +270,14 @@ Holdout por segmento:
 | XGB | urgente | 698 | 5.3429 | 10.1270 | 0.7969 | 0.5667 | 0.6623 |
 | RF | programado | 1693 | 2.0470 | 6.1960 | 0.8082 | 0.5960 | 0.6860 |
 | RF | urgente | 698 | 5.6423 | 11.9287 | 0.8273 | 0.5056 | 0.6276 |
-| LR/Ridge | programado | 1693 | 2.0873 | 7.2608 | 0.9400 | 0.4747 | 0.6309 |
-| LR/Ridge | urgente | 698 | 5.7846 | 11.8637 | 0.8273 | 0.5056 | 0.6276 |
+| LR basica | programado | 1693 | 3.3365 | 15.2619 | 0.7606 | 0.5455 | 0.6353 |
+| LR basica | urgente | 698 | 36.6848 | 334.5181 | 0.6642 | 0.5056 | 0.5741 |
 
 Lectura principal:
 
 - XGB es el mejor modelo global por MAE y F1 PLOS.
 - RF tiene la mayor precision PLOS global, pero menor recall que XGB.
-- LR/Ridge queda como baseline lineal competitivo e interpretable; mejora fuertemente frente al Ridge operacional anterior al usar interacciones clinicas y regularizacion por segmento.
+- LR basica queda como baseline lineal simple e interpretable, pero muestra sobreajuste fuerte al no tener regularizacion: su MAE global holdout sube a 13.0718 dias.
 - El segmento urgente presenta mayor error que el programado, lo que respalda tratar ambos grupos por separado.
 
 ## Web Demo

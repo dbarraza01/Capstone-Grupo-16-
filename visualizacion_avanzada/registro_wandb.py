@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import wandb
 from pathlib import Path
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, f1_score, recall_score, precision_score
 
@@ -66,7 +66,7 @@ def evaluar_modelos_reales(run):
         reg_rf_features = reg_rf_bundle["features"]
         y_preds_rf = np.clip(reg_rf.predict(X_reg[reg_rf_features]), 0, None)
         
-        # Inferencia Ridge Regression
+        # Inferencia Regresion Lineal Base
         reg_lr_bundle = joblib.load(MODELS_DIR / f"reg_lr_{segment}.joblib")
         reg_lr = reg_lr_bundle["model"]
         reg_lr_features = reg_lr_bundle["features"]
@@ -89,7 +89,7 @@ def evaluar_modelos_reales(run):
         mae_rf = mean_absolute_error(y, y_preds_rf)
         rmse_rf = np.sqrt(mean_squared_error(y, y_preds_rf))
         
-        # Métricas de Regresión Ridge
+        # Metricas de Regresion Lineal Base
         mae_lr = mean_absolute_error(y, y_preds_lr)
         rmse_lr = np.sqrt(mean_squared_error(y, y_preds_lr))
         
@@ -102,7 +102,7 @@ def evaluar_modelos_reales(run):
         tabla_regresores = wandb.Table(columns=["Modelo", "MAE (Días)", "RMSE (Días)"])
         tabla_regresores.add_data("XGBoost (Ganador)", mae, rmse)
         tabla_regresores.add_data("Random Forest", mae_rf, rmse_rf)
-        tabla_regresores.add_data("Regresión Ridge", mae_lr, rmse_lr)
+        tabla_regresores.add_data("Regresión Lineal Base", mae_lr, rmse_lr)
         
         # 2. Crear tabla de desempeño del clasificador de riesgo (Etapa 1)
         tabla_clasificador = wandb.Table(columns=["Métrica", "Valor"])
@@ -157,11 +157,11 @@ def evaluar_modelos_reales(run):
 
 def entrenar_modelo_con_registro_loop(run):
     """
-    Ejemplo interactivo que entrena un modelo Ridge regularizado por iteraciones
+    Ejemplo interactivo que entrena un modelo de regresion lineal por tamanos crecientes de muestra
     y muestra cómo registrar métricas PASO A PASO en el bucle de entrenamiento,
     tal como indica el gráfico del usuario.
     """
-    print("\n--- Demostración de Registro de Métricas en Bucle (Entrenamiento Ridge) ---")
+    print("\n--- Demostración de Registro de Métricas en Bucle (Regresion Lineal) ---")
     
     # 1. Cargar datos
     train_df = pd.read_csv(DATA_SPLITS_DIR / "datos_train_urgente.csv")
@@ -177,34 +177,36 @@ def entrenar_modelo_con_registro_loop(run):
     
     # Registrar hiperparámetros iniciales
     wandb.config.update({
-        "algorithm": "Ridge Regression Demo",
+        "algorithm": "Linear Regression Demo",
         "features": cols,
         "max_iterations": 20,
-        "alpha_base": 10.0
+        "regularization": "none"
     })
     
-    # Simular épocas/iteraciones de entrenamiento donde se actualiza el modelo
-    # En modelos de boosting o redes neuronales esto es por época. Aquí simulamos
-    # iterativamente cambiando la penalización alpha para ver la curva de aprendizaje
+    # Simular iteraciones de entrenamiento usando fracciones crecientes del train.
     for epoch in range(1, 21):
-        alpha_step = wandb.config.alpha_base * (1.1 ** epoch)
+        train_fraction = epoch / 20
+        sample_size = max(20, int(len(X_train) * train_fraction))
+        sample_size = min(sample_size, len(X_train))
+        X_step = X_train.sample(n=sample_size, random_state=42 + epoch)
+        y_step = y_train.loc[X_step.index]
         
         # Entrenar regresor
         model = TransformedTargetRegressor(
-            regressor=Ridge(alpha=alpha_step, random_state=42),
+            regressor=LinearRegression(),
             func=np.log1p,
             inverse_func=np.expm1
         )
-        model.fit(X_train, y_train)
+        model.fit(X_step, y_step)
         
         # Calcular pérdidas
-        pred_train = model.predict(X_train)
+        pred_train = model.predict(X_step)
         pred_val = model.predict(X_val)
         
-        train_mae = mean_absolute_error(y_train, pred_train)
+        train_mae = mean_absolute_error(y_step, pred_train)
         val_mae = mean_absolute_error(y_val, pred_val)
         
-        train_rmse = np.sqrt(mean_squared_error(y_train, pred_train))
+        train_rmse = np.sqrt(mean_squared_error(y_step, pred_train))
         val_rmse = np.sqrt(mean_squared_error(y_val, pred_val))
         
         # CÓDIGO EXACTO DEL BUCLE DE ENTRENAMIENTO (Solicitado por el usuario)
@@ -214,7 +216,7 @@ def entrenar_modelo_con_registro_loop(run):
             "val_loss": val_rmse,
             "train_mae": train_mae,
             "val_mae": val_mae,
-            "learning_rate": 0.01 / epoch # Simulación de tasa de aprendizaje decreciente
+            "train_fraction": train_fraction
         })
         
         print(f"  Época {epoch:02d}/20 | Train MAE: {train_mae:.4f} | Val MAE: {val_mae:.4f}")
@@ -232,7 +234,7 @@ def main():
         project="Stay_Intelligence_Capstone",
         name="evaluacion_modelos_entrega3",
         notes="Evaluación de modelos XGBoost en Holdout y demostración de log en bucle",
-        tags=["holdout_evaluation", "xgboost", "ridge"]
+        tags=["holdout_evaluation", "xgboost", "linear_regression"]
     )
     
     try:

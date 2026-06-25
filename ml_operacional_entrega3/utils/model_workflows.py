@@ -44,20 +44,6 @@ MODEL_DIR = {
     "rf": "RF",
 }
 
-LR_ALPHA_BY_SEGMENT = {
-    "urgente": 100.0,
-    "programado": 50.0,
-}
-
-LR_BASE_INTERACTIONS = [
-    "int_charlson_diag",
-    "int_charlson_proc",
-]
-
-LR_URGENTE_EXTRA_INTERACTIONS = [
-    "int_proc_diag",
-]
-
 STABILITY_METRICS = [
     "mae",
     "rmse",
@@ -184,34 +170,19 @@ def evaluate_two_stage_model(model_name: str) -> None:
     print(gap.to_string(index=False))
 
 
-def _add_lr_interactions(df: pd.DataFrame) -> pd.DataFrame:
-    required_cols = ["charlson_index", "n_diag_total", "n_procedimientos"]
-    missing = [col for col in required_cols if col not in df.columns]
-    if missing:
-        raise ValueError(f"Faltan columnas requeridas para Ridge con interacciones: {missing}")
-
-    out = df.copy()
-    out["int_charlson_diag"] = out["charlson_index"] * out["n_diag_total"]
-    out["int_charlson_proc"] = out["charlson_index"] * out["n_procedimientos"]
-    out["int_proc_diag"] = out["n_procedimientos"] * out["n_diag_total"]
-    return out
-
-
-def _lr_interactions_for_segment(segment: str) -> list[str]:
-    interactions = list(LR_BASE_INTERACTIONS)
-    if segment == "urgente":
-        interactions.extend(LR_URGENTE_EXTRA_INTERACTIONS)
-    return interactions
-
-
 def _prepare_lr_baseline_xy(df: pd.DataFrame, segment: str) -> tuple[pd.DataFrame, pd.Series]:
-    """Replica el Ridge base del equipo usando los splits operacionales actuales."""
-    model_df = _add_lr_interactions(df)
-    drop_cols = [ID_COL, TARGET_COL, URGENCY_COL, "prob_los_14"]
+    """Prepara el baseline de regresion lineal usando los splits operacionales actuales."""
+    model_df = df.copy()
+    drop_cols = [
+        ID_COL,
+        TARGET_COL,
+        URGENCY_COL,
+        "prob_los_14",
+        "int_charlson_diag",
+        "int_charlson_proc",
+        "int_proc_diag",
+    ]
     X = model_df.drop(columns=[col for col in drop_cols if col in model_df.columns]).copy()
-
-    if segment == "programado" and "int_proc_diag" in X.columns:
-        X = X.drop(columns=["int_proc_diag"])
 
     bool_cols = X.select_dtypes(include="bool").columns
     if len(bool_cols) > 0:
@@ -219,19 +190,18 @@ def _prepare_lr_baseline_xy(df: pd.DataFrame, segment: str) -> tuple[pd.DataFram
 
     non_numeric = X.select_dtypes(exclude=[np.number]).columns
     if len(non_numeric) > 0:
-        raise ValueError(f"Columnas no numericas en features Ridge: {list(non_numeric)}")
+        raise ValueError(f"Columnas no numericas en features de regresion lineal: {list(non_numeric)}")
 
     return X, model_df[TARGET_COL].copy()
 
 
-def train_lr_model(alpha: float | None = None) -> None:
-    print("Entrenamiento operacional baseline Ridge con interacciones clinicas")
+def train_lr_model() -> None:
+    print("Entrenamiento operacional baseline Regresion Lineal basica")
     for segment in SEGMENTS:
         print(f"\n[LR] Segmento: {segment}")
         train_df = load_segment_split(segment, "train")
         X, y = _prepare_lr_baseline_xy(train_df, segment)
-        segment_alpha = float(alpha if alpha is not None else LR_ALPHA_BY_SEGMENT[segment])
-        model = make_lr_regressor(alpha=segment_alpha)
+        model = make_lr_regressor()
         model.fit(X, y)
         save_model_bundle(
             MODELS_DIR / f"reg_lr_{segment}.joblib",
@@ -240,16 +210,16 @@ def train_lr_model(alpha: float | None = None) -> None:
             {
                 "model_name": "lr",
                 "segment": segment,
-                "stage": "baseline_ridge_interactions",
-                "alpha": segment_alpha,
-                "interactions": _lr_interactions_for_segment(segment),
+                "stage": "baseline_linear_regression",
+                "regularization": "none",
+                "interactions": [],
                 "drops_es_urgencia": True,
                 "threshold_los": 14,
             },
         )
         print(
-            f"  Modelo Ridge guardado: reg_lr_{segment}.joblib | "
-            f"alpha={segment_alpha:g} | features={len(X.columns)}"
+            f"  Modelo Regresion Lineal guardado: reg_lr_{segment}.joblib | "
+            f"regularizacion=ninguna | features={len(X.columns)}"
         )
 
 
@@ -273,7 +243,7 @@ def _predict_lr_split(segment: str, split: str) -> pd.DataFrame:
 
 
 def evaluate_lr_model() -> None:
-    print("Evaluacion train/holdout baseline Ridge con interacciones clinicas")
+    print("Evaluacion train/holdout baseline Regresion Lineal basica")
     rows_by_split = {"train": [], "holdout": []}
     for segment in SEGMENTS:
         print(f"\n[LR] Segmento: {segment}")
@@ -385,7 +355,7 @@ def _stability_lr_model() -> tuple[list[dict], list[dict]]:
             X_val = X.iloc[val_idx]
             y_val = y.iloc[val_idx]
 
-            model = make_lr_regressor(alpha=LR_ALPHA_BY_SEGMENT[segment])
+            model = make_lr_regressor()
             model.fit(X_train, y_train)
             pred = np.clip(model.predict(X_val), 0, None)
 
@@ -512,7 +482,7 @@ def _clinical_interpretation(comparison: pd.DataFrame, tramo_comparison: pd.Data
         f"- Para LOS < 14 dias, que concentra la mayoria de los casos, el menor MAE ponderado es {best_non_plos['modelo']} ({best_non_plos['mae_los_lt_14']:.4f}).",
         f"- En el tramo 0-2 dias gana {best_0_2['modelo']} (MAE {best_0_2['mae']:.4f}); en 3-6 gana {best_3_6['modelo']} (MAE {best_3_6['mae']:.4f}); en 7-13 gana {best_7_13['modelo']} (MAE {best_7_13['mae']:.4f}).",
         f"- En PLOS, el mejor recall lo obtiene {best_plos['modelo']} ({best_plos['recall_plos_14']:.4f}), lo que reduce el riesgo de no anticipar estancias prolongadas.",
-        "- Lectura clinica: LR/Ridge es el modelo mas fuerte si se prioriza estrictamente el desempeno en LOS < 14 dias. XGB es el mejor candidato operacional si se necesita un unico modelo balanceado, porque combina el mejor MAE global, buen rendimiento en el tramo mas frecuente 0-2 y mejor deteccion de PLOS.",
+        "- Lectura clinica: LR corresponde al baseline de regresion lineal basica. Si LR gana en algun tramo corto, eso indica que una regla lineal simple ya captura parte importante del patron local; si XGB gana globalmente o en PLOS, mantiene ventaja operacional por balancear error general y deteccion de estancias prolongadas.",
     ])
 
 

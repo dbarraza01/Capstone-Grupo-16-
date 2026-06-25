@@ -120,7 +120,7 @@ else:
             if isinstance(v, bool):
                 row_dict[k] = int(v)
         
-        # Calcular interacciones requeridas por el modelo lineal (Ridge)
+        # Calcular variables auxiliares por compatibilidad con bundles lineales antiguos
         row_dict['int_charlson_diag'] = charlson_index * int(holdout_row['n_diag_total'])
         row_dict['int_proc_diag'] = int(holdout_row['n_procedimientos']) * int(holdout_row['n_diag_total'])
         row_dict['int_charlson_proc'] = charlson_index * int(holdout_row['n_procedimientos'])
@@ -141,7 +141,7 @@ else:
         df_vector_reg_rf["prob_los_14"] = prob_plos_14
         df_vector_reg_rf = df_vector_reg_rf[reg_rf_features]
         
-        # Para Regresión Ridge
+        # Para Regresion Lineal Base
         df_vector_lr = pd.DataFrame([row_dict])[reg_lr_features]
         
         # Ejecutar Inferencia en Días
@@ -212,7 +212,7 @@ else:
         df_vector_reg_rf["prob_los_14"] = prob_plos_14
         df_vector_reg_rf = df_vector_reg_rf[reg_rf_features]
         
-        # Para Regresión Ridge
+        # Para Regresion Lineal Base
         df_vector_lr = preprocessing_helper.construir_vector_paciente_lr(
             diag_primario=diag_primario,
             diags_secundarios=diags_secundarios,
@@ -260,7 +260,7 @@ else:
             )
         with col3:
             st.metric(
-                label="Predicción Regresión Ridge",
+                label="Predicción Regresión Lineal",
                 value=f"{pred_lr:.1f} días",
                 delta="Modelo Lineal"
             )
@@ -345,13 +345,13 @@ else:
             st.subheader("📊 Comparación de Predicciones")
             if estancia_real is not None:
                 chart_data = pd.DataFrame({
-                    "Modelo/Dato": ["XGBoost", "Random Forest", "Ridge Regression", "Estancia Real"],
+                    "Modelo/Dato": ["XGBoost", "Random Forest", "Regresion Lineal", "Estancia Real"],
                     "Estancia (Días)": [pred_xgb, pred_rf, pred_lr, estancia_real]
                 })
                 st.bar_chart(chart_data.set_index("Modelo/Dato"), color="#4F46E5")
             else:
                 chart_data = pd.DataFrame({
-                    "Modelo/Dato": ["XGBoost", "Random Forest", "Ridge Regression"],
+                    "Modelo/Dato": ["XGBoost", "Random Forest", "Regresion Lineal"],
                     "Estancia (Días)": [pred_xgb, pred_rf, pred_lr]
                 })
                 st.bar_chart(chart_data.set_index("Modelo/Dato"), color="#4F46E5")
@@ -519,7 +519,7 @@ else:
                     reg_rf_metrics = modelos[f"reg_rf_{segment}"]["model"]
                     y_preds_rf_metrics = np.clip(reg_rf_metrics.predict(X_reg_metrics[reg_rf_features]), 0, None)
                     
-                    # Inferencia - Ridge Regression
+                    # Inferencia - Regresion Lineal Base
                     reg_lr_metrics = modelos[f"reg_lr_{segment}"]["model"]
                     df_lr_metrics = df_holdout_metrics.copy()
                     if len(bool_cols_metrics) > 0:
@@ -549,7 +549,7 @@ else:
                     with col_m2:
                         st.metric(label="MAE Random Forest", value=f"{mae_rf:.2f} días")
                     with col_m3:
-                        st.metric(label="MAE Regresión Ridge", value=f"{mae_lr:.2f} días")
+                        st.metric(label="MAE Regresión Lineal", value=f"{mae_lr:.2f} días")
                     
                     st.markdown("#### 🛡️ Desempeño del Clasificador de Riesgo (Etapa 1)")
                     col_c1, col_c2, col_c3 = st.columns(3)
@@ -561,8 +561,8 @@ else:
                         st.metric(label="F1-Score", value=f"{f1_metrics:.3f}")
                     
                     # --- CURVA DE APRENDIZAJE INTERACTIVA NATIVA ---
-                    st.markdown("#### 📈 Curva de Aprendizaje Interactiva (Ridge Regularization)")
-                    st.write("A continuación se muestra el comportamiento del entrenamiento de la regresión Ridge a lo largo de 20 iteraciones de penalización. Pasa el cursor sobre la gráfica para inspeccionar los valores numéricos exactos:")
+                    st.markdown("#### 📈 Curva de Aprendizaje Interactiva (Regresión Lineal)")
+                    st.write("A continuación se muestra el comportamiento de la regresión lineal básica al entrenarse con fracciones crecientes del train. Pasa el cursor sobre la gráfica para inspeccionar los valores numéricos exactos:")
                     
                     train_df = pd.read_csv(ML_DIR / "data_splits" / f"datos_train_{segment}.csv")
                     cols_lc = ["charlson_index", "n_diag_total", "n_procedimientos"]
@@ -576,16 +576,20 @@ else:
                     val_maes = []
                     
                     for ep in epochs_list:
-                        alpha_val = 10.0 * (1.1 ** ep)
-                        from sklearn.linear_model import Ridge
+                        train_fraction = ep / len(epochs_list)
+                        sample_size = max(20, int(len(X_tr) * train_fraction))
+                        sample_size = min(sample_size, len(X_tr))
+                        X_step = X_tr.sample(n=sample_size, random_state=42 + ep)
+                        y_step = y_tr.loc[X_step.index]
+                        from sklearn.linear_model import LinearRegression
                         from sklearn.compose import TransformedTargetRegressor
                         model_lc = TransformedTargetRegressor(
-                            regressor=Ridge(alpha=alpha_val, random_state=42),
+                            regressor=LinearRegression(),
                             func=np.log1p,
                             inverse_func=np.expm1
                         )
-                        model_lc.fit(X_tr, y_tr)
-                        train_maes.append(mean_absolute_error(y_tr, model_lc.predict(X_tr)))
+                        model_lc.fit(X_step, y_step)
+                        train_maes.append(mean_absolute_error(y_step, model_lc.predict(X_step)))
                         val_maes.append(mean_absolute_error(y_vl, model_lc.predict(X_vl)))
                     
                     # Mostrar gráfico interactivo usando line_chart nativo de Streamlit

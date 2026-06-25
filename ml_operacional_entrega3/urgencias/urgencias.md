@@ -69,29 +69,28 @@ La diferencia entre urgentes y no urgentes no es ruido estadístico: los p-value
 | 1–2 días | 866 | **24.8%** | 4,796 | **56.7%** |
 | 3–6 días | 893 | 25.6% | 2,507 | 29.6% |
 | 7–13 días | 693 | 19.9% | 550 | 6.5% |
-| 14–26 días | 521 | 14.9% | 266 | 3.1% |
-| **27+ días (PLOS)** | **380** | **10.9%** | **229** | **2.7%** |
+| **14+ días (PLOS)** | **901** | **25.8%** | **495** | **5.8%** |
 
 La distribución evidencia una bifurcación estructural:
 
 - Los **no urgentes** se concentran masivamente en los tramos cortos: el 56.7% se va en 1-2 días y el 86.3% en menos de 7 días. Son episodios predecibles y de baja complejidad.
-- Los **urgentes** tienen una distribución mucho más uniforme a lo largo de todos los tramos. Solo el 24.8% se va en 1-2 días, y acumulan casi el doble de proporción en cada tramo largo: 19.9% en 7-13 días (vs 6.5%), 14.9% en 14-26 días (vs 3.1%), y 10.9% en PLOS (vs 2.7%).
+- Los **urgentes** tienen una distribución mucho más uniforme a lo largo de todos los tramos. Solo el 24.8% se va en 1-2 días, y acumulan una proporción mucho mayor en tramos largos: 19.9% en 7-13 días (vs 6.5%) y 25.8% en PLOS de 14+ días (vs 5.8%).
 
 Visualmente, si se graficara la distribución de ambos grupos, la de no urgentes sería una curva exponencial decreciente muy pronunciada, mientras que la de urgentes sería una curva más plana con una cola derecha mucho más pesada.
 
 ---
 
-## 5. Riesgo de Estancia Prolongada (PLOS ≥ 27 días)
+## 5. Riesgo de Estancia Prolongada (PLOS ≥ 14 días)
 
 | Grupo | N con PLOS | Total grupo | Tasa PLOS |
 |---|---|---|---|
-| Urgentes | 380 | 3,486 | **10.90%** |
-| No urgentes | 229 | 8,465 | 2.71% |
-| **Riesgo relativo** | — | — | **4.03x** |
+| Urgentes | 901 | 3,486 | **25.85%** |
+| No urgentes | 495 | 8,465 | 5.85% |
+| **Riesgo relativo** | — | — | **4.42x** |
 
-Un paciente urgente tiene **4 veces más probabilidad de convertirse en PLOS** que uno no urgente. Este es quizás el hallazgo más relevante del análisis: la urgencia no solo aumenta el LOS promedio, sino que multiplica por 4 la probabilidad del escenario más costoso y difícil de manejar para el sistema hospitalario.
+Un paciente urgente tiene **4.42 veces más probabilidad de convertirse en PLOS** que uno no urgente bajo la definición operacional vigente (`LOS >= 14 días`). Este es quizás el hallazgo más relevante del análisis: la urgencia no solo aumenta el LOS promedio, sino que multiplica fuertemente la probabilidad del escenario más costoso y difícil de manejar para el sistema hospitalario.
 
-De los 609 pacientes PLOS totales, 380 (62.4%) son urgencias — a pesar de representar solo el 29.2% de la población total.
+De los 1,396 pacientes PLOS totales, 901 (64.5%) son urgencias — a pesar de representar solo el 29.2% de la población total.
 
 ---
 
@@ -143,12 +142,11 @@ La correlación entre número de diagnósticos y LOS es **sustancialmente más f
 | 1–2 días | 866 | 7.37 | 1.60 | 1.37 |
 | 3–6 días | 893 | 10.92 | 1.96 | 4.30 |
 | 7–13 días | 693 | 15.76 | 2.31 | 9.30 |
-| 14–26 días | 521 | 20.36 | 2.96 | 18.59 |
-| **27+ días (PLOS)** | **380** | **26.12** | **5.42** | **49.64** |
+| **14+ días (PLOS)** | **901** | **22.79** | **4.00** | **31.68** |
 
-Existe una **escalera de complejidad perfectamente monotónica**: a mayor tramo de LOS, mayor número de diagnósticos y mayor número de procedimientos. Los urgentes PLOS (27+ días) tienen en promedio 26 diagnósticos y 5.4 procedimientos, frente a los 7.4 diagnósticos y 1.6 procedimientos del tramo 1-2 días.
+Existe una **escalera de complejidad perfectamente monotónica**: a mayor tramo de LOS, mayor número de diagnósticos y mayor número de procedimientos. Los urgentes PLOS (14+ días) tienen en promedio 22.8 diagnósticos y 4.0 procedimientos, frente a los 7.4 diagnósticos y 1.6 procedimientos del tramo 1-2 días.
 
-El salto más notable ocurre en procedimientos al llegar a PLOS: de 2.96 en el tramo 14-26 días a 5.42 en el tramo 27+ días (83% de aumento). Esto sugiere que los casos de estancia muy prolongada no solo son más complejos en diagnósticos, sino que también requieren intervenciones activas adicionales (ventilación mecánica, diálisis, drenajes, etc.).
+El salto más notable ocurre al pasar desde tramos cortos hacia PLOS: los procedimientos promedio suben desde 2.31 en el tramo 7-13 días a 4.00 en el tramo 14+ días. Esto sugiere que los casos de estancia prolongada no solo son más complejos en diagnósticos, sino que también requieren intervenciones activas adicionales.
 
 ---
 
@@ -217,11 +215,11 @@ El 15.8% de procedimientos en la sección de Administración (transfusiones, flu
 
 ---
 
-## 11. Diagnósticos en Urgentes con PLOS (la combinación más crítica)
+## 11. Diagnósticos en Urgentes con LOS Extremo ≥ 27 días
 
-De los 380 urgentes que terminan en PLOS (≥27 días), estos son los diagnósticos secundarios más prevalentes:
+Dentro del grupo de urgentes, también existe un subgrupo extremo con `LOS >= 27 días`. Estos casos ya no definen PLOS en la entrega operacional vigente, pero siguen siendo útiles para caracterizar la cola más crítica de la distribución. De los 380 urgentes que terminan con `LOS >= 27 días`, estos son los diagnósticos secundarios más prevalentes:
 
-| Código | Descripción | N | % de urgentes PLOS |
+| Código | Descripción | N | % de urgentes LOS ≥ 27 |
 |---|---|---|---|
 | E43 | Desnutrición severa | 163 | **42.9%** |
 | E559 | Deficiencia vitamínica | 129 | 33.9% |
@@ -239,7 +237,7 @@ De los 380 urgentes que terminan en PLOS (≥27 días), estos son los diagnósti
 | E860 | Deshidratación | 58 | 15.3% |
 | E7800 | Hipercolesterolemia | 57 | 15.0% |
 
-La **desnutrición severa (E43) aparece en el 42.9% de los urgentes PLOS** — casi uno de cada dos. Junto con la deficiencia vitamínica (33.9%) y la deshidratación (15.3%), emerge un perfil de **paciente urgente de muy alto riesgo: adulto mayor, desnutrido, con infección bacteriana activa (N390, B9620), politratado (anticoagulantes, aspirina, hipoglucemiantes) y con antecedentes de caídas**. Este perfil de "fragilidad clínica" es el que más consistentemente produce estancias extremadamente largas.
+La **desnutrición severa (E43) aparece en el 42.9% de los urgentes con LOS extremo** — casi uno de cada dos. Junto con la deficiencia vitamínica (33.9%) y la deshidratación (15.3%), emerge un perfil de **paciente urgente de muy alto riesgo: adulto mayor, desnutrido, con infección bacteriana activa (N390, B9620), politratado (anticoagulantes, aspirina, hipoglucemiantes) y con antecedentes de caídas**. Este perfil de "fragilidad clínica" es el que más consistentemente produce estancias extremadamente largas.
 
 ---
 
@@ -282,20 +280,20 @@ Con un Spearman r=0.33 (p≈0), Cohen's d=0.81 (efecto grande), y una diferencia
 **2. Las urgencias duplican la media y triplican la mediana del LOS.**
 Media: 11.48 vs 4.41 días (×2.6). Mediana: 6 vs 2 días (×3.0). La mediana es especialmente relevante porque es robusta a outliers — el efecto no lo están produciendo unos pocos casos extremos, sino una diferencia estructural en toda la distribución.
 
-**3. Los urgentes tienen 4× más riesgo de estancia prolongada (PLOS ≥ 27 días).**
-Tasa PLOS: 10.90% en urgentes vs 2.71% en no urgentes (RR = 4.03). El 62.4% de todos los pacientes PLOS son urgencias, pese a que solo representan el 29.2% de la población total.
+**3. Los urgentes tienen 4.42× más riesgo de estancia prolongada (PLOS ≥ 14 días).**
+Tasa PLOS: 25.85% en urgentes vs 5.85% en no urgentes (RR = 4.42). El 64.5% de todos los pacientes PLOS son urgencias, pese a que solo representan el 29.2% de la población total.
 
 **4. La complejidad clínica en urgentes es 2.5× mayor.**
 Los urgentes tienen en promedio 14.0 diagnósticos vs 5.7 en no urgentes. Esta complejidad está correlacionada con el LOS de forma más fuerte en urgentes (r=0.655) que en no urgentes (r=0.436) — el número de diagnósticos "explica más" el LOS cuando el paciente es urgente.
 
-**5. El perfil de urgente-PLOS es identificable: fragilidad clínica.**
-La combinación desnutrición + infección bacteriana (UTI, E. coli) + hipertensión + politratamiento crónico + antecedentes de caídas identifica al subgrupo de urgentes con mayor riesgo de hospitalización extremadamente larga. Casi la mitad de los urgentes PLOS presentan desnutrición severa (E43).
+**5. El perfil de urgente con LOS extremo es identificable: fragilidad clínica.**
+La combinación desnutrición + infección bacteriana (UTI, E. coli) + hipertensión + politratamiento crónico + antecedentes de caídas identifica al subgrupo de urgentes con mayor riesgo de hospitalización extremadamente larga. Casi la mitad de los urgentes con LOS ≥ 27 días presentan desnutrición severa (E43).
 
 **6. Los urgentes con LOS=0 son un subgrupo distinto.**
 133 urgentes son dados de alta el mismo día (3.8% de las urgencias). Tienen casi la mitad de diagnósticos que los urgentes con LOS>0 (8.53 vs 14.19). Son evaluaciones de urgencia de baja complejidad, no equivalentes a los urgentes que requieren internación.
 
 **7. El número de procedimientos escala abruptamente en PLOS.**
-De 2.96 procedimientos promedio en el tramo 14-26 días a 5.42 en el tramo 27+ días. Este salto (83%) es señal de que los casos PLOS requieren intervenciones activas adicionales que van más allá de la complejidad diagnóstica.
+De 2.31 procedimientos promedio en el tramo 7-13 días a 4.00 en el tramo 14+ días. Este salto es señal de que los casos PLOS requieren intervenciones activas adicionales que van más allá de la complejidad diagnóstica.
 
 ### Implicaciones para el modelo predictivo
 
@@ -304,8 +302,7 @@ De 2.96 procedimientos promedio en el tramo 14-26 días a 5.42 en el tramo 27+ d
 | `es_urgencia` es altamente predictivo | Confirmar que el modelo la está usando como feature de alta importancia |
 | La interacción urgencia × diagnósticos es fuerte | Considerar feature `es_urgencia × n_diag_total` explícitamente |
 | Urgentes-LOS=0 son clínicamente distintos | Evaluar modelo separado o flag adicional para urgente de baja complejidad |
-| La tasa PLOS es 4× más alta en urgentes | En estrategias de alerta temprana, priorizar urgentes con comorbilidades graves |
-| Los diagnósticos E43, E559, N390 en urgentes predicen PLOS | Considerar features basadas en la presencia de estos códigos específicos |
+| La tasa PLOS es 4.42× más alta en urgentes | En estrategias de alerta temprana, priorizar urgentes con comorbilidades graves |
+| Los diagnósticos E43, E559, N390 en urgentes aparecen en LOS extremo | Considerar features basadas en la presencia de estos códigos específicos |
 
 ---
-
