@@ -1,4 +1,4 @@
-# 📋 Reporte Analítico — XGBoost Final (Consolidación)
+# Reporte Analítico — XGBoost Final (Consolidación)
 **Predicción de Length of Stay (LOS) Hospitalario — Capstone Grupo 16**  
 **Modelo:** `XGBRegressor` (Consolidado) | **Script:** `entrenar_xgboost_final.py`
 
@@ -46,8 +46,7 @@ Para garantizar que el modelo sea robusto y no sufra de *data leakage* o sobreaj
 2.  **Stratified K-Fold (5 Splits):** Exclusivamente sobre el 80% de entrenamiento (9,560 pacientes), se realizó una partición en 5 pliegues estratificados por tramos de LOS. 
     *   *Nota:* Este K-fold **no se utilizó para buscar parámetros** (tuning), sino para calcular la varianza del error y garantizar la estabilidad del modelo frente a diferentes muestras de pacientes.
 
-> [!WARNING]
-> La variable auxiliar `tramos_los` se utilizó **únicamente para estratificar y balancear** la distribución de pacientes largos y cortos en las divisiones de train/test y en los folds. **En ningún momento ingresó como predictor** en el modelo, garantizando cero *data leakage*.
+**Advertencia metodológica:** La variable auxiliar `tramos_los` se utilizó únicamente para estratificar y balancear la distribución de pacientes largos y cortos en las divisiones de entrenamiento, prueba y validación cruzada. Esta variable no ingresó como predictor del modelo, con lo que se evitó fuga de información.
 
 ---
 
@@ -77,8 +76,7 @@ Para validar que el modelo no dependió de un "split afortunado", estos son los 
 *   **RMSE:** 7.857 ± 0.799 días
 *   **Recall PLOS:** 0.439 ± 0.071
 
-> [!NOTE]
-> La baja desviación estándar en el MAE (±0.11) confirma que **el modelo es altamente estable**. La varianza moderada en el RMSE (±0.79) es esperada y ocurre dependiendo de si el fold incluyó o no pacientes extremos aleatorios (ej. internados por 150 días).
+**Nota:** La baja desviación estándar del MAE (±0,11) indica estabilidad entre pliegues. La variación del RMSE (±0,79) es mayor debido a la presencia desigual de pacientes con estancias extremas en cada subconjunto de validación.
 
 ---
 
@@ -111,27 +109,26 @@ La evaluación por tramos demuestra el clásico problema de predicción en datos
 | **14-26 días** | 157 | 18.21 días | 12.82 días | 8.39 días | -5.38 días | 78.9% |
 | **27+ días** | 122 | 49.15 días | 33.62 días | 24.14 días | -15.52 días | 81.1% |
 
-### 🚨 Interpretación de la Subestimación
+### Interpretación de la subestimación
 El comportamiento del modelo evidencia la **Paradoja de la Regresión Simétrica**.
-Para los pacientes de 0 a 2 días (el grueso poblacional), el modelo sobreestima levemente (+0.7 días), lo cual no es grave clínicamente. Sin embargo, para los pacientes críticos (27+ días), el modelo subestima sistemáticamente (en el 81.1% de los casos de este grupo, el modelo dice que se irán ~15 días antes de la cuenta real).
+En los pacientes con estancias de 0 a 2 días, que constituyen el grupo más frecuente, el modelo sobreestima en promedio 0,7 días. En cambio, en los pacientes con LOS ≥ 27 días se observa subestimación en el 81,1% de los casos y una diferencia promedio de 15,52 días entre el LOS estimado y el observado.
 
 ### Métricas de Costo Asimétrico (Evaluación de Negocio)
 Dado que clínicamente es más riesgoso enviar un paciente grave a casa (subestimar) que retener a uno sano un día extra (sobreestimar), se calcularon métricas de impacto:
 *   **Costo Asimétrico 2X:** 5.132 días *(Mide el MAE penalizando las subestimaciones al doble)*
 *   **Costo Asimétrico 3X:** 7.207 días *(Mide el MAE penalizando las subestimaciones al triple)*
 
-> [!CAUTION]
-> **Limitación Actual:** Estos costos asimétricos son estrictamente evaluativos. La función objetivo del XGBoost utilizado (`reg:squarederror`) no incorporaba esta penalización durante el entrenamiento. El algoritmo matemático trata un error de +5 días y -5 días como exactamente igual.
+**Limitación:** Estos costos asimétricos tienen un propósito exclusivamente evaluativo. La función objetivo utilizada por XGBoost (`reg:squarederror`) no incorporó esta penalización durante el entrenamiento y asignó el mismo costo a errores positivos y negativos de igual magnitud.
 
 ---
 
-## 8. Conclusiones y Próximos Pasos (Hoja de Ruta)
+## 8. Conclusiones y líneas de trabajo futuras
 
-El **XGBoost Consolidado** es un excelente modelo basal avanzado. Logra una Precisión del 78% en pacientes PLOS, lo que significa que **cuando el modelo genera una alerta roja, los médicos pueden confiar en ella**. 
+El **XGBoost consolidado** presenta el mejor desempeño entre los modelos avanzados evaluados. Su precisión de 78,67% en pacientes PLOS indica que aproximadamente ocho de cada diez predicciones de estancia prolongada corresponden a casos que efectivamente superan los 27 días.
 
-Sin embargo, el *Recall* del 48% y la subestimación en tramos altos nos indica que el modelo no detecta a *todos* los pacientes riesgosos.
+No obstante, el recall de 48,36% muestra que el modelo identifica menos de la mitad de los pacientes PLOS reales. Esta limitación coincide con la subestimación observada en los tramos de mayor LOS.
 
-**Propuestas Futuras para el Informe:**
+### Propuestas metodológicas
 Para combatir la subestimación crónica en estancias largas, la arquitectura debe evolucionar hacia el manejo de desbalances numéricos. Las técnicas sugeridas incluyen:
 1.  **Regresión por Cuantiles (*Quantile Regression*):** Forzar al modelo a predecir la cota superior del 90º percentil, garantizando un colchón de seguridad.
 2.  **Pesos por Muestra (*Sample Weights* / SMOGN):** Entrenar multiplicando la importancia de los pacientes largos, obligando al modelo a enfocarse en la cola derecha.

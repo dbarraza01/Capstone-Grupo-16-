@@ -48,7 +48,7 @@ Entrenar un XGBoost con **exactamente los mismos datos y configuración** que el
 | `objective` | `reg:squarederror` | Mismo objetivo de regresión |
 | `random_state` | 42 | Misma semilla para reproducibilidad |
 
-### 3.3 ¿Por qué XGBoost debería funcionar mejor?
+### 3.3 Fundamento para evaluar XGBoost
 
 A diferencia de Random Forest (que promedia 300 árboles independientes), XGBoost construye árboles **secuencialmente**: cada nuevo árbol se enfoca en los errores que dejaron los árboles anteriores. Esto significa que después de los primeros 50 árboles que aprenden a predecir estancias cortas, los siguientes 250 árboles se concentran en los residuos — es decir, en los pacientes que el modelo está prediciendo mal (los de estancias largas).
 
@@ -72,14 +72,14 @@ Para que la comparación sea válida, ambos modelos deben evaluarse con:
 
 ### 4.1 El Problema Fundamental
 
-Los features actuales son binarios: `diag_I10 = 1` significa "el paciente tiene hipertensión". Pero no distingue entre un hipertenso controlado (LOS corto) y un hipertenso con crisis que necesita UCI (LOS largo). **Necesitamos features que capturen la carga de enfermedad y la complejidad del caso.**
+Las variables actuales son binarias: `diag_I10 = 1` indica que el paciente tiene hipertensión, pero no distingue entre un caso controlado de corta estancia y una crisis que requiere UCI. Por esta razón, se requieren variables que representen la carga de enfermedad y la complejidad del caso.
 
 ### 4.2 Estrategia A — Índice de Comorbilidad de Charlson (CCI)
 
-#### ¿Qué es?
+#### Definición
 El Índice de Charlson es un puntaje numérico estándar en medicina que asigna pesos a 17 condiciones médicas según su impacto en la mortalidad a un año. Fue desarrollado por Mary Charlson en 1987 y es el índice de comorbilidad más citado en la literatura médica mundial.
 
-#### ¿Cómo funciona?
+#### Método de cálculo
 Cada condición tiene un peso de 1 a 6 puntos:
 
 | Peso | Condiciones |
@@ -91,8 +91,8 @@ Cada condición tiene un peso de 1 a 6 puntos:
 
 **Ejemplo:** Un paciente con diabetes tipo 2 (1 punto) + insuficiencia renal crónica (2 puntos) + EPOC (1 punto) = CCI de 4. Un CCI ≥ 3 se considera alta carga de comorbilidad.
 
-#### ¿Cómo implementarlo con nuestros datos ICD-10?
-Existen mapeos validados de códigos ICD-10 a categorías Charlson (algoritmo de Quan et al., 2005). Nuestro pipeline leería los códigos diagnósticos de cada paciente, los mapearía a las 17 categorías, asignaría los pesos, y sumaría un puntaje total.
+#### Implementación con datos ICD-10
+Existen mapeos validados de códigos ICD-10 a categorías Charlson, como el algoritmo de Quan et al. (2005). El pipeline asigna los códigos diagnósticos de cada paciente a las 17 categorías, aplica sus ponderaciones y calcula el puntaje total.
 
 **Feature resultante:** Una columna numérica `charlson_index` con valores de 0 a ~20.
 
@@ -100,7 +100,7 @@ Existen mapeos validados de códigos ICD-10 a categorías Charlson (algoritmo de
 
 ### 4.3 Estrategia B — Índice de Elixhauser
 
-#### ¿Qué es?
+#### Definición
 Similar al Charlson pero más completo: incluye 31 categorías de comorbilidad (vs. 17 del Charlson). Estudios recientes sugieren que el Elixhauser tiene **superior poder predictivo para LOS** que el Charlson, porque incluye condiciones como obesidad, trastornos psiquiátricos y abuso de sustancias que afectan la estancia pero no la mortalidad.
 
 #### Implementación
@@ -149,36 +149,51 @@ Crear una columna `tipo_hospitalizacion` basada en el diagnóstico primario:
 Un nuevo script `procesamiento_features_v3.py` que genere `model_data_ml_v3.csv` con:
 - Todas las columnas actuales de la v2 (features binarias ICD agrupadas)
 - `charlson_index` (numérica continua)
-- 31 features binarias Elixhauser (o las que apliquen a nuestros datos)
+- 31 variables binarias de Elixhauser, sujetas a la disponibilidad de categorías en el conjunto de datos.
 - Features de interacción (n_comorbilidades_graves, es_multimorbido, etc.)
 - `tipo_hospitalizacion` (one-hot encoded)
 
 ---
 
-## Fase 2.5: Hyperparameter Tuning
-Paso 1: Crear el script de Tuning Crearé un archivo llamado ml/modelos/XGB/tuning_xgboost.py. Este archivo no guardará un modelo final, su único trabajo será correr simulaciones.
+## Fase 2.5 — Ajuste de hiperparámetros
 
-Paso 2: Definir el "Espacio de Búsqueda" (Grid) Le diremos al algoritmo que busque en estos rangos lógicos para datos tabulares asimétricos:
+### Paso 1: script de ajuste
 
-n_estimators: [100, 300, 500, 800] (¿Cuántos árboles?)
-max_depth: [3, 5, 7, 9] (¿Qué tan complejos?)
-learning_rate: [0.01, 0.05, 0.1, 0.2] (¿Qué tan rápido aprende?)
-subsample / colsample_bytree: [0.6, 0.8, 1.0] (Evita el overfitting)
-Paso 3: Validacion Cruzada (5-Fold CV) Para cada combinación que intente, el algoritmo partirá la data de entrenamiento en 5 trozos. Entrenará con 4 y validará con 1. Repetirá esto 5 veces. Esto garantiza que el modelo es robusto y no tuvo "suerte" con los datos.
+El archivo `ml/modelos/XGB/tuning_xgboost.py` ejecutará la búsqueda de hiperparámetros sin guardar un modelo final.
 
-Paso 4: Métrica de Selección Le diremos que busque la combinación que logre el menor MAE (Error Absoluto Medio) en los 5 folds.
+### Paso 2: espacio de búsqueda
 
-Paso 5: Ejecución y Registro Al terminar, el script imprimirá algo como: Mejores parámetros encontrados: {'n_estimators': 500, 'max_depth': 5, 'learning_rate': 0.05} Nosotros copiaremos exactamente esos parámetros y los pegaremos en nuestro script final de entrenamiento (entrenar_xgboost_v3.py), citando que fueron obtenidos mediante RandomizedSearchCV.
+Se evaluarán los siguientes rangos, definidos para datos tabulares con una variable objetivo asimétrica:
+
+| Hiperparámetro | Valores evaluados | Función |
+|---|---|---|
+| `n_estimators` | 100, 300, 500, 800 | Número de árboles |
+| `max_depth` | 3, 5, 7, 9 | Complejidad máxima de cada árbol |
+| `learning_rate` | 0,01; 0,05; 0,1; 0,2 | Tasa de aprendizaje |
+| `subsample` | 0,6; 0,8; 1,0 | Proporción de observaciones utilizada por árbol |
+| `colsample_bytree` | 0,6; 0,8; 1,0 | Proporción de variables utilizada por árbol |
+
+### Paso 3: validación cruzada
+
+Cada configuración se evaluará mediante validación cruzada de cinco pliegues. En cada iteración se utilizarán cuatro pliegues para entrenamiento y uno para validación, hasta que cada pliegue haya cumplido la función de validación una vez.
+
+### Paso 4: métrica de selección
+
+La configuración seleccionada será aquella que obtenga el menor MAE promedio en los cinco pliegues.
+
+### Paso 5: registro y entrenamiento final
+
+Los mejores hiperparámetros obtenidos mediante `RandomizedSearchCV` se registrarán y se incorporarán al script final `entrenar_xgboost_v3.py`. El modelo definitivo se entrenará posteriormente con el conjunto completo de entrenamiento.
 
 ## 5. Fase 3 — Random Forest v2 + XGBoost v2 (Técnicas Avanzadas)
 
 ### 5.1 Técnica 1 — SMOGN (Sobremuestreo para Regresión)
 
-#### ¿Qué es?
+#### Definición
 SMOTE (Synthetic Minority Oversampling TEchnique) fue diseñado para clasificación. Para regresión se usa **SMOGN** (Synthetic Minority Over-sampling Technique for Regression with Gaussian Noise), que es la extensión de SMOTE para variables continuas.
 
-#### ¿Cómo funciona?
-1. Define una **función de relevancia** que indica qué valores del target son "raros" (en nuestro caso, LOS ≥ 14 días)
+#### Procedimiento
+1. Define una **función de relevancia** que identifica los valores poco frecuentes del objetivo, correspondientes en este caso a LOS ≥ 14 días.
 2. **Sub-muestrea** los casos frecuentes (LOS 0–6 días) para reducir su dominio
 3. **Genera muestras sintéticas** de los casos raros interpolando entre pacientes reales con LOS largo y añadiendo ruido gaussiano controlado
 
@@ -195,8 +210,8 @@ El dataset de entrenamiento pasaría de ~9,500 filas a ~12,000–15,000 filas, c
 
 ### 5.2 Técnica 2 — Pesos de Muestra Personalizados
 
-#### ¿Qué es?
-En lugar de generar datos sintéticos, se le dice al algoritmo: *"Cuando te equivoques en un paciente de LOS largo, considéralo como si te hubieras equivocado en 5 pacientes."* Esto se hace asignando un peso (sample_weight) a cada fila de entrenamiento.
+#### Definición
+Esta técnica asigna un peso (`sample_weight`) a cada observación de entrenamiento. Los errores cometidos en pacientes con estancias prolongadas reciben una ponderación mayor, sin necesidad de generar datos sintéticos.
 
 #### Esquema de pesos propuesto
 
@@ -247,7 +262,7 @@ Paciente nuevo  →   │ Etapa 1: Clasificador│
 - **Regresor Corto:** Entrenado solo con pacientes de LOS < 14 días (~88% de la cohorte). Este modelo tiene una distribución mucho más homogénea.
 - **Regresor Largo:** Entrenado solo con pacientes de LOS ≥ 14 días (~12% de la cohorte). Al no estar "contaminado" por los miles de pacientes de 1–2 días, puede aprender patrones específicos de estancias prolongadas.
 
-#### ¿Por qué 14 días como umbral de corte?
+#### Justificación del umbral de 14 días
 - 14 días es el punto medio de la distribución "difícil" (tramo 14–26 + tramo 27+)
 - Agrupa ~12% de los pacientes en el grupo largo, lo que da ~1,400 pacientes para entrenar el regresor largo — suficiente para un modelo robusto
 - Clínicamente, 2 semanas de hospitalización es el punto donde se activan protocolos de revisión en muchos hospitales
@@ -276,10 +291,10 @@ Esto haría que XGBoost prefiera sobreestimar antes que subestimar, lo cual es c
 | Modelo | MAE | RMSE | Recall PLOS | Notas |
 |--------|-----|------|-------------|-------|
 | RF v1 (baseline) | 4.16 | 11.13 | 0.0% | Solo features v2 |
-| XGBoost v1 | ¿? | ¿? | ¿? | Mismos features v2, diferente algoritmo |
-| RF v2 (con pesos) | ¿? | ¿? | ¿? | Features v3 + sample weights |
-| XGBoost v2 (con pesos) | ¿? | ¿? | ¿? | Features v3 + sample weights |
-| Dos Etapas (XGBoost) | ¿? | ¿? | ¿? | Clasificador + 2 regresores |
+| XGBoost v1 | Pendiente | Pendiente | Pendiente | Mismos features v2, diferente algoritmo |
+| RF v2 (con pesos) | Pendiente | Pendiente | Pendiente | Features v3 + sample weights |
+| XGBoost v2 (con pesos) | Pendiente | Pendiente | Pendiente | Features v3 + sample weights |
+| Dos Etapas (XGBoost) | Pendiente | Pendiente | Pendiente | Clasificador + 2 regresores |
 
 ### 6.2 Criterio de Selección del Modelo Final
 
@@ -303,17 +318,17 @@ En la Fase 4, todos los modelos finalistas deben evaluarse con **K-Fold Cross-Va
 
 | Paso | Tarea | Prioridad | Dependencias |
 |------|-------|-----------|-------------|
-| 1 | Entrenar XGBoost v1 con features v2 actuales | 🔴 Alta | Ninguna |
-| 2 | Comparar RF v1 vs XGBoost v1 | 🔴 Alta | Paso 1 |
-| 3 | Implementar Charlson Index en features v3 | 🔴 Alta | Ninguna (paralelo a paso 1) |
-| 4 | Implementar features Elixhauser | 🟡 Media | Paso 3 |
-| 5 | Implementar features de interacción | 🟡 Media | Paso 3 |
-| 6 | Agregar tipo_hospitalizacion | 🟡 Media | Paso 3 |
-| 7 | Entrenar RF v2 con pesos + features v3 | 🔴 Alta | Pasos 3–6 |
-| 8 | Entrenar XGBoost v2 con pesos + features v3 | 🔴 Alta | Pasos 3–6 |
-| 9 | Implementar modelo de dos etapas | 🟡 Media | Paso 8 |
-| 10 | Validación cruzada K-Fold de modelos finalistas | 🔴 Alta | Pasos 7–9 |
-| 11 | Comparación final y selección | 🔴 Alta | Paso 10 |
+| 1 | Entrenar XGBoost v1 con features v2 actuales | Alta | Ninguna |
+| 2 | Comparar RF v1 vs XGBoost v1 | Alta | Paso 1 |
+| 3 | Implementar Charlson Index en features v3 | Alta | Ninguna (paralelo a paso 1) |
+| 4 | Implementar features Elixhauser | Media | Paso 3 |
+| 5 | Implementar features de interacción | Media | Paso 3 |
+| 6 | Agregar tipo_hospitalizacion | Media | Paso 3 |
+| 7 | Entrenar RF v2 con pesos + features v3 | Alta | Pasos 3–6 |
+| 8 | Entrenar XGBoost v2 con pesos + features v3 | Alta | Pasos 3–6 |
+| 9 | Implementar modelo de dos etapas | Media | Paso 8 |
+| 10 | Validación cruzada K-Fold de modelos finalistas | Alta | Pasos 7–9 |
+| 11 | Comparación final y selección | Alta | Paso 10 |
 
 ---
 

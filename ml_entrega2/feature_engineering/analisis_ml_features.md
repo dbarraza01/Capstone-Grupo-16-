@@ -1,4 +1,4 @@
-# 📊 Análisis de Features de Machine Learning — Capstone Grupo 16
+# Análisis de variables para modelos de machine learning — Capstone Grupo 16
 **LOS (Length of Stay) Prediction — Ingeniería de Features Clínicas**
 
 ---
@@ -130,7 +130,7 @@ Dataset integrado final:
 | `grupos_unicos_proc` | N° de grupos procedimentales distintos del paciente | Conteo bruto |
 | `max_repeticion_proc_grupo` | Máxima cantidad de veces que un grupo procedimental aparece | Conteo bruto |
 
-**¿Por qué conteos brutos y no log1p?** Random Forest y Gradient Boosting trabajan con splits binarios sobre valores, no con distancias. La transformación logarítmica no aporta beneficio y dificulta la interpretación de feature importance.
+**Uso de conteos brutos:** Random Forest y Gradient Boosting trabajan con divisiones binarias sobre valores, no con distancias. La transformación logarítmica no aporta un beneficio directo en este caso y dificulta la interpretación de la importancia de variables.
 
 - Pacientes con diagnósticos repetidos: 1,757 de 11,951 (14.7%)
 - Pacientes con procedimientos repetidos: 200 de 11,951 (1.7%)
@@ -189,7 +189,7 @@ Dataset integrado final:
 
 **Justificación:** El profesor indicó que pueden usarse. No existe información clara sobre el timing de codificación en el sistema fuente — no se puede confirmar si los diagnósticos secundarios se codifican al ingreso o al egreso.
 
-> ⚠️ **Advertencia futura:** Si los diagnósticos secundarios se codifican al egreso, constituirían leakage temporal (el modelo vería información que solo existe después de conocer el LOS). Para un modelo de producción, sería necesario separar diagnósticos conocidos al ingreso vs. diagnósticos codificados al egreso.
+**Advertencia metodológica:** Si los diagnósticos secundarios se codifican al egreso, constituirían fuga temporal de información, porque el modelo utilizaría datos disponibles después de conocer el LOS. En un entorno productivo sería necesario separar los diagnósticos conocidos al ingreso de aquellos codificados al egreso.
 
 ### 5.3 Mezcla de Poblaciones / Servicio Hospitalario
 
@@ -207,7 +207,7 @@ Dataset integrado final:
 
 **Resultado:** 514 grupos procedimentales (era 360). La compresión pasó de 9.1:1 a 6.4:1.
 
-**¿Por qué umbral 10 y no 5?** Con 10 pacientes, un procedimiento tiene representación mínima para que un árbol de decisión pueda hacer splits informativos (mínimo ~10 muestras en un nodo hoja es configuración estándar de RF). Bajar a 5 introduciría demasiado ruido.
+**Justificación del umbral de 10 pacientes:** Esta frecuencia proporciona una representación mínima para que un árbol de decisión realice divisiones informativas. Reducir el umbral a cinco pacientes aumentaría la influencia de asociaciones poco frecuentes y el riesgo de ruido.
 
 ### 5.5 Capítulos Diagnósticos Amplios
 
@@ -251,7 +251,7 @@ Las siguientes columnas están **excluidas** de los predictores:
 
 ## 6. Ventajas y Riesgos de v2
 
-### 6.1 Ventajas ✅
+### 6.1 Ventajas
 
 | Aspecto | Descripción |
 |---------|-------------|
@@ -263,16 +263,16 @@ Las siguientes columnas están **excluidas** de los predictores:
 | **Outliers analizados** | Se sabe qué diagnósticos/procedimientos prevalecen en estancias largas |
 | **0 nulos** | Dataset completamente limpio |
 
-### 6.2 Riesgos Pendientes ⚠️
+### 6.2 Riesgos pendientes
 
 | Riesgo | Severidad | Estado |
 |--------|-----------|--------|
-| **Leakage temporal en diagnósticos secundarios** | 🟡 Media | Documentado; se permite por indicación del profesor |
-| **Leakage potencial en `n_procedimientos`** | 🟡 Media | El n° total de procedimientos podría correlacionar con LOS por definición |
-| **Alta dimensionalidad** | 🟡 Media | 1,652 features para 12K pacientes. RF y GBM lo manejan, pero conviene feature selection posterior |
-| **Mezcla de poblaciones** | 🟡 Media | Obstetricia + medicina interna + cirugía en un solo modelo. Trabajo futuro |
-| **Distribución asimétrica del target** | 🟡 Media | Mediana=3, media=6.47, max=262. Considerar transformación log al entrenar |
-| **Densidad muy baja (0.58%)** | 🟢 Baja | RF y GBM manejan sparsity nativamente |
+| **Fuga temporal en diagnósticos secundarios** | Media | Documentado; se permite por indicación del profesor |
+| **Fuga potencial en `n_procedimientos`** | Media | El número total de procedimientos podría correlacionarse con LOS por definición |
+| **Alta dimensionalidad** | Media | 1.652 variables para 12.000 pacientes. RF y GBM pueden procesarlas, pero conviene realizar una selección posterior |
+| **Mezcla de poblaciones** | Media | Obstetricia, medicina interna y cirugía se incluyen en un solo modelo. Se propone segmentarlas en trabajos posteriores |
+| **Distribución asimétrica del objetivo** | Media | Mediana = 3, media = 6,47 y máximo = 262. Se debe evaluar una transformación logarítmica durante el entrenamiento |
+| **Densidad muy baja (0,58%)** | Baja | RF y GBM manejan matrices dispersas de manera nativa |
 
 ---
 
@@ -334,12 +334,12 @@ Si comparamos los códigos originales con los grupos finales:
 
 Diagnósticos: Solo el 21.5% de los nombres originales se convirtieron en columnas (el resto se agrupó por jerarquía).
 Procedimientos: Solo el 13.2% de los nombres originales se convirtieron en columnas.
-¿Es muy pequeño? Al contrario, es el tamaño ideal.
+Este tamaño es adecuado para el modelamiento propuesto.
 
 Si hubiéramos usado los 9,402 códigos originales como columnas:
 
 Dataset vacío: La gran mayoría de las columnas tendrían puros ceros (porque un código específico quizás solo lo tiene 1 paciente en 12,000). El modelo no podría aprender nada de una columna que casi siempre es cero.
-Maldición de la dimensionalidad: Tendrías más columnas que pacientes, lo que garantiza que el modelo se aprenda los datos de memoria (overfitting) en lugar de aprender medicina.
+Maldición de la dimensionalidad: el número de columnas superaría al número de pacientes, lo que incrementaría sustancialmente el riesgo de que el modelo memorice los datos de entrenamiento en lugar de generalizar patrones clínicos.
 Conclusión: Tener 1,652 features (1,321 diag + 433 proc + variables base) para 11,951 pacientes es una proporción muy sana. Estás usando aproximadamente el 18% de la diversidad original de códigos, pero agrupados de forma que cada columna tiene suficientes "1s" para que el modelo (XGBoost) pueda encontrar patrones estadísticos reales.
 
 ## 8. Conclusión

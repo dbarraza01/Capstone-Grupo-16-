@@ -3,15 +3,15 @@
 
 ---
 
-## 1. Conceptos Básicos y Glosario (Lenguaje Sencillo)
+## 1. Conceptos básicos y glosario
 
-Para asegurar que todo el equipo esté alineado y evitar confusiones con la nomenclatura, definimos los términos clave de Machine Learning (ML) que usaremos:
+Esta sección define los términos principales de machine learning utilizados en el proyecto:
 
-*   **Modelo de Clasificación (o "Clasificador"):** Es un modelo de ML diseñado para responder preguntas de tipo "Sí o No" (categóricas). En lugar de darnos solo un "Sí" o un "No" seco, calcula la **probabilidad** (un porcentaje entre 0% y 100%, o un número entre 0 y 1) de que ocurra el evento. En nuestro caso, la pregunta es: *¿Este paciente se quedará más de 14 días en el hospital?*
-*   **Modelo de Regresión (o "Regresor"):** Es un modelo de ML diseñado para predecir un número continuo exacto (cantidades, dinero, o en nuestro caso, **días de estancia** como 3.4 días, 12 días, 45 días).
-*   **Stacking (Apilamiento):** No es un algoritmo o función única de Python. Es una **estrategia de diseño** en la que conectamos dos modelos de ML en cadena: la predicción o salida del primer modelo se guarda y se introduce como si fuera una variable (columna) adicional para el segundo modelo.
-*   **Sesgo hacia el promedio (Regression to the mean):** Es un comportamiento natural de los modelos de regresión tradicionales. Cuando un modelo intenta minimizar el error promedio (como el MAE), prefiere predecir valores cercanos a la media general del hospital (por ejemplo, 6 o 7 días) para todos los pacientes. Si predice 30 días para un paciente complejo y se equivoca, la penalización matemática es enorme. Por lo tanto, el modelo "juega a lo seguro" y predice valores promedio, siendo incapaz de detectar a los pacientes que realmente se quedarán mucho tiempo.
-*   **Tuning (Ajuste de Hiperparámetros):** Proceso de búsqueda automática de los mejores valores de configuración (hiperparámetros) de un modelo de ML. Por ejemplo: ¿cuántos árboles debe usar? ¿qué tan profundos deben ser? ¿qué tan rápido debe aprender? Estos valores no se aprenden de los datos, se prueban combinándolos hasta encontrar la mejor configuración.
+*   **Modelo de clasificación o clasificador:** Modelo diseñado para estimar la probabilidad de pertenencia a una categoría. En este proyecto calcula la probabilidad de que un paciente presente una estancia de 14 días o más.
+*   **Modelo de regresión o regresor:** Modelo diseñado para predecir una variable numérica continua; en este caso, los días de estancia hospitalaria.
+*   **Stacking o apilamiento:** Estrategia que conecta modelos de forma secuencial. La salida del primer modelo se incorpora como una variable adicional para el segundo.
+*   **Sesgo hacia el promedio (*regression to the mean*):** Tendencia de los modelos de regresión a producir estimaciones cercanas al centro de la distribución cuando optimizan errores promedio. En una distribución asimétrica de LOS, este comportamiento puede reducir la capacidad de representar estancias extremas.
+*   **Tuning o ajuste de hiperparámetros:** Proceso de búsqueda de los valores de configuración que optimizan una métrica de validación. Estos valores se evalúan mediante combinaciones definidas antes del entrenamiento final.
 *   **RandomizedSearchCV:** Función de `scikit-learn` que prueba combinaciones aleatorias de hiperparámetros y evalúa cada combinación con validación cruzada (K-Folds). Es más eficiente que probar todas las combinaciones posibles (Bergstra & Bengio, 2012).
 *   **XGBClassifier y XGBRegressor:** Son modelos de ML de la librería `xgboost`. El primero se especializa en clasificar (estimar probabilidades de superar los 14 días) y el segundo en regresar (predecir el número exacto de días).
 
@@ -39,35 +39,34 @@ Etapa 3: Regresión de Días Exactos (XGBRegressor)
 ```
 
 ### Etapa 1: Segmentación Inicial (Estratificación)
-Separamos a los pacientes según su vía de ingreso en dos datasets completamente distintos:
+Los pacientes se separan según su vía de ingreso en dos conjuntos:
 1.  **Pacientes de Urgencia** (`es_urgencia == 1`).
 2.  **Pacientes Programados/No Urgencia** (`es_urgencia == 0`).
 A partir de aquí, todo lo que sigue se entrena por separado para cada grupo. No se mezclan, porque operan bajo dinámicas clínicas y de gestión de camas radicalmente diferentes.
 
 ### Etapa 2: Clasificación de Riesgo (¿Se queda más de 14 días?)
-En esta etapa entrenamos un **modelo de clasificación** (`XGBClassifier`). 
-*   **¿Cómo se entrena?** Le damos al modelo las variables clínicas (diagnósticos, cirugías, edad, etc.) y una etiqueta de entrenamiento: si el paciente real se quedó 15 días, su etiqueta es `1`. Si se quedó 5 días, su etiqueta es `0`. 
-*   **¿Qué rango de días usa?** El modelo **no** trabaja con los tramos (2-3 días, 4-6 días, etc.) durante su entrenamiento. Solo distingue si supera los 14 días o no. Esos tramos (0-2, 3-6, 7-13, 14-26, 27+) se utilizan **exclusivamente al final de todo el proceso para evaluar** en qué rangos de días nuestros modelos cometen más o menos errores.
-*   **¿Cómo calcula la probabilidad?** El algoritmo `XGBClassifier` no es una caja negra mágica. Internamente, realiza una combinación lineal de múltiples árboles de decisión. La puntuación final que genera pasa por una función matemática llamada **función sigmoide** (o función logística), la cual "aplasta" cualquier número y lo convierte en un valor acotado estrictamente entre 0 y 1. Este valor decimal representa la probabilidad matemática de que el paciente pertenezca a la clase `1` (más de 14 días).
-*   **¿Por qué estimar esta probabilidad si ya conocemos los días reales en el dataset?**
-    Es vital entender la diferencia entre **entrenar el modelo** y **usar el modelo en el hospital real**:
-    *   **En el entrenamiento:** Efectivamente conocemos la respuesta (los días exactos y si se quedó más de 14 días).
-    *   **En el hospital real (Predicción):** Cuando un paciente cruza la puerta de admisión, **no sabemos cuánto tiempo se quedará**. Solo tenemos sus datos clínicos de ingreso.
-    *   Para poder predecir los días exactos en la Etapa 3, el regresor necesitará saber qué tan "riesgoso" es ese paciente. Como en la vida real no sabemos si se quedará más de 14 días, usamos la Etapa 2 para estimar esa probabilidad de riesgo a partir de sus datos de ingreso, y luego le pasamos esa estimación a la Etapa 3.
+En esta etapa se entrena un **modelo de clasificación** (`XGBClassifier`).
+*   **Entrenamiento:** El modelo recibe las variables clínicas y una etiqueta binaria: `1` para LOS ≥ 14 días y `0` para LOS < 14 días.
+*   **Rango de días:** El clasificador no utiliza los tramos de LOS durante el entrenamiento. Los tramos 0-2, 3-6, 7-13, 14-26 y 27+ se reservan para evaluar el error según la duración real de la estancia.
+*   **Cálculo de la probabilidad:** `XGBClassifier` combina la salida de múltiples árboles y transforma la puntuación resultante mediante una función logística. El valor obtenido se encuentra entre 0 y 1 y representa la probabilidad estimada de pertenecer a la clase PLOS.
+*   **Justificación de la probabilidad:** Es necesario distinguir entre el entrenamiento y la inferencia en un entorno hospitalario:
+    *   **Durante el entrenamiento:** Se conocen los días exactos y la condición PLOS observada.
+    *   **Durante la inferencia:** Solo están disponibles las variables clínicas definidas para el momento de predicción.
+    *   La Etapa 2 estima el riesgo PLOS a partir de esas variables y entrega dicha probabilidad a la Etapa 3.
 
 ### Etapa 3: Regresión de Días Exactos (Predicción de LOS)
-Aquí entrenamos un **modelo de regresión** (`XGBRegressor`).
+En esta etapa se entrena un **modelo de regresión** (`XGBRegressor`).
 *   **¿Qué variables recibe?** Recibe todas las variables clínicas de ingreso (igual que el clasificador) **MÁS** la probabilidad calculada en la Etapa 2 como una nueva columna predictora.
 *   **¿Cómo funciona el Stacking detalladamente aquí?** 
-    La probabilidad actúa como una "guía de carril" para el regresor. Si la probabilidad es muy alta (ej. 0.92), el regresor entiende de inmediato: "Este paciente tiene un riesgo crítico de estancia prolongada, no debo predecir un valor cercano al promedio (ej. 6 días); debo buscar en el histórico de pacientes de larga estancia y predecir un valor alto (ej. 22 días)". Si la probabilidad es baja (ej. 0.05), el regresor sabe que debe predecir una estancia corta. Esto rompe directamente el **sesgo hacia el promedio**.
+    La probabilidad aporta al regresor una señal continua de riesgo. Su contribución se combina con las demás variables clínicas para estimar los días de estancia; no constituye por sí sola una decisión determinista ni elimina necesariamente el sesgo hacia el promedio.
 
 ---
 
 ## 3. ¿Cómo funciona el K-Folds en Stacking y por qué evita el Data Leakage?
 
-La filtración de datos (*data leakage*) ocurriría si entrenamos el clasificador de la Etapa 2 con todo el conjunto de entrenamiento, calculamos sus probabilidades, y con esas mismas probabilidades entrenamos el regresor de la Etapa 3. El clasificador, al haber memorizado el dataset de entrenamiento, daría probabilidades "perfectas" (ej. 0.99 para los de más de 14 días, y 0.01 para los de menos). El regresor se volvería flojo, aprendería a depender ciegamente de esos valores extremos y fallaría catastróficamente con pacientes nuevos porque las probabilidades reales de un paciente nuevo nunca son tan perfectas.
+La fuga de información ocurriría si el clasificador se ajustara con todo el conjunto de entrenamiento y sus probabilidades sobre esos mismos pacientes se utilizaran para entrenar el regresor. En ese caso, la segunda etapa recibiría estimaciones excesivamente optimistas y no representativas del comportamiento frente a pacientes nuevos.
 
-Para evitar esto, aplicamos **Out-of-Fold (OOF) Predictions** usando Validación Cruzada de 5 pliegues (K-Folds) durante el entrenamiento:
+Para evitarlo se generan predicciones **out-of-fold (OOF)** mediante validación cruzada de cinco pliegues durante el entrenamiento:
 
 ```text
 Paso 1: Dividir el dataset de entrenamiento en 5 grupos (Folds 1 a 5).
@@ -87,11 +86,11 @@ Paso 3: Unir todas las predicciones OOF. Ahora todo el conjunto de entrenamiento
 Paso 4: Entrenar el XGBRegressor usando este dataset con la columna de probabilidades.
 ```
 
-### ¿La acumulación de errores de la Etapa 1 empeora la predicción final?
-Esta es una pregunta muy inteligente. Intuitivamente, uno pensaría que si el primer modelo se equivoca, el segundo modelo heredará ese error y la predicción final de LOS será peor. Sin embargo, en la práctica y según la literatura científica de gestión hospitalaria (Harini et al., 2022), ocurre lo contrario por dos razones:
+### Propagación de errores entre etapas
+La salida del clasificador puede transmitir error al regresor. El uso de probabilidades out-of-fold busca que la segunda etapa se entrene con una señal que reproduzca mejor las condiciones de inferencia y reduzca el riesgo de fuga de información. Su aporte neto debe comprobarse empíricamente mediante el estudio de ablación.
 
 1.  **El regresor aprende del "ruido realista":** Al entrenar el regresor de la Etapa 3 utilizando las probabilidades *Out-of-Fold* (que contienen los errores normales del clasificador), el regresor aprende matemáticamente a **no confiar ciegamente** en la probabilidad. Si el clasificador asigna un 0.60 a un paciente que terminó quedándose 5 días, el regresor aprende a equilibrar esa probabilidad con las variables clínicas del paciente para moderar su predicción final.
-2.  **Reducción de la varianza extrema:** La estancia hospitalaria (LOS) es una distribución con una "cola larga" muy difícil de predecir. Un solo regresor se pierde intentando modelar al mismo tiempo a pacientes que se van al día siguiente y a pacientes que se quedan un mes. Al darle la probabilidad, dividimos el problema: el clasificador filtra el riesgo a nivel global, y el regresor se especializa en afinar los días exactos dentro del rango de riesgo sugerido. El beneficio de reducir el sesgo hacia el promedio compensa con creces el pequeño error arrastrado por la clasificación.
+2.  **Representación de la cola de la distribución:** La probabilidad PLOS proporciona una señal adicional para distinguir pacientes con diferente riesgo de estancia prolongada. El efecto observado depende de los datos y no garantiza por sí mismo una reducción del error final.
 
 ---
 
@@ -99,7 +98,7 @@ Esta es una pregunta muy inteligente. Intuitivamente, uno pensaría que si el pr
 
 Esta sección es crítica: el pipeline de dos etapas tiene **dos modelos de ML** que necesitan sus propios hiperparámetros óptimos. No basta con tener el flujo conceptual correcto; cada modelo necesita que le encontremos la mejor configuración (cuántos árboles usar, qué tan profundos, qué tan rápido aprender, cuánta regularización aplicar, etc.).
 
-El proceso de tuning también es **secuencial**: primero encontramos los mejores hiperparámetros del clasificador (Etapa 2), y luego, usando ese clasificador ya configurado, encontramos los mejores hiperparámetros del regresor (Etapa 3).
+El ajuste también es secuencial: primero se seleccionan los hiperparámetros del clasificador y luego se ajusta el regresor utilizando la configuración resultante de la primera etapa.
 
 ### 4.1 El Macroproceso Completo con Tuning Integrado
 
@@ -249,17 +248,15 @@ search_clf = RandomizedSearchCV(
 search_clf.fit(X_train_segmento, y_bin)
 ```
 
-En resumen: el primer `stratify` protege la representatividad del holdout por `urgencia + tramo`. El segundo `StratifiedKFold` protege la representatividad de los folds internos del clasificador por `PLOS/no PLOS`.
+En síntesis, el primer `stratify` conserva la representatividad del holdout por `urgencia + tramo`. El segundo `StratifiedKFold` conserva la proporción de casos PLOS y no PLOS en los pliegues internos del clasificador.
 
-> [!IMPORTANT]
-> **¿Por qué el tuning es secuencial y no simultáneo?**
-> No podemos buscar los mejores hiperparámetros de ambos modelos al mismo tiempo porque el regresor (Etapa 3) **depende** del clasificador (Etapa 2). Sin las probabilidades generadas por un clasificador ya configurado, el regresor no puede saber qué columna `prob_los_14` usar. Por eso, primero fijamos el clasificador (Paso 1), generamos las probabilidades (Paso 2), y luego tuneamos el regresor con esas probabilidades ya disponibles (Paso 3).
+**Justificación del ajuste secuencial:** El regresor depende de la probabilidad generada por el clasificador. Por esta razón, primero se ajusta el clasificador, luego se generan las probabilidades y finalmente se ajusta el regresor con `prob_los_14` disponible.
 
 ### 4.2 Tuning del Clasificador — Paso 1 en Detalle
 
-**¿Qué estamos buscando?** La mejor combinación de hiperparámetros para que el modelo `XGBClassifier` sea lo más preciso posible al estimar la probabilidad de que un paciente se quede 14 o más días.
+**Objetivo:** Identificar la combinación de hiperparámetros que maximice la capacidad del `XGBClassifier` para discriminar el riesgo de una estancia de 14 días o más.
 
-**¿Cómo sabemos cuál combinación es la mejor?** Usamos la métrica **ROC-AUC** (Área Bajo la Curva ROC). Esta métrica mide qué tan bien el clasificador **ordena** a los pacientes: los que realmente se quedan mucho tiempo deberían tener probabilidades altas, y los que se van rápido deberían tener probabilidades bajas. Un ROC-AUC de 1.0 sería perfecto, y 0.5 sería igual que tirar una moneda al aire. Es la métrica estándar para evaluar clasificadores binarios en estudios clínicos (Steyerberg et al., 2010; Cho et al., 2024).
+**Criterio de selección:** Se utiliza ROC-AUC, que mide la capacidad del clasificador para ordenar a los pacientes según su riesgo. Un valor de 1 representa discriminación perfecta y un valor de 0,5 equivale al rendimiento esperado por azar (Steyerberg et al., 2010; Cho et al., 2024).
 
 **Espacio de búsqueda del clasificador (XGBClassifier):**
 
@@ -306,7 +303,7 @@ best_params_clf = search_clf.best_params_
 
 ### 4.3 Generación de Probabilidades OOF — Paso 2 en Detalle
 
-Una vez que tenemos los mejores hiperparámetros del clasificador, necesitamos generar las probabilidades **sin leakage** para todo el conjunto de entrenamiento. Esto se hace con la función `cross_val_predict` de scikit-learn:
+Una vez seleccionados los hiperparámetros del clasificador, se generan probabilidades sin fuga de información para todo el conjunto de entrenamiento mediante `cross_val_predict` de scikit-learn:
 
 ```python
 from sklearn.model_selection import cross_val_predict, StratifiedKFold
@@ -335,7 +332,7 @@ Después de este paso, el dataset de entrenamiento tiene todas sus variables cl�
 
 **¿Por qué penalizar la subestimación?** Si el modelo predice 5 días pero el paciente realmente se queda 18 días, el hospital se queda sin camas y se genera un problema grave de planificación. En cambio, si predice 18 pero se queda 5, la cama se libera antes de lo esperado y el impacto operacional es menor. Esta asimetría del costo es fundamental en la planificación de camas hospitalarias y ha sido ampliamente documentada en la optimización de recursos y gestión de camas críticas (Harini et al., 2022; Song et al., 2015; Green, 2002).
 
-**¿Cómo penalizamos la subestimación?** Con una función de scoring personalizada llamada **MAE Asimétrico**. Es idéntica al MAE normal, pero cuando el modelo subestima (predice menos días de los reales), el error se multiplica por un factor de penalización α:
+**Penalización de la subestimación:** Se utiliza una función de evaluación denominada **MAE asimétrico**. Cuando la predicción es inferior al LOS observado, el error se multiplica por un factor α:
 
 $$\text{MAE Asimétrico} = \frac{1}{N}\sum_{i=1}^{N} w_i \cdot |\hat{y}_i - y_i|$$
 
@@ -357,8 +354,7 @@ from sklearn.metrics import make_scorer
 scorer_asimetrico = make_scorer(asymmetric_mae, greater_is_better=False, alpha=2.0)
 ```
 
-> [!NOTE]
-> **¿Por qué α=2?** Los scripts de entrenamiento final del proyecto anterior (`entrenar_xgboost_final.py` y `entrenar_rf_final.py`) ya calculaban el costo asimétrico con factores 2x y 3x para evaluación, pero **nunca lo usaron para optimizar** el tuning. Según la literatura en investigación operativa hospitalaria, el costo penal asociado a subestimar la estancia (que provoca sobreocupación y cancelaciones de cirugías) es al menos el doble del costo de sobreestimar (cama vacía transitoria) (Harini et al., 2022; Song et al., 2015). Usaremos α=2 como punto de partida conservador y justificado.
+**Justificación de α=2:** Los modelos anteriores evaluaban costos asimétricos con factores 2 y 3, pero no los incorporaban en el ajuste. Se adopta α=2 como valor inicial para representar un costo de subestimación superior al de sobreestimación, de acuerdo con la literatura de gestión hospitalaria citada (Harini et al., 2022; Song et al., 2015).
 
 **Espacio de búsqueda del regresor (XGBRegressor):**
 
@@ -429,9 +425,7 @@ Cada modelo responde a una pregunta diferente y, por lo tanto, se evalúa con la
 
 ## 5. Estructura Modular y Plan de Trabajo en la Carpeta `ml_operacional/`
 
-> [!IMPORTANT]
-> **Preservación de la carpeta `ml/` anterior:**
-> No modificaremos ni eliminaremos nada dentro de la carpeta original `ml/`. Todo se creará desde cero en una carpeta raíz llamada **`ml_operacional/`** fuera de ella.
+**Preservación de la implementación anterior:** La carpeta original `ml/` se mantiene sin modificaciones. El nuevo desarrollo se organiza en una carpeta independiente denominada `ml_operacional/`.
 
 La estructura interna será:
 
@@ -482,7 +476,7 @@ Para medir objetivamente el rendimiento clínico y de planificación de camas, i
     - `plos_pred_14 = 1` si `los_dias_predichos >= 14`.
 *   **Precision PLOS 14:** Entre los pacientes que el modelo marcó como PLOS, mide qué proporción realmente tuvo `LOS >= 14`. Responde: "cuando el modelo alerta estancia prolongada, ¿qué tan confiable es esa alerta?".
     - Fórmula: `TP / (TP + FP)`.
-*   **Recall PLOS 14:** Entre los pacientes que realmente tuvieron `LOS >= 14`, mide qué proporción fue detectada por el modelo. Responde: "de todos los pacientes prolongados reales, ¿cuántos logramos capturar?".
+*   **Recall PLOS 14:** Proporción de pacientes con `LOS >= 14` que fueron identificados por el modelo.
     - Fórmula: `TP / (TP + FN)`.
 *   **F1 PLOS 14:** Promedio armónico entre Precision y Recall PLOS. Resume el balance entre evitar falsas alarmas y detectar suficientes pacientes prolongados.
     - Fórmula: `2 * precision * recall / (precision + recall)`.

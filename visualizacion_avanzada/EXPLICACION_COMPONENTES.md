@@ -1,11 +1,11 @@
-# 🏥 Stay Intelligence — Manual de Componentes Operativos
+# Stay Intelligence — Manual de Componentes Operativos
 ## Inferencia Clínica, Explicabilidad Global (SHAP) y Telemetría de Modelos (W&B)
 
 Este documento describe de forma sencilla, profesional y estructurada el funcionamiento de los tres componentes clave desarrollados en el proyecto **Stay Intelligence**. El objetivo principal del proyecto es **predecir la estancia hospitalaria de los pacientes (en días)** e **identificar tempranamente a aquellos con riesgo de hospitalización prolongada (14 días o más)** para optimizar la gestión de camas y recursos médicos.
 
 ---
 
-## 📌 Mapa General del Flujo de Datos
+## Mapa General del Flujo de Datos
 
 El siguiente diagrama muestra cómo interactúan las tres herramientas con los datos del paciente y los modelos entrenados:
 
@@ -24,18 +24,18 @@ graph TD
 
 ---
 
-## 🔬 1. Inferencia de Pacientes (Individual & Holdout)
-*El asistente de toma de decisiones para el día a día en el hospital.*
+## 1. Inferencia de pacientes (individual y holdout)
+*Herramienta de apoyo para la toma de decisiones hospitalarias.*
 
-### ¿Qué es?
+### Descripción
 Es la herramienta clínica principal orientada al personal de salud y administrativos del centro médico. Permite evaluar en tiempo real a cualquier paciente que ingrese al hospital (o consultar casos históricos del conjunto de prueba/holdout) para planificar su alta.
 
-### ¿Cómo funciona internamente?
+### Funcionamiento
 El sistema utiliza una arquitectura de **dos etapas**:
 1. **Etapa 1 (Clasificación de Riesgo):** Un modelo clasificador analiza el perfil clínico del paciente y calcula la probabilidad de que su estancia sea prolongada ($\ge 14$ días). Esto activa un semáforo de riesgo:
-   * 🟢 **Bajo Riesgo:** Probabilidad menor al 35%. Estancia corta estimada.
-   * 🟡 **Riesgo Moderado:** Probabilidad entre 35% y 50%. Requiere monitoreo preventivo.
-   * 🔴 **Riesgo Elevado:** Probabilidad mayor al 50%. Paciente con alta probabilidad de cronificación.
+   * **Bajo riesgo:** Probabilidad menor al 35%. Estancia corta estimada.
+   * **Riesgo moderado:** Probabilidad entre 35% y 50%. Requiere monitoreo preventivo.
+   * **Riesgo elevado:** Probabilidad mayor al 50%. Paciente con alta probabilidad de estancia prolongada.
 2. **Etapa 2 (Predicción de Días):** Dependiendo del perfil del paciente, se ejecutan en paralelo tres algoritmos distintos para estimar el número exacto de días de estancia:
    * **XGBoost (Modelo Ganador):** El modelo principal optimizado para patrones complejos no lineales.
    * **Random Forest:** Modelo alternativo basado en ensambles de árboles de decisión.
@@ -47,14 +47,14 @@ El sistema utiliza una arquitectura de **dos etapas**:
 
 ---
 
-## 🌍 2. Explicabilidad Global - SHAP Dinámico
+## 2. Explicabilidad Global - SHAP Dinámico
 *La herramienta de validación científica y confianza médica.*
 
-### ¿Qué es?
-Mientras que la inferencia individual mira a un solo paciente, la explicabilidad global analiza el comportamiento del modelo XGBoost sobre **muestras masivas de la población** (cohortes de pacientes). Permite abrir la "caja negra" del algoritmo de Inteligencia Artificial.
+### Descripción
+Mientras que la inferencia individual analiza un solo paciente, la explicabilidad global estudia el comportamiento de XGBoost sobre cohortes. Este análisis permite identificar cómo contribuyen las variables a las predicciones del modelo.
 
-### ¿Cómo funciona?
-Utiliza la teoría de juegos cooperativos (valores SHAP) mediante el optimizador de árboles `TreeExplainer`. En la interfaz, el usuario puede seleccionar dinámicamente cuántos pacientes del historial desea auditar (de 10 a 400 pacientes) para generar dos análisis fundamentales:
+### Funcionamiento
+El componente utiliza valores SHAP, fundamentados en teoría de juegos cooperativos, mediante `TreeExplainer`. La interfaz permite seleccionar entre 10 y 400 pacientes del historial para generar dos análisis:
 
 1. **Gráfico Beeswarm (Summary Plot):**
    * Muestra las variables clínicas ordenadas de arriba a abajo por su nivel de importancia en todo el hospital.
@@ -63,29 +63,29 @@ Utiliza la teoría de juegos cooperativos (valores SHAP) mediante el optimizador
 2. **Gráfico de Dependencia (Scatter Plot):**
    * Grafica de forma continua cómo influye una variable numérica sobre el valor SHAP (impacto en días). Es ideal para auditar cómo interactúa la probabilidad de la Etapa 1 con la estimación final de días de la Etapa 2.
 
-### ¿Para qué sirve?
-Garantiza que el modelo está aprendiendo medicina real y no correlaciones absurdas. Si los médicos ven que las variables que más importan al modelo coinciden con la literatura clínica (como la edad o comorbilidades graves), confiarán en las predicciones diarias del sistema.
+### Propósito
+Permite evaluar si las variables con mayor influencia son clínicamente plausibles y coherentes con la literatura. Esta revisión aporta evidencia para valorar la confiabilidad de las predicciones, aunque no demuestra causalidad.
 
 ---
 
-## 📊 3. Telemetría y Registro - Weights & Biases (W&B)
+## 3. Telemetría y Registro - Weights & Biases (W&B)
 *El cuaderno de bitácora digital, control de calidad y auditoría de MLOps.*
 
-### ¿Qué es?
-Weights & Biases (W&B) actúa como la **caja negra de un avión** para el ciclo de vida del modelo de IA. En entornos clínicos regulados, no basta con que un modelo funcione; es obligatorio auditar y registrar de forma inalterable su comportamiento a lo largo del tiempo.
+### Descripción
+Weights & Biases (W&B) permite registrar y auditar el ciclo de vida de los modelos. Esta trazabilidad es especialmente relevante en entornos clínicos, donde deben conservarse las versiones, configuraciones y métricas utilizadas en cada evaluación.
 
-### ¿Cómo funciona y qué registra?
+### Funcionamiento y registros
 Cada vez que se realiza una auditoría formal del rendimiento de los modelos en el conjunto de prueba (holdout) a través de la aplicación, el script `registro_wandb.py` envía la siguiente telemetría a la nube de W&B:
 
 1. **Curvas de Aprendizaje Iterativas (Epoch Logging):**
    * Registra el comportamiento de la regresión lineal base con fracciones crecientes del train (MAE y pérdida por iteración). Esto permite visualizar si el baseline lineal mejora al recibir más datos o si mantiene señales de sobreajuste.
 2. **Tablas Comparativas de Modelos (`wandb.Table`):**
    * En lugar de registrar métricas de evaluación final como números sueltos (lo cual crea gráficos de líneas vacíos de un solo punto), las agrupa en tablas interactivas.
-   * Puedes ver y ordenar en la nube el MAE, RMSE y métricas de clasificación (Recall, Precision, F1-Score) de los 3 modelos para compararlos de un vistazo.
+   * Las tablas permiten ordenar y comparar el MAE, RMSE, recall, precisión y F1-score de los tres modelos.
 3. **Gráficos de Diagnóstico Clínico:**
    * **Curva ROC interactiva:** Mide la capacidad del clasificador de riesgo para discriminar entre pacientes de alta y baja estancia a diferentes umbrales.
    * **Matriz de Confusión interactiva:** Permite visualizar los aciertos, falsos positivos (falsas alarmas de alto riesgo) y falsos negativos (pacientes de alto riesgo no detectados), cruciales para evaluar el impacto clínico del sistema.
 
-### ¿Para qué sirve?
+### Propósito
 * **Trazabilidad:** Si una auditoría hospitalaria cuestiona una decisión del modelo, en W&B queda el registro inalterable de qué versión del modelo se usó y cuál era su precisión exacta en esa fecha.
 * **Monitoreo de Degradación (Drift):** Si con el paso de los meses las métricas de error (MAE) en W&B empiezan a subir, el equipo de desarrollo sabrá inmediatamente que los datos de los pacientes han cambiado y que es hora de reentrenar los modelos.

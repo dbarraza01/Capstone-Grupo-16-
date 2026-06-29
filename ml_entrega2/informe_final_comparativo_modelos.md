@@ -38,7 +38,7 @@ Entregar variables como `n_diag_total` o `n_procedimientos` captura directamente
 Qué aporta cada variable de resumen
 n_diag_total / n_diag_primarios / n_diag_secundarios
 
-Capturan la carga diagnóstica global del paciente. La literatura clínica establece que pacientes con mayor número de diagnósticos simultáneos tienden a tener estancias más prolongadas, mayor complejidad asistencial y mayor riesgo de complicaciones. Un árbol que tiene n_diag_total puede hacer una pregunta directa: "¿Este paciente tiene más de 5 diagnósticos distintos?" — esa pregunta discrimina muy bien entre el Paciente A y el B del ejemplo anterior, sin tener que combinar cientos de variables binarias individuales.
+Estas variables capturan la carga diagnóstica global del paciente. La literatura clínica establece que un mayor número de diagnósticos simultáneos se asocia con estancias más prolongadas, mayor complejidad asistencial y mayor riesgo de complicaciones. La variable `n_diag_total` permite que un árbol separe directamente a los pacientes según su número de diagnósticos, sin combinar cientos de variables binarias individuales.
 
 n_procedimientos
 
@@ -59,13 +59,13 @@ Capturan patrones temporales operativos. En los hospitales, el LOS no es complet
 La razón matemática profunda: información no recuperable desde sumas binarias
 Un árbol de decisión no puede sumar variables por sí solo. Si tiene diag_E11, diag_I50, diag_N18, diag_J44, cada una como columna separada, el árbol solo puede preguntar sobre cada una individualmente en cada nodo de split. Para "entender" que este paciente tiene 4 condiciones simultáneas, necesitaría crear una secuencia profunda de 4 nodos anidados — lo que requiere muchos datos para aprender esa combinación específica y lleva a sobreajuste.
 
-En cambio, si le entregas n_diag_total = 4 directamente, el árbol puede hacer esa pregunta en un solo nodo, con mucha más potencia estadística porque la variable tiene representación en toda la población, no solo en los pocos pacientes que tienen exactamente esas 4 combinaciones.
+En cambio, al incorporar directamente `n_diag_total = 4`, el árbol puede efectuar la separación en un solo nodo y utilizar una variable con representación en toda la población, en lugar de depender de combinaciones diagnósticas poco frecuentes.
 
 Es decir: las variables de resumen son atajos matemáticos que encapsulan relaciones que el árbol tardaría exponencialmente más tiempo en descubrir — o nunca descubriría — solo desde las binarias.
 
 Los datos fueron procesados en tres escenarios distintos para comparar su rendimiento predictivo:
 
-- **v2 (Baseline):** 1,650 features derivadas de una agrupación jerárquica de los códigos crudos ICD-10. Originalmente, el dataset contenía **6,124** códigos diagnósticos distintos y **3,278** códigos de procedimientos distintos (un total de 9,402 códigos). Si se utilizaran todos como features binarias directas, el dataset sufriría de una extrema escasez de datos (*sparsity*) y la "maldición de la dimensionalidad", ya que tendríamos casi tantas columnas como los 11,951 pacientes, llevando inevitablemente al modelo a sobreajustar (memorizar). Para solucionarlo, se aplicó un algoritmo de compresión clínica:
+- **v2 (Baseline):** 1,650 features derivadas de una agrupación jerárquica de los códigos crudos ICD-10. Originalmente, el dataset contenía **6,124** códigos diagnósticos distintos y **3,278** códigos de procedimientos distintos (un total de 9,402 códigos). Su codificación binaria directa habría producido casi tantas columnas como pacientes, con alta dispersión y riesgo de sobreajuste. Para reducir este problema se aplicó un algoritmo de compresión clínica:
   - **Nivel 1:** Se conservaron los códigos completos solo si aparecían en al menos 10-20 pacientes.
   - **Nivel 2:** Los códigos menos frecuentes se agruparon por su categoría clínica de 3 caracteres (ej. `diag_E11`).
   - **Nivel 3:** Los casos ultra raros se agruparon por capítulo o sección general (ej. `diag_rare_cap_E`).
@@ -234,12 +234,12 @@ La regularización redujo el gap de XGBoost de 2.28 a 0.46 días (reducción del
 | F1 PLOS | 58.5% | 45.0% | **59.9%** | XGBoost |
 | Estabilidad (K-Fold MAE) | ±1.825 | ±0.156 | **±0.112** | XGBoost |
 | Sobreajuste (Gap) | N/A | **0.170** | 0.455 | RF |
-| Tuning justificado | N/A | ✓ | ✓ | XGBoost/RF |
-| Validación K-Fold | ✓ | ✓ | ✓ | XGBoost/LR/RF |
+| Tuning justificado | No aplica | Sí | Sí | XGBoost/RF |
+| Validación K-Fold | Sí | Sí | Sí | XGBoost/LR/RF |
 
 ### 8.2 Discusión
 
-La Regresión Lineal —una vez corregido el error comparativo forzándola a competir en el mismo espacio logarítmico que los modelos de ML— revela ser **matemáticamente inapropiada** para este problema. Aunque gana en MedAE (acierta bien la mediana) y Recall (detecta pacientes graves), su incapacidad para controlar predicciones extremas resulta en un RMSE catastrófico (>50 días). En un entorno hospitalario, no puedes arriesgarte a que tu sistema de planificación ocasionalmente "explote" con predicciones irreales. 
+La regresión lineal, evaluada en el mismo espacio logarítmico que los modelos de machine learning, presenta limitaciones importantes para este problema. Aunque obtiene el mejor resultado en MedAE y recall, su incapacidad para controlar predicciones extremas produce un RMSE superior a 50 días. Esta inestabilidad representa un riesgo para un sistema hospitalario de planificación, debido a la posibilidad de generar estimaciones operativamente inviables.
 
 Entre los modelos de machine learning avanzados, **XGBoost Final** se posiciona como el modelo con el mejor equilibrio clínico y justificación metodológica:
 - Gana en precisión operativa general (Mejor MAE, Mejor MedAE y Mejor RMSE).

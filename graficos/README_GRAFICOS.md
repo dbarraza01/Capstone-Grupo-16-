@@ -7,7 +7,7 @@
 
 ---
 
-## 📊 Resumen Ejecutivo de Estadísticas
+## Resumen Ejecutivo de Estadísticas
 
 ### Medidas de Tendencia Central
 - **Media:** 6.44 días
@@ -83,7 +83,7 @@
 
 ---
 
-## 🔄 Flujo del Análisis: ¿Por Qué Este Orden de Gráficos?
+## Flujo del Análisis: ¿Por Qué Este Orden de Gráficos?
 
 Cada gráfico responde una pregunta secuencial. El orden es deliberado:
 
@@ -137,7 +137,7 @@ Cada gráfico responde una pregunta secuencial. El orden es deliberado:
 
 ---
 
-## 📊 Gráfico 1: Distribución de LOS - Escala Lineal
+## Gráfico 1: Distribución de LOS - Escala Lineal
 
 **Archivo:** `01_distribucion_los_escala_lineal.png`
 
@@ -199,18 +199,18 @@ Esta visualización presenta un **histograma en escala lineal** de la distribuci
 
 ### Interpretación:
 
-#### ✅ Lo que podemos concluir:
+#### Lo que podemos concluir:
 - **Concentración extrema en los primeros días:** La mayoría de pacientes tiene estancias de 1-7 días
 - **Fuerte sesgo a la derecha:** Barras se concentran en valores bajos, pero hay una "cola larga" hacia la derecha
 - **Media > Mediana:** Señal inequívoca de asimetría positiva (6.44 > 3.00)
 - **Distribución NO normal:** El sesgo y la curtosis indican que NO se distribuye como una gaussiana
 
-#### ⚠️ Problema con esta visualización:
+#### Problema con esta visualización:
 - **Compresión visual de valores altos:** Es difícil ver los detalles de la distribución completa
 - Las estancias largas (>30 días) se "comprimen" en el extremo derecho y son difíciles de distinguir
 - No se puede apreciar bien la estructura de los percentiles superiores (P90-P99)
 
-#### 💡 Utilidad:
+#### Utilidad:
 - **Detectar la magnitud del sesgo** de forma visual inmediata
 - **Identificar outliers extremos** (casos >100 días)
 - **Comparar media vs mediana** para entender la influencia de casos extremos
@@ -218,7 +218,7 @@ Esta visualización presenta un **histograma en escala lineal** de la distribuci
 
 ---
 
-## 📉 Gráfico 2: Distribución de LOS con Transformación Logarítmica
+## Gráfico 2: Distribución de LOS con Transformación Logarítmica
 
 **Archivo:** `02_distribucion_los_transformacion_logaritmica.png`
 
@@ -254,13 +254,13 @@ La función logarítmica transforma los datos de forma no lineal:
 
 ### Interpretación:
 
-#### ✅ Lo que podemos concluir:
+#### Lo que podemos concluir:
 - **Multimodalidad visible:** La transformación revela que hay "picos" en diferentes rangos de estancia
 - **Estructura completa visible:** Ahora se pueden distinguir claramente los casos de 30, 60, 90+ días
 - **Separación de percentiles:** P95 y P99 están visualmente separados, permitiendo identificar "casos atípicos"
 - **Sesgo reducido visualmente:** La distribución en escala log se ve más "balanceada"
 
-#### 💡 Utilidad práctica:
+#### Utilidad práctica:
 
 1. **Para modelado predictivo:**
    - Sugiere que una **transformación logarítmica** podría normalizar los datos para algoritmos que asumen normalidad (ej: regresión lineal)
@@ -277,13 +277,13 @@ La función logarítmica transforma los datos de forma no lineal:
    - **P95 = 27 días:** Umbral para auditoría médica/administrativa
    - **P99 = 60 días:** Casos extremos que requieren revisión especial
 
-#### ⚠️ Consideraciones:
+#### Consideraciones:
 - Esta transformación es para **visualización e interpretación**, no necesariamente debe aplicarse al modelo final
 - Modelos basados en árboles (Random Forest, Gradient Boosting) funcionan bien con datos sesgados sin necesidad de transformación
 
 ---
 
-## 📦 Gráfico 3 (BONUS): Box Plot con Percentiles
+## Gráfico 3 (BONUS): Box Plot con Percentiles
 
 **Archivo:** `03_boxplot_percentiles_los.png`
 
@@ -321,7 +321,7 @@ Este gráfico combina **dos box plots** (uno en escala lineal, otro en escala lo
 
 ### Interpretación:
 
-#### ✅ Lo que confirma esta gráfica:
+#### Lo que confirma esta gráfica:
 
 1. **Concentración extrema en valores bajos:**
    - Q1 = Q2 (P25 = 1, P50 = 3) están muy cerca → alta concentración en 1-3 días
@@ -340,7 +340,7 @@ Este gráfico combina **dos box plots** (uno en escala lineal, otro en escala lo
    - Los bigotes quedan más simétricos
    - Facilita comparar percentiles extremos (P95, P99)
 
-#### 💡 Utilidad operacional:
+#### Utilidad operacional:
 
 1. **Establecer banderas de alerta:**
    - **LOS > P90 (15 días):** Revisar caso por gestión de estancias
@@ -362,17 +362,17 @@ Este gráfico combina **dos box plots** (uno en escala lineal, otro en escala lo
 
 ---
 
-## 🔬 Implicaciones para Modelado Predictivo
+## Implicaciones para Modelado Predictivo
 
 ### 1. **Selección de métrica de error:**
 
 Con este nivel de sesgo (skewness = 6.85), las métricas deben elegirse cuidadosamente:
 
-- ❌ **MAE (Mean Absolute Error):** Igualmente sensible a todos los errores → puede subestimar la importancia de predecir bien casos extremos
-- ❌ **MSE/RMSE:** **Muy** penaliza errores en casos extremos → el modelo podría sobreajustarse a valores altos
-- ✅ **MAPE (Mean Absolute Percentage Error):** Más robusto para distribuciones sesgadas
-- ✅ **Cuantile Loss:** Optimiza para predecir percentiles específicos (útil si queremos predecir P90)
-- ✅ **Huber Loss:** Combina MAE y MSE, robusto a outliers
+- **MAE (Mean Absolute Error):** Igualmente sensible a todos los errores → puede subestimar la importancia de predecir bien casos extremos
+- **MSE/RMSE:** **Muy** penaliza errores en casos extremos → el modelo podría sobreajustarse a valores altos
+- **MAPE (Mean Absolute Percentage Error):** Más robusto para distribuciones sesgadas
+- **Cuantile Loss:** Optimiza percentiles específicos, por ejemplo P90.
+- **Huber Loss:** Combina MAE y MSE, robusto a outliers
 
 ### 2. **Estrategias de transformación de target:**
 
@@ -446,7 +446,7 @@ Basándonos en la distribución observada:
 
 Con esta distribución, **NO** usar simple train/test split aleatorio:
 
-✅ **Usar estratificación por cuartiles de LOS:**
+ **Usar estratificación por cuartiles de LOS:**
 ```python
 from sklearn.model_selection import StratifiedKFold
 # Crear bins: Q1, Q2, Q3, Q4, extremos
@@ -463,7 +463,7 @@ splitter = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 ---
 
-## 📋 Recomendaciones Finales
+## Recomendaciones Finales
 
 ### Para Análisis Clínico:
 1. **Investigar casos con LOS > P95 (27 días):**
@@ -497,7 +497,7 @@ splitter = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 ---
 
-## 🧪 Metodología: Selección de Distribuciones para Análisis
+## Metodología: Selección de Distribuciones para Análisis
 
 ### ¿Por Qué es Importante Identificar la Distribución Teórica?
 
@@ -515,17 +515,17 @@ Antes de elegir mediante análisis estadístico, los datos ya nos dan pistas vis
 
 | Característica Observada | Qué Distribuciones la Explican Bien |
 |-------------------------|------------------------------------|
-| **Skewness = 6.85** (muy sesgado a derecha) | Log-Normal ✓, Weibull ✓, Gamma ✓, Exponencial ~ |
-| **Kurtosis = 73.62** (colas muy pesadas) | Log-Normal ✓, Weibull ✓, Gamma ~, Exponencial ✗ |
-| **Rango: 0-262 días** (valores positivos) | Log-Normal ✓, Weibull ✓, Gamma ✓, Exponencial ✓, Normal ✗ |
-| **Media (6.44) >> Mediana (3.00)** (extrema) | Log-Normal ✓✓✓, Weibull ✓✓, Gamma ✓ |
+| **Skewness = 6.85** (muy sesgado a derecha) | Compatibles: Log-Normal, Weibull y Gamma; compatibilidad parcial: Exponencial |
+| **Kurtosis = 73.62** (colas muy pesadas) | Compatibles: Log-Normal y Weibull; compatibilidad parcial: Gamma; no compatible: Exponencial |
+| **Rango: 0-262 días** (valores positivos) | Compatibles: Log-Normal, Weibull, Gamma y Exponencial; no compatible: Normal |
+| **Media (6.44) >> Mediana (3.00)** (extrema) | Mayor compatibilidad: Log-Normal; seguida de Weibull y Gamma |
 | **~250 casos con LOS=0** (tipo especial) | Log-Normal (necesita corrección) |
 
 **Conclusión preliminar:** Las distribuciones de cola pesada (especialmente Log-Normal) son candidatas fuertes.
 
 ---
 
-## 📚 ¿Por Qué Estos 6 Modelos de Distribución?
+## ¿Por Qué Estos 6 Modelos de Distribución?
 
 He seleccionado específicamente estas 6 familias de distribuciones basándome en:
 
@@ -624,7 +624,7 @@ He seleccionado específicamente estas 6 familias de distribuciones basándome e
 
 ---
 
-## 📊 Conceptos Estadísticos Clave: AIC, BIC, y KS Explicados
+## Conceptos Estadísticos Clave: AIC, BIC, y KS Explicados
 
 Estos tres criterios miden diferentes aspectos del ajuste. Es **crítico entender la diferencia**:
 
@@ -680,7 +680,7 @@ ks_stat, p_value = kstest(data, lambda x: lognorm.cdf(x, sigma, loc, scale))
   - **|ΔAIC| > 10: Diferencia DECISIVA** ← uno es claramente mejor
   - **|ΔAIC| > 100: Decisión contundente** → no hay ambigüedad
 
-**: Nuestro caso:**
+**Resultado en la cohorte analizada:**
 - Log-Normal AIC = 65,958
 - Mezcla AIC = 63,123
 - **ΔAIC = 2,835** ← **DIFERENCIA CONTUNDENTE** (>10, mucho más)
@@ -746,7 +746,7 @@ Este es el **conflicto central** del análisis. Explicación completa:
 
 ---
 
-## 🔬 Identificación de Distribución Probabilística
+## Identificación de Distribución Probabilística
 
 ### Análisis Estadístico Formal
 
@@ -757,7 +757,7 @@ Se realizó un análisis exhaustivo de ajuste de distribuciones para identificar
 
 **ACTUALIZACIÓN 2026-03-30:** Se incorporó el **modelo de mezcla Log-Normal-Weibull** basado en los hallazgos de Marazzi et al. (1998), que demuestra que la mezcla de distribuciones supera a los modelos simples para datos de LOS.
 
-### 📊 Gráfico 4: Q-Q Plots Comparativos
+### Gráfico 4: Q-Q Plots Comparativos
 
 **Archivo:** `04_qq_plots_comparacion_distribuciones.png`
 
@@ -778,7 +778,7 @@ Este gráfico presenta **7 Q-Q plots** (Quantile-Quantile) que comparan los cuan
 
 **Nota técnica:** Se usó `LOS+1` (no `LOS`) para evitar problemas con valores de 0 días (250 casos, 2.10%).
 
-### 📈 Gráfico 5: CDF Empírica vs Teóricas
+### Gráfico 5: CDF Empírica vs Teóricas
 
 **Archivo:** `05_cdf_empirica_vs_teoricas.png`
 
@@ -801,7 +801,7 @@ Dos paneles que comparan la **Función de Distribución Acumulada (CDF)** empír
 - Log-Normal tiene D = 0.1717 (menor D individual)
 - Mezcla LN-Weibull tiene D = 0.1832 (ligeramente mayor D pero mejor AIC)
 
-### 📉 Gráfico 6: PDF - Histograma vs Distribuciones Ajustadas
+### Gráfico 6: PDF - Histograma vs Distribuciones Ajustadas
 
 **Archivo:** `06_pdf_distribuciones_ajustadas.png`
 
@@ -818,7 +818,7 @@ Compara la **densidad de probabilidad** observada (histograma) con las funciones
 - **Si LOS sigue Log-Normal → log(1+LOS) debería verse Normal**
 - La curva roja (Normal) ajusta bien pero no perfectamente
 
-### 🏆 Resultados del Análisis de Ajuste
+### Resultados del Análisis de Ajuste
 
 #### Ranking por Kolmogorov-Smirnov (menor D = mejor ajuste puntual):
 
@@ -848,13 +848,13 @@ Compara la **densidad de probabilidad** observada (histograma) con las funciones
 - **KS mide ajuste en el punto de peor desviación** → favorece modelos simples
 - **AIC mide ajuste global sobre toda la distribución** → favorece modelos que capturan heterogeneidad
 
-### ✅ Conclusión: Distribución Identificada
+### Conclusión: Distribución Identificada
 
 **⭐ MODELO RECOMENDADO: MEZCLA LOG-NORMAL-WEIBULL**
 
 Basado en el criterio AIC (que balancea ajuste global vs complejidad del modelo) y los hallazgos de **Marazzi et al. (1998)**, la distribución que mejor describe los datos de LOS es una **mezcla de dos componentes**:
 
-#### 🎯 Parámetros de la Mezcla (sobre LOS+1):
+#### Parámetros de la Mezcla (sobre LOS+1):
 
 **Componente 1: Log-Normal (peso = 0.7490, ~75% de casos)**
 - σ (shape): 0.4858
@@ -868,7 +868,7 @@ Basado en el criterio AIC (que balancea ajuste global vs complejidad del modelo)
 - **Interpretación:** Representa **estancias hospitalarias LARGAS y COMPLEJAS**
 - Pacientes críticos, con comorbilidades, complicaciones postoperatorias
 
-#### 📊 Comparación Cuantitativa
+#### Comparación Cuantitativa
 
 | Métrica | Mezcla LN-Weibull | Log-Normal simple | Mejora |
 |---------|-------------------|-------------------|--------|
@@ -879,7 +879,7 @@ Basado en el criterio AIC (que balancea ajuste global vs complejidad del modelo)
 
 **Conclusión:** Aunque la mezcla tiene ligeramente peor ajuste puntual (KS), su ajuste global es **drásticamente superior** (AIC 2,835 puntos mejor).
 
-#### 🧬 Interpretación Clínica: Dos Subpoblaciones
+#### Interpretación Clínica: Dos Subpoblaciones
 
 La mezcla Log-Normal-Weibull revela que los datos de LOS **NO son homogéneos**. Existen dos grupos distintos de pacientes:
 
@@ -900,7 +900,7 @@ La mezcla Log-Normal-Weibull revela que los datos de LOS **NO son homogéneos**.
 - La mezcla ajusta mejor tanto el pico (casos cortos) como la cola (casos largos)
 - Marazzi et al. (1998) encontró este patrón en múltiples hospitales europeos
 
-#### 🔬 Evidencia Científica (Marazzi et al. 1998)
+#### Evidencia Científica (Marazzi et al. 1998)
 
 > "La descripción de la mezcla de casos proporcionada por la familia Log-normal-Weibull fue, para ciertos países, **significativamente mejor** que la proporcionada por el modelo Lognormal individual."
 
@@ -915,7 +915,7 @@ La mezcla Log-Normal-Weibull revela que los datos de LOS **NO son homogéneos**.
 - Parámetros similares a los reportados en la literatura
 - ~75% Log-Normal / ~25% Weibull es consistente con proporciones típicas en hospitales
 
-### 🎯 Implicaciones Prácticas
+### Implicaciones Prácticas
 
 #### 1. **Para Pre-procesamiento:**
 
@@ -947,14 +947,14 @@ def predict_mixture(X, model_ln, model_w, weight_ln=0.75):
 #### 2. **Para Selección de Modelo:**
 
 **Modelos que SE BENEFICIAN de conocer la estructura de mezcla:**
-- ✅ **Mixture Density Networks (MDN):** Modelan distribuciones de mezcla directamente
-- ✅ **XGBoost/LightGBM con Quantile Loss:** Capturan heterogeneidad sin transformación
-- ✅ **Random Forest:** Maneja bien subpoblaciones al particionar el espacio
-- ✅ **GLM con familia Tweedie:** Intermedia entre Gamma y Poisson, flexible para mezclas
+- **Mixture Density Networks (MDN):** Modelan distribuciones de mezcla directamente
+- **XGBoost/LightGBM con Quantile Loss:** Capturan heterogeneidad sin transformación
+- **Random Forest:** Maneja bien subpoblaciones al particionar el espacio
+- **GLM con familia Tweedie:** Intermedia entre Gamma y Poisson, flexible para mezclas
 
 **Modelos a EVITAR si no se transforma:**
-- ❌ Regresión Lineal (OLS): Asume distribución homogénea
-- ❌ Ridge/Lasso sin transformación: Subestiman casos extremos
+-  Regresión Lineal (OLS): Asume distribución homogénea
+-  Ridge/Lasso sin transformación: Subestiman casos extremos
 
 **RECOMENDACIÓN ACTUALIZADA:**
 
@@ -982,20 +982,20 @@ def predict_mixture(X, model_ln, model_w, weight_ln=0.75):
 
 Dado que LOS ~ **Mezcla Log-Normal-Weibull** (heterogeneidad extrema):
 
-- ❌ **RMSE:** Penaliza desproporcionadamente el 25% de casos largos → sesgo hacia subpoblación Weibull
-- ❌ **MAE:** Da peso igual a ambas subpoblaciones pero no captura la estructura de mezcla
-- ✅ **Quantile Loss (múltiples tau):** Evalúa ajuste en diferentes percentiles
+- **RMSE:** Penaliza desproporcionadamente el 25% de casos largos → sesgo hacia subpoblación Weibull
+- **MAE:** Da peso igual a ambas subpoblaciones pero no captura la estructura de mezcla
+- **Quantile Loss (múltiples tau):** Evalúa ajuste en diferentes percentiles
   - `tau=0.50`: Para evaluar componente Log-Normal
   - `tau=0.75`: Para evaluar transición entre componentes
   - `tau=0.90`: Para evaluar componente Weibull
-- ✅ **Weighted MAPE:** Con pesos diferenciados por subpoblación
+- **Weighted MAPE:** Con pesos diferenciados por subpoblación
   ```python
   # Peso mayor a casos >15 días (componente Weibull)
   weights = np.where(y_true > 15, 1.5, 1.0)
   wmape = np.sum(weights * np.abs(y_true - y_pred) / y_true) / np.sum(weights)
   ```
-- ✅ **Log-Cosh Loss:** Robusto, maneja bien ambas componentes
-- ✅ **Negative Log-Likelihood de la mezcla:** Métrica ideal si se modela la mezcla explícitamente
+- **Log-Cosh Loss:** Robusto, maneja bien ambas componentes
+- **Negative Log-Likelihood de la mezcla:** Métrica ideal si se modela la mezcla explícitamente
 
 **MÉTRICA RECOMENDADA FINAL:**
 
@@ -1081,7 +1081,7 @@ for train_idx, test_idx in cv.split(X, los_component):
 - Permite evaluar rendimiento separado por subpoblación
 - Detecta si el modelo falla systemáticamente en una componente
 
-### 🔍 Referencias Científicas (ACTUALIZADAS)
+### Referencias Científicas (ACTUALIZADAS)
 
 ---
 
@@ -1091,11 +1091,11 @@ for train_idx, test_idx in cv.split(X, los_component):
 
 **Por qué es esencial para nuestro proyecto:**
 
-✅ **Relevancia directa:** Es literalmente sobre caracterizar la distribución de LOS en hospitales europeos
-✅ **Metodología similar:** Comparó Log-Normal vs Gamma vs Weibull vs Mezcla LN-Weibull (idéntico a nuestro análisis)
-✅ **Conclusión clave:** "La descripción de la mezcla de casos proporcionada por la familia Log-normal-Weibull fue, para ciertos países, **significativamente mejor** que la del modelo Lognormal individual"
-✅ **Validez cruzada:** Sus hallazgos (mezcla > Log-Normal > Gamma ≈ Weibull) son **exactamente** lo que encontramos (AIC Mezcla < Log-Normal < demás)
-✅ **Enfoque:** Usa AIC/BIC (no KS), confirmando nuestro criterio de decisión
+ **Relevancia directa:** El estudio caracteriza la distribución de LOS en hospitales europeos.
+ **Metodología similar:** Comparó Log-Normal vs Gamma vs Weibull vs Mezcla LN-Weibull (idéntico a nuestro análisis)
+ **Conclusión clave:** "La descripción de la mezcla de casos proporcionada por la familia Log-normal-Weibull fue, para ciertos países, **significativamente mejor** que la del modelo Lognormal individual"
+ **Coherencia de resultados:** El orden reportado entre distribuciones es consistente con el obtenido mediante AIC en esta cohorte.
+ **Enfoque:** Usa AIC/BIC (no KS), confirmando nuestro criterio de decisión
 
 **Hallazgos específicos:**
 - Analizó 10 hospitales en 5 países europeos (Francia, Italia, España, Suiza, etc.)
@@ -1114,11 +1114,11 @@ for train_idx, test_idx in cv.split(X, los_component):
 
 **Por qué importa para nuestro análisis:**
 
-✅ **Tema:** Denuncia que usar RMSE (que asume Normalidad) en distribuciones log-normales causa sesgo sistemático
-✅ **Implicación directa:** Si usáramos OLS + RMSE en LOS sin transformar, nuestras predicciones serían sesgadas
-✅ **Recomendación:** Necesidad de transformación log(1+y) o uso de métricas robustas (Huber, Quantile Loss)
-✅ **Validación:** Nuestro análisis de que LOS ~ Log-Normal es confirmado por este estudio
-✅ **Aplicación práctica:** Justifica usar XGBoost (robusto a distribuciones) sobre OLS (requiere transformación)
+ **Tema:** Denuncia que usar RMSE (que asume Normalidad) en distribuciones log-normales causa sesgo sistemático
+ **Implicación directa:** Si usáramos OLS + RMSE en LOS sin transformar, nuestras predicciones serían sesgadas
+ **Recomendación:** Necesidad de transformación log(1+y) o uso de métricas robustas (Huber, Quantile Loss)
+ **Validación:** Nuestro análisis de que LOS ~ Log-Normal es confirmado por este estudio
+ **Aplicación práctica:** Justifica usar XGBoost (robusto a distribuciones) sobre OLS (requiere transformación)
 
 **Hallazgo clave:**
 - En datos log-normales con alta asimetría (como el nuestro, skewness=6.85):
@@ -1136,11 +1136,11 @@ for train_idx, test_idx in cv.split(X, los_component):
 
 **Por qué importa para nuestro proyecto:**
 
-✅ **Tema:** Revisa propiedades estadísticas generales de LOS en la literatura
-✅ **Hallazgo:** LOS nunca sigue distribución normal en práctica, siempre log-normal o mezcla
-✅ **Razón clínica:** LOS depende de factores multiplicativos (comorbilidades × complicaciones × etc.)
-✅ **Recomendación:** Análisis estratificado por tipo de procedimiento (exacto lo que hace nuestra mezcla)
-✅ **Validación:** Confirma que heterogeneidad (subpoblaciones) es esperada, no anomalía
+ **Tema:** Revisa propiedades estadísticas generales de LOS en la literatura
+ **Hallazgo:** LOS nunca sigue distribución normal en práctica, siempre log-normal o mezcla
+ **Razón clínica:** LOS depende de factores multiplicativos (comorbilidades × complicaciones × etc.)
+ **Recomendación:** Análisis estratificado por tipo de procedimiento (exacto lo que hace nuestra mezcla)
+ **Validación:** Confirma que heterogeneidad (subpoblaciones) es esperada, no anomalía
 
 **Conclusión relevante:**
 - "El sesgo inherente de LOS no es artefacto de medición, es propiedad genuina de la variable"
@@ -1157,11 +1157,11 @@ for train_idx, test_idx in cv.split(X, los_component):
 
 **Por qué importa:**
 
-✅ **Tema:** Compara criterios (AIC, BIC, KS) para seleccionar distribuciones en datos médicos
-✅ **Recomendación:** AIC es superior a KS para elegir ENTRE modelos (AIC incor pora complejidad)
-✅ **Aplicación:** Valida nuestra decisión de usar AIC sobre KS para elegir mezcla
-✅ **Hallazgo:** En datos médicos con colas pesadas (como LOS), AIC favorece modelos con parámetros extra
-✅ **Ventaja:** Estudio específicamente sobre análisis de hospital data
+ **Tema:** Compara criterios (AIC, BIC, KS) para seleccionar distribuciones en datos médicos
+ **Recomendación:** AIC es superior a KS para elegir ENTRE modelos (AIC incor pora complejidad)
+ **Aplicación:** Valida nuestra decisión de usar AIC sobre KS para elegir mezcla
+ **Hallazgo:** En datos médicos con colas pesadas (como LOS), AIC favorece modelos con parámetros extra
+ **Ventaja:** Estudio específicamente sobre análisis de hospital data
 
 **Por qué la incluimos:** Justicia metodológica de usar AIC sobre KS en contexto médico.
 
@@ -1173,16 +1173,16 @@ for train_idx, test_idx in cv.split(X, los_component):
 
 **Por qué importa:**
 
-✅ **Tema:** Texto clásico que introduce por qué distribuciones de mezcla modelan mejor datos heterogéneos
-✅ **Concepto:** Explicación teórica de que si población tiene dos subgrupos (electivos vs urgencias), mezcla es idónea
-✅ **Matemática:** Formaliza el teorema: suma de procesos independientes ≠ mezcla de distribuciones (concepto clave)
-✅ **Validación:** Nuestra proporción 75/25 es consistente con proporciones típicas citadas por Cox & Snell
+ **Tema:** Texto clásico que introduce por qué distribuciones de mezcla modelan mejor datos heterogéneos
+ **Concepto:** Explicación teórica de que si población tiene dos subgrupos (electivos vs urgencias), mezcla es idónea
+ **Matemática:** Formaliza el teorema: suma de procesos independientes ≠ mezcla de distribuciones (concepto clave)
+ **Validación:** Nuestra proporción 75/25 es consistente con proporciones típicas citadas por Cox & Snell
 
 **Por qué la incluimos:** Fundamentación teórica de modelos de mezcla.
 
 ---
 
-### ⚖️ Sumario: Por Qué Cada Decisión en Este Análisis
+### Sumario: Por Qué Cada Decisión en Este Análisis
 
 Para cerrar, aquí resumo el **"por qué"** detrás de cada decisión arquitectónica del análisis:
 
@@ -1239,10 +1239,10 @@ Para cerrar, aquí resumo el **"por qué"** detrás de cada decisión arquitect�
 
 ---
 
-## 🔗 Archivos Relacionados
+## Archivos Relacionados
 
 
-## 🔗 Archivos Relacionados
+## Archivos Relacionados
 
 - **Dataset maestro:** `data/processed/dataset_maestro.csv`
 - **Reporte de limpieza:** `data/reports/reporte_limpieza.csv`
@@ -1260,7 +1260,7 @@ Para cerrar, aquí resumo el **"por qué"** detrás de cada decisión arquitect�
 
 ---
 
-**Generado automáticamente por:** `visualizacion_los.py` y `analisis_distribucion_los.py`
+**Scripts de análisis:** `visualizacion_los.py` y `analisis_distribucion_los.py`
 **Autor:** Sistema de Análisis de LOS - Grupo 16
 **Última actualización:** 2026-03-30
 **Contacto:** Revisar documentación del proyecto en repositorio

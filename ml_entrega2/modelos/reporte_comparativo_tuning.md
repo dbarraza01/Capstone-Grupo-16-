@@ -1,4 +1,4 @@
-# 📊 Informe Comparativo de Hiperparameter Tuning
+# Informe Comparativo de Ajuste de Hiperparámetros
 ## XGBoost y Random Forest — Tres Escenarios de Features
 **Capstone Grupo 16 — Predicción de Length of Stay (LOS) Hospitalario**
 
@@ -61,8 +61,8 @@ Si bien los modelos regularizados incluyen una evaluación final de holdout, tod
 
 ### Interpretación
 
-- **El XGBoost Estándar sufre un sobreajuste masivo.** Aunque tiene el mejor MAE de validación (2.95), su error de entrenamiento es absurdamente bajo (~0.68). Esto significa que está "memorizando" el dataset de entrenamiento (gap de ~2.27 días). En un entorno hospitalario real, un modelo tan sobreajustado es extremadamente frágil ante variaciones en los datos nuevos.
-- **La regularización en XGBoost funcionó a la perfección.** Al transformar el target con `log1p` y aplicar penalizaciones L1/L2 más fuertes, el modelo regularizado sacrificó muy poco MAE de validación (pasó de 2.95 a 3.02) pero redujo el sobreajuste drásticamente (el gap cayó de 2.27 a solo 0.45 días). Este modelo es inmensamente más honesto y robusto.
+- **XGBoost estándar presenta un sobreajuste considerable.** Aunque obtiene el menor MAE de validación (2,95), su error de entrenamiento es sustancialmente inferior (~0,68), con una brecha aproximada de 2,27 días. Esta diferencia indica menor capacidad de generalización ante datos nuevos.
+- **La regularización reduce el sobreajuste de XGBoost.** La transformación `log1p` y las penalizaciones L1/L2 aumentan levemente el MAE de validación, de 2,95 a 3,02 días, pero reducen la brecha a aproximadamente 0,45 días. El resultado corresponde a una configuración más estable.
 - **Random Forest Estándar también se sobreajusta, pero menos que XGBoost** (gap de ~1.29 días).
 - **El RF Regularizado es el modelo más conservador de todos**, reduciendo el gap a solo ~0.16 días. Sin embargo, como se analizó, su MAE global aumenta considerablemente.
 
@@ -70,7 +70,7 @@ Si bien los modelos regularizados incluyen una evaluación final de holdout, tod
 
 ## 4. Capacidad de Detección de Pacientes Críticos (PLOS ≥ 27 días)
 
-La métrica más importante clínicamente es el **Recall PLOS**: ¿qué proporción de los pacientes que realmente superan los 27 días el modelo logra identificar?
+El **recall PLOS** cuantifica la proporción de pacientes que realmente superan los 27 días y que son identificados por el modelo.
 
 | Modelo | Escenario | Precision PLOS | Recall PLOS | F1-Score |
 |:---|:---:|:---:|:---:|:---:|
@@ -84,7 +84,7 @@ La métrica más importante clínicamente es el **Recall PLOS**: ¿qué proporci
 ### Interpretación
 
 - **XGBoost supera ampliamente a Random Forest en Recall PLOS** (~48% vs ~31%). Esto significa que XGBoost detecta casi la mitad de los pacientes críticos, mientras que RF solo logra capturar un tercio.
-- **La Precision es similar entre ambos (~80%)**: cuando cualquiera de los dos modelos levanta una "alerta" de estancia prolongada, tiene ~80% de probabilidad de ser correcto.
+- **La precisión es similar entre ambos (~80%)**: aproximadamente ocho de cada diez predicciones PLOS corresponden a estancias que efectivamente superan los 27 días.
 - **RF tiene exactamente el mismo Recall (31.15%) en los tres escenarios** del tuning regularizado. Esto sugiere que la estrategia de regularización en RF convergió siempre a la misma solución, independientemente del escenario de features.
 - **XGBoost Escenario B logra el mejor F1-Score global (0.5990)**, siendo el balance más equilibrado entre no generar falsas alarmas (Precision) y no dejar pacientes críticos sin detectar (Recall).
 
@@ -122,8 +122,7 @@ colsample_bytree: 0.640   subsample: 0.836   gamma: 1.863
 reg_alpha: 0.141   reg_lambda: 1.022   min_child_weight: 3
 ```
 
-> [!WARNING]
-> `max_depth=8` con `reg_alpha` muy bajo (0.14) es una combinación propensa a sobreajuste. El modelo es potente pero poco regularizado, explicando su alto gap train/test.
+**Advertencia:** La combinación de `max_depth=8` y `reg_alpha=0,14` presenta un riesgo elevado de sobreajuste debido a la profundidad de los árboles y a la baja regularización, lo que explica la brecha entre entrenamiento y validación.
 
 ### XGBoost Regularizado (Mejor Balance Generalización/PLOS)
 
@@ -134,8 +133,7 @@ colsample_bytree: 0.659   subsample: 0.808   gamma: 1.003
 reg_alpha: 2.670   reg_lambda: 4.879   min_child_weight: 9
 ```
 
-> [!NOTE]
-> `max_depth=5` con `reg_alpha=2.67` y `reg_lambda=4.88` es una configuración mucho más conservadora. Los árboles son más superficiales y la penalización L1+L2 es fuerte, reduciendo el sobreajuste a costa de 0.06 días de MAE adicional.
+**Nota:** La configuración `max_depth=5`, `reg_alpha=2,67` y `reg_lambda=4,88` utiliza árboles menos profundos y una penalización L1/L2 mayor. Esto reduce el sobreajuste a cambio de un incremento de 0,06 días en el MAE.
 
 ### Random Forest Estándar (Menor Gap)
 
@@ -155,12 +153,11 @@ max_features: 0.5   max_samples: 0.877
 min_samples_leaf: 11   min_samples_split: 31
 ```
 
-> [!NOTE]
-> El RF regularizado tiene `min_samples_leaf=11` y `min_samples_split=31`, lo que obliga a cada hoja a tener al menos 11 pacientes y a cada división a tener al menos 31. Esto evita que los árboles creen nodos hiper-específicos para memorizar pacientes extremos, explicando su bajísimo gap (0.16 días).
+**Nota:** En el Random Forest regularizado, `min_samples_leaf=11` y `min_samples_split=31` restringen la formación de nodos con pocos pacientes. Esta configuración limita la memorización de observaciones extremas y explica la brecha de 0,16 días.
 
 ---
 
-## 7. Conclusión: ¿Qué Modelo y Escenario Elegir?
+## 7. Selección del modelo y escenario
 
 | Criterio | Ganador | Justificación |
 |:---|:---:|:---|
@@ -179,5 +176,4 @@ min_samples_leaf: 11   min_samples_split: 31
 2. **El menor sesgo de subestimación** (Bias = -1.09 días).
 3. **Un nivel de overfitting aceptable** (Gap = 0.46 días, equivalente a menos de medio día de error adicional en datos nuevos).
 
-> [!CAUTION]
-> **Limitación estructural identificada:** Ningún modelo, independientemente del algoritmo o escenario, supera el 50% de Recall en pacientes PLOS. Esto no es un fallo del tuning, sino una limitación intrínseca de usar MAE simétrico como función objetivo. La siguiente fase debería explorar **funciones de pérdida asimétricas** o **Quantile Regression** para mejorar específicamente la detección de estancias extremas.
+**Limitación estructural:** Ningún modelo supera el 50% de recall en pacientes PLOS. Este resultado evidencia una limitación del MAE simétrico como función objetivo y justifica evaluar funciones de pérdida asimétricas o regresión por cuantiles para mejorar la detección de estancias extremas.

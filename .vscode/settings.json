@@ -1,0 +1,13 @@
+{
+    "python.defaultInterpreterPath": "/usr/local/bin/python3",
+    "python.terminal.activateEnvironment": false,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.useLibraryCodeForTypes": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/Web",
+        "${workspaceFolder}/ml_operacional_entrega3",
+        "${workspaceFolder}/visualizacion_avanzada"
+    ]
+}

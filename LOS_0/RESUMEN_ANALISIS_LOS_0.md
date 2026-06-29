@@ -1,69 +1,70 @@
+# Análisis de pacientes con LOS = 0
 
-================================================================================
-ANÁLISIS DE PACIENTES CON LOS=0 (Estancia de 0 días)
-================================================================================
+## Resumen ejecutivo
 
-RESUMEN EJECUTIVO
------------------
-Total de pacientes con LOS=0: 250 (2.09% del total)
+La cohorte contiene 250 pacientes con una estancia registrada de cero días, equivalentes al 2,09% del total.
 
-DIAGNÓSTICOS
-• Total registros diagnósticos: 1890
-• Diagnósticos únicos: 773
-• Diagnósticos principales (P): 416 (22.0%)
-• Diagnósticos secundarios (S): 1474 (78.0%)
+## Diagnósticos
 
-Diagnósticos TOP 5:
-  1. Urgencias (UUU): 133 (7.0%)
-  2. Uso prolongado de medicamentos (Z79): 88 (4.7%)
-  3. Índice de masa corporal (IMC) (Z68): 53 (2.8%)
-  4. Neoplasias benignas y enf. sangre (D00-D89) (D12): 47 (2.5%)
-  5. Obesidad (E66): 45 (2.4%)
+- Registros diagnósticos: 1.890.
+- Diagnósticos únicos: 773.
+- Diagnósticos principales: 416 (22,0%).
+- Diagnósticos secundarios: 1.474 (78,0%).
 
-PROCEDIMIENTOS
-• Total registros procedimientos: 438
-• Procedimientos únicos: 205
+### Cinco grupos diagnósticos más frecuentes
 
-Procedimientos TOP 5:
-  1. Cirugía médica y quirúrgica (Medical & Surgical) (0DB): 155 (35.4%)
-  2. Cirugía médica y quirúrgica (Medical & Surgical) (0DJ): 28 (6.4%)
-  3. Administración (ej: transfusiones, infusiones) (3E0): 17 (3.9%)
-  4. Cirugía médica y quirúrgica (Medical & Surgical) (0PS): 13 (3.0%)
-  5. Cirugía médica y quirúrgica (Medical & Surgical) (0HQ): 13 (3.0%)
+| Posición | Grupo | Frecuencia | Porcentaje |
+|---:|---|---:|---:|
+| 1 | Urgencias (`UUU`) | 133 | 7,0% |
+| 2 | Uso prolongado de medicamentos (`Z79`) | 88 | 4,7% |
+| 3 | Índice de masa corporal (`Z68`) | 53 | 2,8% |
+| 4 | Neoplasias benignas y enfermedades de la sangre (`D12`) | 47 | 2,5% |
+| 5 | Obesidad (`E66`) | 45 | 2,4% |
 
-INTERPRETACIÓN
-================================================================================
+## Procedimientos
 
-HIPÓTESIS SOBRE LOS=0:
+- Registros de procedimientos: 438.
+- Procedimientos únicos: 205.
 
-1. OBSERVACIÓN ADMINISTRATIVO (Principal hallazgo)
-   • 416 diagnósticos principales sugieren casos de baja complejidad
-   • Muchos corresponden a evaluaciones rápidas (Z-codes: Z00-Z99)
-   • Pacientes admitidos y evaluados el mismo día sin necesidad de internación
+### Cinco grupos de procedimientos más frecuentes
 
-2. PROCEDIMIENTOS DIAGNÓSTICOS (Imaging, estudios)
-   • Mayor presencia de procedimientos de diagnóstico que terapéuticos
-   • Secciones principales: 0: Cirugía médica y quirúrgica (Medical & Surgical), B: Diagnóstico por imagen (Imaging), 3: Administración (ej: transfusiones, infusiones)
-   • Indica pacientes que realizaron pruebas diagnósticas ambulatorias
+| Posición | Grupo | Frecuencia | Porcentaje |
+|---:|---|---:|---:|
+| 1 | Cirugía médica y quirúrgica (`0DB`) | 155 | 35,4% |
+| 2 | Cirugía médica y quirúrgica (`0DJ`) | 28 | 6,4% |
+| 3 | Administración, incluidas transfusiones e infusiones (`3E0`) | 17 | 3,9% |
+| 4 | Cirugía médica y quirúrgica (`0PS`) | 13 | 3,0% |
+| 5 | Cirugía médica y quirúrgica (`0HQ`) | 13 | 3,0% |
 
-3. CAUSAS POSIBLES DE ALTAS INMEDIATAS:
-   a) Cirugías ambulatorias (Same-Day Surgery)
-   b) Procedimientos diagnósticos (endoscopia, biopsia)
-   c) Evaluaciones de urgencia (triaje, observación breve)
-   d) Ingresos administrativos para procedimientos
-   e) Pacientes traslados internos (egreso administrativo)
+## Interpretación
 
-4. RELEVANCIA CLÍNICA:
-   • Representa población de bajo riesgo/baja complejidad
-   • Importante para modelos predictivos: necesitan regresión separada
-   • No corresponde a altas contra médico ni abandonos
-   • Son estancias válidas y esperadas en hospitales modernos
+### Componente administrativo
 
-================================================================================
-Archivos generados:
-  - 01_diagnosticos_procedimientos_los_0.png
-  - 02_principal_vs_secundario_los_0.png
-  - diagnosticos_detallado_los_0.csv
-  - procedimientos_detallado_los_0.csv
-  - RESUMEN_ANALISIS_LOS_0.txt
-================================================================================
+Los 416 diagnósticos principales y la presencia de códigos Z son compatibles con casos de baja complejidad, evaluaciones breves e ingresos resueltos durante el mismo día, sin necesidad de hospitalización nocturna.
+
+### Procedimientos diagnósticos
+
+La combinación de procedimientos quirúrgicos, diagnóstico por imagen y administración puede corresponder a atenciones ambulatorias, estudios diagnósticos o intervenciones de corta duración.
+
+### Posibles causas de alta durante el mismo día
+
+1. Cirugías ambulatorias.
+2. Procedimientos diagnósticos, como endoscopias y biopsias.
+3. Evaluaciones de urgencia, triaje u observación breve.
+4. Ingresos administrativos asociados con procedimientos.
+5. Traslados internos o egresos administrativos.
+
+### Relevancia clínica
+
+- Este grupo representa una población predominantemente de baja complejidad y corta permanencia.
+- Sus características deben considerarse de forma específica en el modelamiento predictivo.
+- Los registros no deben interpretarse automáticamente como altas contra indicación médica o abandonos.
+- Las estancias de cero días pueden corresponder a atenciones válidas dentro de la operación hospitalaria.
+
+## Archivos asociados
+
+- `01_diagnosticos_procedimientos_los_0.png`.
+- `02_principal_vs_secundario_los_0.png`.
+- `diagnosticos_detallado_los_0.csv`.
+- `procedimientos_detallado_los_0.csv`.
+- `RESUMEN_ANALISIS_LOS_0.txt`.

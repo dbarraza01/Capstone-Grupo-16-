@@ -1,4 +1,4 @@
-# 📋 Reporte Analítico — Random Forest v1
+# Reporte Analítico — Random Forest v1
 **Predicción de Length of Stay (LOS) Hospitalario — Capstone Grupo 16**  
 **Modelo:** `RandomForestRegressor_v1` | **Script:** `entrenar_random_forest_v1.py`
 
@@ -86,39 +86,33 @@ Métricas globales de evaluación del modelo sobre el set de test completo (2,39
 | `recall_plos_27` | 0.0 | Proporción de PLOS reales que el modelo detecta |
 | `f1_plos_27` | 0.0 | Balance precision/recall para PLOS |
 
-### 1. Métricas de Error de Regresión (Predicción de Días Exactos)
-El modelo intenta adivinar un número exacto (ej. 5 días). Estas métricas miden qué tan lejos se quedó de la realidad.
+### 1. Métricas de error de regresión
 
-##### RMSE (11.13 días) - Raíz del Error Cuadrático Medio:
+Estas métricas cuantifican la diferencia entre los días de estancia observados y los estimados por el modelo.
 
-Qué significa: Mide el error promedio, pero castiga muchísimo las equivocaciones gigantes. Si el modelo se equivoca por 1 día en un paciente, no pasa nada. Pero si un paciente se quedó 150 días y el modelo predijo 10 (un error de 140 días), el RMSE eleva ese 140 al cuadrado, haciéndolo explotar.
-Por qué es 11.13: Como vimos que el modelo tiene errores enormes en los pacientes que se quedan meses hospitalizados (errores de >100 días), esos pocos casos disparan el RMSE hacia arriba.
-  
+#### RMSE: 11,13 días
 
-##### Mediana del Error Absoluto - MedAE (1.38 días): 
+El RMSE penaliza con mayor intensidad los errores de gran magnitud debido a que eleva al cuadrado cada diferencia antes de calcular el promedio. Los errores superiores a 100 días observados en algunos pacientes con hospitalizaciones prolongadas explican que esta métrica sea considerablemente mayor que el MAE y la MedAE.
 
-Qué significa: Es el "error típico" o el error del paciente que está justo en el medio del grupo. Significa que si ordenamos a todos tus pacientes del que mejor predijimos al que peor predijimos, al 50% de tus pacientes les adivinamos los días de estancia fallando por 1.38 días o menos.
-Por qué es útil: A diferencia del RMSE, la Mediana ignora por completo a los casos extremos. Te dice cómo funciona el modelo para "la gran mayoría" de las personas comunes y corrientes (las de 1 o 2 días).
+#### Mediana del error absoluto: 1,38 días
 
-### 2. Métricas de Detección PLOS (Clasificación de Estancias Prolongadas ≥ 27 días)
-Aquí ya no evaluamos si el modelo adivinó el número exacto, sino si logró encender la alarma correcta: ¿Este paciente se va a quedar un mes o más? Sí o No.
+La MedAE indica que el 50% de los pacientes presenta un error absoluto igual o inferior a 1,38 días. A diferencia del RMSE, esta medida es robusta frente a valores extremos y describe mejor el comportamiento del modelo en las estancias frecuentes de corta duración.
 
-Para entender esto, imagina que el modelo es una alarma de incendios.
+### 2. Métricas de detección PLOS
 
-##### Precision (0.0) - "Si la alarma suena, ¿es un incendio real?"
+La evaluación PLOS transforma la predicción continua en una clasificación binaria según si la estancia alcanza o no los 27 días.
 
-Qué significa: De todas las veces que tu modelo dijo "¡Alerta! Este paciente va a estar más de 27 días", ¿qué porcentaje realmente lo estuvo?
-Por qué dio 0.0: Porque tu modelo es tan conservador que nunca encendió la alarma (nunca predijo un valor mayor a 20 días). Como no hizo ninguna predicción de ≥ 27 días, su precisión es cero. No hubo falsas alarmas, pero porque nunca hubo alarmas.
+#### Precisión: 0,0
 
-##### Recall (0.0) - "Si hay un incendio, ¿la alarma logró sonar?"
+La precisión mide la proporción de predicciones PLOS que corresponde efectivamente a pacientes con LOS ≥ 27 días. El valor es cero porque el modelo no generó ninguna predicción igual o superior a 27 días.
 
-Qué significa: Es la capacidad de encontrar los casos peligrosos. Hubo 122 pacientes en tu prueba que sí se quedaron más de 27 días. De esos 122, ¿cuántos logró detectar el modelo?
-Por qué dio 0.0: El modelo detectó 0 de 122. Se le escaparon absolutamente todos los casos graves (100% de Falsos Negativos). Clínicamente, un Recall de 0 es peligroso porque indica que el sistema no está viendo a los pacientes más complejos.
-F1-Score (0.0) - El balance general
+#### Recall: 0,0
 
-Qué significa: Es un promedio matemático entre la Precision y el Recall. En la vida real, si haces que tu alarma sea muy sensible (alto Recall), va a sonar por accidente muchas veces (baja Precision). El F1-Score te dice si lograste un buen equilibrio.
-Por qué dio 0.0: Como ambos valores anteriores fueron cero, el F1-Score es cero. El modelo falló completamente en la tarea de separar a los pacientes normales de los pacientes crónicos extremos.
-En resumen para tu informe: Tu modelo es excelente para adivinar estancias de los pacientes comunes de 1 a 3 días (eso lo dice el MedAE bajo de 1.38), pero está completamente ciego a los pacientes graves (eso lo dice el Recall de 0.0 y el RMSE alto).
+El recall mide la proporción de pacientes PLOS reales identificados por el modelo. Ninguno de los 122 pacientes con LOS ≥ 27 días fue detectado, por lo que todos se contabilizaron como falsos negativos.
+
+#### F1-score: 0,0
+
+El F1-score resume el equilibrio entre precisión y recall. Su valor es cero debido a la ausencia de verdaderos positivos. En conjunto, los resultados muestran un buen ajuste relativo para las estancias frecuentes de corta duración, reflejado en la MedAE de 1,38 días, pero una incapacidad total para detectar estancias prolongadas.
 ---
 
 ### 4.3 `reports_modelos/metricas_por_tramo_random_forest_v1.csv`
@@ -154,13 +148,13 @@ El modelo entrenado serializado en formato binario. Puede cargarse en el futuro 
 
 ## 5. Interpretación de los Resultados
 
-### 5.1 ¿Qué está haciendo el modelo bien?
+### 5.1 Fortalezas del modelo
 
 **El modelo funciona razonablemente bien en las estancias cortas**, que son por lejos el grupo más numeroso. En el tramo 0–2 días, el error medio es solo 1.34 días con una MedAE de 1.29 días. Para un paciente que realmente se va en 1 día, predecir ~2.5 días es un error tolerable en términos clínicos.
 
 La MedAE global de **1.38 días** indica que la mitad de los pacientes en el test set tienen un error de predicción menor a 1.38 días. Esto parece positivo, pero es engañoso porque la mayoría de esos pacientes son del tramo 0–2 días.
 
-### 5.2 ¿Cuál es el problema central?
+### 5.2 Problema central
 
 **El modelo está sesgado hacia el promedio poblacional.** El rango de predicciones va de 1.90 a 20.14 días — nunca predice más de 20 días. Esto significa que el modelo básicamente aprendió a predecir "el LOS típico de los pacientes con características similares" en vez de aprender cuándo un caso será extremo.
 
@@ -203,17 +197,17 @@ Esto no es sorprendente dado que el modelo nunca supera las 20 días de predicci
 
 | Desventaja | Descripción | Gravedad |
 |------------|-------------|----------|
-| **Sesgo hacia el promedio** | Rango de predicción 1.90–20.14 días. Nunca predice estancias largas | 🔴 Alta |
-| **PLOS no detectado** | Recall=0% para LOS ≥27 días. El objetivo clínico más importante falla completamente | 🔴 Alta |
-| **Subestimación sistemática** | 99–100% de subestimación en tramos largos. El modelo es peligrosamente optimista | 🔴 Alta |
-| **RMSE elevado (11.13 días)** | Penaliza los errores en casos extremos. Indica que los outliers se predicen muy mal | 🟡 Media |
-| **Población mezclada** | Obstetricia, medicina interna y cirugía en un solo modelo diluyen los patrones | 🟡 Media |
-| **Sin feature importance** | No se extrae cuáles grupos ICD son los más relevantes para el modelo | 🟡 Media |
-| **Sin validación cruzada** | Un solo split 80/20 puede dar estimaciones optimistas o pesimistas por el azar | 🟡 Media |
+| **Sesgo hacia el promedio** | Rango de predicción 1.90–20.14 días. Nunca predice estancias largas | Alta |
+| **PLOS no detectado** | Recall=0% para LOS ≥27 días. El objetivo clínico más importante falla completamente | Alta |
+| **Subestimación sistemática** | 99–100% de subestimación en tramos largos. El modelo es peligrosamente optimista | Alta |
+| **RMSE elevado (11.13 días)** | Penaliza los errores en casos extremos. Indica que los outliers se predicen muy mal | Media |
+| **Población mezclada** | Obstetricia, medicina interna y cirugía en un solo modelo diluyen los patrones | Media |
+| **Sin feature importance** | No se extrae cuáles grupos ICD son los más relevantes para el modelo | Media |
+| **Sin validación cruzada** | Un solo split 80/20 puede dar estimaciones optimistas o pesimistas por el azar | Media |
 
 ---
 
-## 8. ¿Por qué ocurre todo esto? — Diagnóstico Técnico
+## 8. Diagnóstico técnico de los resultados
 
 El comportamiento observado es la combinación de tres factores que actúan simultáneamente:
 
@@ -228,11 +222,11 @@ Los grupos ICD capturan *qué tiene el paciente*, pero no cuán grave es su situ
 
 ---
 
-## 9. Pasos Futuros — Lo que Indica Este Primer Modelo
+## 9. Líneas de desarrollo posteriores
 
 Los resultados del modelo v1 son informativos aunque no satisfactorios. Establecen con claridad las prioridades para el modelo v2:
 
-### 🔴 Prioritario — Tratar el desbalance de clases
+### Prioridad alta — Tratamiento del desbalance de clases
 
 El problema central es la distribución asimétrica del LOS. Las estrategias a evaluar son:
 
@@ -240,22 +234,22 @@ El problema central es la distribución asimétrica del LOS. Las estrategias a e
 2. **Pesos de muestra personalizados:** Asignar mayor peso en la función de pérdida a los pacientes con LOS ≥ 14 días, de modo que el modelo "pague" más por equivocarse en esos casos.
 3. **Modelo de dos etapas:** Primero clasificar si el paciente es PLOS (≥27 días) o no, y luego usar un regresor separado para cada grupo.
 
-### 🔴 Prioritario — Cambio a Gradient Boosting (XGBoost / LightGBM)
+### Prioridad alta — Evaluación de Gradient Boosting (XGBoost / LightGBM)
 
 XGBoost y LightGBM tienen mecanismos nativos para manejar distribuciones asimétricas y pueden aprender de los errores de forma secuencial. Esto los hace más adecuados para predecir valores en la cola derecha de la distribución que Random Forest.
 
-### 🟡 Importante — Extraer Feature Importance
+### Prioridad media — Análisis de importancia de variables
 
-El siguiente paso más valioso analíticamente es saber cuáles grupos ICD el modelo considera más predictivos. Esto permitiría:
+El análisis de los grupos ICD con mayor importancia predictiva permitiría:
 - Validar clínicamente si los features importantes tienen sentido médico
 - Reducir el número de features (de 1,650 a los 50–100 más importantes) antes de entrenar el modelo v2
 - Identificar si algunas variables base (`n_procedimientos`, `n_diag_total`) dominan sobre los códigos ICD específicos
 
-### 🟡 Importante — Validación Cruzada (KFold)
+### Prioridad media — Validación cruzada (K-Fold)
 
 Implementar K-Fold con k=5 para obtener una estimación más estable del error. Con un solo split 80/20 y datos médicos que pueden tener estacionalidad (más partos en ciertos meses, más neumonías en invierno), el resultado puede variar según qué datos cayeron en train y cuáles en test.
 
-### 🟢 Trabajo Futuro — Estratificación por Servicio
+### Trabajo futuro — Estratificación por servicio
 
 Separar el modelo por tipo de hospitalización (obstétrica, médica, quirúrgica) permitiría que cada modelo aprenda patrones más homogéneos. Un paciente obstétrico y uno oncológico no deberían compartir el mismo modelo.
 
@@ -269,8 +263,8 @@ Separar el modelo por tipo de hospitalización (obstétrica, médica, quirúrgic
 
 > **El dataset está bien construido. El problema está en la estrategia de modelado, no en los datos.**
 
-> El siguiente paso lógico es implementar XGBoost o LightGBM con manejo de desbalance, extraer feature importance de este modelo para reducir dimensionalidad, y comparar resultados con validación cruzada.
+> Los resultados justifican evaluar XGBoost o LightGBM con tratamiento del desbalance, analizar la importancia de variables para reducir la dimensionalidad y comparar los modelos mediante validación cruzada.
 
 ---
 
-*Análisis generado sobre los archivos de salida de `entrenar_random_forest_v1.py`. Cohorte: 11,951 pacientes, 9,560 train / 2,391 test. Dataset: `model_data_ml_v2.csv`.*
+*Fuente de resultados: archivos de salida de `entrenar_random_forest_v1.py`. Cohorte: 11.951 pacientes, 9.560 de entrenamiento y 2.391 de prueba. Dataset: `model_data_ml_v2.csv`.*

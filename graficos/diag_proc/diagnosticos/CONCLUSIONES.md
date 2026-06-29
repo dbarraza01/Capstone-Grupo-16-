@@ -3,7 +3,7 @@
 
 ---
 
-## 📊 Resumen Ejecutivo
+## Resumen Ejecutivo
 
 ### Estadísticas Generales
 - **Total de pacientes analizados:** 11,951
@@ -15,7 +15,7 @@
 
 ---
 
-## 🔴 Códigos Asociados a Outliers (Estancias Largas)
+## Códigos Asociados a Outliers (Estancias Largas)
 
 ### Top 5 Códigos con Mayor Probabilidad de Generar LOS Outliers
 
@@ -38,7 +38,7 @@ Los códigos listados arriba tienen una **alta probabilidad de estar asociados c
 
 ---
 
-## 📈 Códigos Más Frecuentes (Densidad)
+## Códigos Más Frecuentes (Densidad)
 
 ### Top 5 Códigos con Mayor Frecuencia
 
@@ -57,7 +57,7 @@ Los códigos más frecuentes representan las condiciones o procedimientos más c
 
 ---
 
-## 🔍 Relación Frecuencia vs. Outliers
+## Relación Frecuencia vs. Outliers
 
 ### Códigos que son FRECUENTES y GENERAN OUTLIERS
 
@@ -67,7 +67,7 @@ No hay códigos que sean simultáneamente top 5 en frecuencia y top 5 en probabi
 
 ---
 
-## 💡 Recomendaciones
+## Recomendaciones
 
 ### Para Predicción de LOS
 1. **Incluir códigos outlier como features importantes:** Los códigos con alta probabilidad de outlier deben tener mayor peso en modelos predictivos
@@ -81,7 +81,7 @@ No hay códigos que sean simultáneamente top 5 en frecuencia y top 5 en probabi
 
 ---
 
-## 📁 Archivos Generados
+## Archivos Generados
 
 ### Gráficos
 1. `01_codigos_outliers.png` - Top 20 códigos con mayor probabilidad de outlier
@@ -95,4 +95,4 @@ No hay códigos que sean simultáneamente top 5 en frecuencia y top 5 en probabi
 
 ---
 
-**Generado automáticamente por:** `analisis_codigos_outliers.py`
+**Script de análisis:** `analisis_codigos_outliers.py`

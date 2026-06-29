@@ -1,4 +1,4 @@
-# 📋 Reporte Analítico — XGBoost v1
+# Reporte Analítico — XGBoost v1
 **Predicción de Length of Stay (LOS) Hospitalario — Capstone Grupo 16**  
 **Modelo:** `XGBRegressor_v1` | **Script:** `entrenar_xgboost_v1.py`
 
@@ -100,7 +100,7 @@ Modelo serializado. Cargable con `joblib.load()` para predicciones futuras sin r
 
 El hallazgo más significativo de este modelo es que el Recall PLOS pasó de **0.0% a 48.4%**. Esto significa que de los 122 pacientes que realmente tuvieron LOS ≥ 27 días, XGBoost detectó correctamente a **59 de ellos** — algo que el Random Forest fue incapaz de hacer con los mismos datos.
 
-¿Por qué? La diferencia fundamental es el mecanismo de aprendizaje:
+La diferencia fundamental se encuentra en el mecanismo de aprendizaje:
 
 - **Random Forest:** Genera 300 árboles independientes y promedia sus votos. Los 300 árboles, entrenados sobre el mismo dataset con 49.5% de LOS cortos, aprenden individualmente a predecir estancias cortas. Al promediar 300 "votos" sesgados, el resultado nunca supera los 20 días.
 - **XGBoost:** Los árboles se construyen **secuencialmente**. Cada nuevo árbol se entrena para corregir los errores del anterior. Después de las primeras iteraciones (que aprenden a predecir estancias cortas), las siguientes iteraciones se enfocan en los **residuos** — es decir, en los pacientes de LOS largo que se están prediciendo mal. Esto permite que el modelo eventualmente aprenda patrones específicos de estancias prolongadas.
@@ -162,15 +162,15 @@ El **Recall de 48.4%** es el área de oportunidad: todavía se escapan la mitad 
 
 | Desventaja | Descripción | Gravedad |
 |------------|-------------|----------|
-| **Recall PLOS al 51.6% de error** | Todavía se escapan 63 de 122 pacientes con LOS largo | 🔴 Alta |
-| **MAE tramo 27+ = 22.4 días** | Predice ~33 días cuando la realidad es ~49 días | 🔴 Alta |
-| **Subestimación sistemática persiste** | 80% de los casos LOS ≥27 se subestiman | 🟡 Media |
-| **Trade-off en estancias cortas** | 22.2% de subestimación en tramo 0–2 (era 0% en RF) | 🟡 Baja |
-| **Features sin severidad** | Sigue sin capturar qué tan grave es la condición del paciente | 🔴 Alta |
+| **Recall PLOS al 51.6% de error** | Todavía se escapan 63 de 122 pacientes con LOS largo | Alta |
+| **MAE tramo 27+ = 22.4 días** | Predice ~33 días cuando la realidad es ~49 días | Alta |
+| **Subestimación sistemática persiste** | 80% de los casos LOS ≥27 se subestiman | Media |
+| **Trade-off en estancias cortas** | 22.2% de subestimación en tramo 0–2 (era 0% en RF) | Baja |
+| **Features sin severidad** | Sigue sin capturar qué tan grave es la condición del paciente | Alta |
 
 ---
 
-## 8. Diagnóstico Técnico — ¿Por qué persiste la subestimación?
+## 8. Diagnóstico técnico de la subestimación
 
 El 80% de subestimación en el tramo 27+ no es una falla del algoritmo: es un **problema de datos**. Con solo el 5.1% de los pacientes en el tramo 27+, el modelo tiene ~487 ejemplos de LOS largo para aprender durante el entrenamiento. En un dataset de 1,650 features, 487 ejemplos no son suficientes para aprender con solidez los patrones de estancias extremas.
 
@@ -195,20 +195,20 @@ Además, los features actuales (códigos ICD binarios) no distinguen la *severid
 
 ---
 
-## 10. Pasos Futuros (Fase 3)
+## 10. Líneas de desarrollo posteriores (Fase 3)
 
 Los resultados del XGBoost v1 apuntan a dos prioridades claras:
 
-### 🔴 Prioridad 1 — Features de Severidad (Fase 2 del plan)
+### Prioridad alta — Variables de severidad (Fase 2 del plan)
 El Recall PLOS del 48.4% es un techo que no se puede superar solo ajustando hiperparámetros. Es necesario agregar información de **severidad clínica** (Índice de Charlson, Elixhauser, features de interacción) para que el modelo distinga entre un "caso leve" y un "caso grave" con el mismo código ICD.
 
-### 🔴 Prioridad 2 — Manejo del desbalance (Fase 3 del plan)
-Con los mismos features, el siguiente paso es aplicar:
+### Prioridad alta — Manejo del desbalance (Fase 3 del plan)
+Con las mismas variables, se propone evaluar:
 - **Pesos de muestra:** Asignar peso 10x a pacientes de LOS ≥ 27 días para que el modelo "pague más" por equivocarse en ellos
 - **SMOGN:** Generar muestras sintéticas de casos extremos para compensar los ~487 ejemplos insuficientes del grupo 27+
 - **Modelo de dos etapas:** Entrenar un clasificador PLOS + regresores separados para estancias cortas y largas
 
-### 🟡 Prioridad 3 — Ajuste de hiperparámetros
+### Prioridad media — Ajuste de hiperparámetros
 Con los features v3, explorar `learning_rate` más bajo (0.05) con más `n_estimators` (500) y validación cruzada K-Fold para seleccionar los mejores hiperparámetros de forma robusta.
 
 ---
@@ -217,10 +217,10 @@ Con los features v3, explorar `learning_rate` más bajo (0.05) con más `n_estim
 
 > XGBoost v1 representa un avance sustancial respecto al RF v1. Con los mismos datos, logró reducir el MAE en un 28.6%, el RMSE en un 30.9% y — lo más importante — pasó de un Recall PLOS del 0% al 48.4%. Esto demuestra que el mecanismo de boosting secuencial es significativamente más adecuado para distribuciones de LOS asimétricas que el promediado de Random Forest.
 
-> **Sin embargo, XGBoost v1 tampoco es apto para uso clínico.** Todavía pierde a la mitad de los pacientes con estancia prolongada y comete errores de ~22 días en los casos más graves. El siguiente paso es enriquecer los features con información de severidad (Fase 2) y aplicar técnicas de balanceo de datos (Fase 3).
+> **Sin embargo, XGBoost v1 tampoco es apto para uso clínico.** Todavía pierde a la mitad de los pacientes con estancia prolongada y comete errores de aproximadamente 22 días en los casos más graves. Los resultados justifican incorporar variables de severidad y técnicas de balanceo de datos.
 
-> **El algoritmo está validado. El foco ahora es mejorar los datos.**
+> **El algoritmo muestra una mejora sustancial, pero requiere información clínica adicional y una evaluación posterior antes de considerar su uso operacional.**
 
 ---
 
-*Análisis generado sobre los archivos de salida de `entrenar_xgboost_v1.py`. Cohorte: 11,951 pacientes, 9,560 train / 2,391 test. Dataset: `model_data_ml_v2.csv`.*
+*Fuente de resultados: archivos de salida de `entrenar_xgboost_v1.py`. Cohorte: 11.951 pacientes, 9.560 de entrenamiento y 2.391 de prueba. Dataset: `model_data_ml_v2.csv`.*

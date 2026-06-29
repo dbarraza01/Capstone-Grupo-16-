@@ -1,6 +1,6 @@
 # Análisis Clínico: Índices de Comorbilidad v3
 
-Este reporte presenta los hallazgos tras calcular los índices de severidad clínica (Charlson y Elixhauser) para los 11,951 pacientes del dataset. Estos datos forman ahora los **Escenarios B y C** que utilizaremos para entrenar modelos avanzados.
+Este reporte presenta los resultados del cálculo de los índices de comorbilidad de Charlson y Elixhauser para los 11.951 pacientes del conjunto de datos. Estas variables conforman los escenarios B y C utilizados en el entrenamiento de los modelos.
 
 ---
 
@@ -27,7 +27,7 @@ El índice de Charlson clasifica las enfermedades crónicas asignándoles un pes
 
 ## 2. Índice de Elixhauser (Escenario C)
 
-Elixhauser es un sistema más granular que Charlson, midiendo 31 categorías distintas. Usamos el sistema de pesos de **van Walraven (2009)** para calcular el score continuo.
+Elixhauser es un sistema más granular que Charlson y considera 31 categorías. Para calcular el puntaje continuo se utilizó el sistema de ponderación de **van Walraven (2009)**.
 
 ### Top 10 Comorbilidades más Frecuentes
 De las 31 categorías evaluadas, estas son las condiciones crónicas más prevalentes en el hospital:
@@ -47,12 +47,12 @@ De las 31 categorías evaluadas, estas son las condiciones crónicas más preval
 *   **Pacientes con Score 0:** 7,352 (61.5%)
 *   **Rango de puntajes:** 0 a 46 puntos.
 
-**Hallazgo Clínico Crítico:**
-El alto volumen de pacientes con **Pérdida de Peso (`elix_wloss`: 1,689 casos)** y **Desequilibrio de Electrolitos (`elix_fed`: 892 casos)** es crucial. En la literatura médica sobre Length of Stay (LOS), la desnutrición y la deshidratación son dos de los **mejores predictores de hospitalizaciones prolongadas**, ya que indican fragilidad sistémica del paciente al momento del ingreso. XGBoost seguramente utilizará estas variables con mucho peso en el Escenario C.
+**Hallazgo clínico:**
+Se observa una frecuencia elevada de pérdida de peso (`elix_wloss`: 1.689 casos) y desequilibrio de fluidos o electrolitos (`elix_fed`: 892 casos). Ambas condiciones pueden representar fragilidad clínica y aportar información predictiva sobre la duración de la estancia. Su contribución efectiva debe comprobarse mediante el análisis de importancia de variables del modelo.
 
 ---
 
 ## 3. Implicaciones para la Fase 3 (Modelamiento)
 
-1.  **Reducción de Ruido Dimensional:** En la versión original (v2), teníamos cientos de columnas de diagnósticos ICD dispersos que causaban esparcidad y sobreajuste. En el Escenario C, concentramos toda esa información médica en **solo 31 columnas clínicas densas** que representan a la perfección el Síndrome Metabólico (obesidad, hipertensión, diabetes) y la Fragilidad (pérdida de peso, falla renal) de la población.
-2.  **Manejo de Valores Extremos (Outliers en LOS):** Ya que la mayoría de los pacientes tienen un Score de 0, el algoritmo XGBoost podrá usar los valores altos de estos índices para justificar e identificar anticipadamente por qué un paciente que a simple vista parece normal, terminará internado por periodos extremadamente largos (≥ 14 o 27 días).
+1. **Reducción del ruido dimensional:** En la versión original (v2), los diagnósticos ICD se representaban mediante cientos de columnas dispersas. El escenario C resume las comorbilidades en 31 categorías clínicas densas relacionadas, entre otros ámbitos, con síndrome metabólico y fragilidad. Esta reducción puede disminuir la dimensionalidad, aunque también implica pérdida de información diagnóstica específica.
+2. **Representación de valores extremos de LOS:** Los puntajes altos de comorbilidad ofrecen al modelo una medida agregada de carga clínica que puede contribuir a distinguir pacientes con mayor riesgo de estancias prolongadas. Esta hipótesis debe evaluarse mediante las métricas obtenidas en validación y holdout.
